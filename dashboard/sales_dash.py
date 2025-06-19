@@ -711,9 +711,10 @@ class SalesReportMonthly:
 
 def create_dash_app_test():
     _dash_renderer._set_react_version("18.2.0")
-    app = dash.Dash(__name__, requests_pathname_prefix='/my-dash-app-test/',external_stylesheets=dmc.styles.ALL)
+    app = dash.Dash(__name__, requests_pathname_prefix='/my-dash-app-test/',external_stylesheets=dmc.styles.ALL,suppress_callback_exceptions=True)
     
     srm =  SalesReportMonthly()
+    initial_theme = "dark"
     
     
     theme_switch1 = dmc.Switch(
@@ -732,19 +733,7 @@ def create_dash_app_test():
         }
         )
 
-    theme_toggle = dmc.Switch(
-        offLabel=DashIconify(
-            icon="radix-icons:sun", width=15, color=dmc.DEFAULT_THEME["colors"]["yellow"][8]
-        ),
-        onLabel=DashIconify(
-            icon="radix-icons:moon",
-            width=15,
-            color=dmc.DEFAULT_THEME["colors"]["yellow"][6],
-        ),
-        id="color-scheme-toggle",
-        persistence=True,
-        color="grey",
-    )
+    
 
     layout = dmc.AppShell(
         [
@@ -804,7 +793,14 @@ def create_dash_app_test():
     )
 
 
-    app.layout = dmc.MantineProvider(layout)
+    app.layout = dmc.MantineProvider(
+        id="mantine-provider",
+        theme={"colorScheme": initial_theme},
+        children= [
+            layout,
+            dcc.Store(id='theme-init', storage_type='local'),
+        ]
+        )
 
     @app.callback(
         Output('header_content_group','children'),
@@ -815,27 +811,34 @@ def create_dash_app_test():
         a = [srm.logo_dark, dmc.Title("СЕГМЕНТНЫЙ АНАЛИЗ", c="blue")] if checked else [srm.logo_light, dmc.Title("СЕГМЕНТНЫЙ АНАЛИЗ", c="blue")]
         return a
 
-    # @app.callback(
-    #     Output("appshell", "navbar"),
-    #     Input("burger", "opened"),
-    #     State("appshell", "navbar"),
-    # )
-    # def navbar_is_open(opened, navbar):
-    #     navbar["collapsed"] = {"mobile": not opened}
-    #     return navbar
-
-
-    clientside_callback(
-        """ 
-        (switchOn) => {
-        document.documentElement.setAttribute('data-mantine-color-scheme', switchOn ? 'dark' : 'light');  
-        return window.dash_clientside.no_update
+    app.clientside_callback(
+        """
+        function(checked) {
+            const theme = checked ? 'dark' : 'light';
+            // Применяем тему
+            document.documentElement.setAttribute('data-mantine-color-scheme', theme);
+            // Сохраняем в localStorage
+            localStorage.setItem('dash_theme', theme);
+            return window.dash_clientside.no_update;
         }
         """,
-        Output("color-scheme-toggle", "id"),
-        Input("color-scheme-toggle", "checked"),
+        Output('mantine-provider', 'theme'),  # Фиктивный Output
+        Input('color-scheme-toggle', 'checked')
     )
 
+    # 6. Колбэк для инициализации темы при загрузке
+    app.clientside_callback(
+        """
+        function() {
+            const savedTheme = localStorage.getItem('dash_theme') || 'dark';
+            document.documentElement.setAttribute('data-mantine-color-scheme', savedTheme);
+            return savedTheme === 'dark';
+        }
+        """,
+        Output('color-scheme-toggle', 'checked'),
+        Input('theme-init', 'modified_timestamp')
+    )
+    
     return app.server 
 
 
