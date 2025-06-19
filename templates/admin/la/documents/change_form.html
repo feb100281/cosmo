@@ -1,0 +1,49 @@
+{% extends "admin/change_form.html" %}
+{% load admin_urls static %}
+
+{% block content %}
+    {{ block.super }}
+
+    <div style="margin-bottom: 10px; margin-top: 10px;">
+        <button type="button" id="la_view" class="btn btn-primary">Просмотр договора</button>
+        <button type="button" id="make_ammendments" class="btn btn-primary">Сделать доп соглашение</button>
+        <button type="button" id="make_blank_ammendments" class="btn btn-secondary">Сделать пустое соглашение</button>
+    </div>
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const currentPath = window.location.pathname;
+        const pkMatch = currentPath.match(/\/(\d+)\/change\/$/);
+        const pk = pkMatch ? pkMatch[1] : null;
+
+        // Просмотр договора
+        const viewBtn = document.getElementById('la_view');
+        if (viewBtn && pk) {
+          viewBtn.addEventListener('click', function () {
+            const url = `/la/documents/${pk}/report/`;
+            window.open(url, '_blank');
+          });
+        }
+
+        // Копирование документа
+        const amendBtn = document.getElementById('make_ammendments');
+        if (amendBtn && pk) {
+          amendBtn.addEventListener('click', function () {
+            const cloneUrl = `/admin/la/documents/${pk}/clone/`;
+            window.location.href = cloneUrl;
+          });
+        }
+         // Копирование пустого документа
+        const blankBtn = document.getElementById('make_blank_ammendments');
+        if (blankBtn && pk) {
+          blankBtn.addEventListener('click', function () {
+            const cloneUrl = `/admin/la/documents/${pk}/clone-empty/`;
+            window.location.href = cloneUrl;
+          });
+        }
+      });
+    </script>
+{% endblock %}

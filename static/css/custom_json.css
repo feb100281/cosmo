@@ -1,0 +1,20 @@
+* Общий фон */
+.jsoneditor,
+.jsoneditor .jsoneditor-outer,
+.jsoneditor .jsoneditor-inner {
+    background-color: #eed3d3 !important;
+}
+
+/* Шрифт в режимах tree/form */
+.jsoneditor * {
+    font-family: 'Montserrat', sans-serif !important;
+    font-size: 12px !important;
+}
+
+/* Ace editor (code-mode) */
+.jsoneditor .ace_editor {
+    font-family: 'Montserrat', monospace !important;
+    font-size: 12px !important;
+    background-color: #eed3d3 !important;
+    color: #222 !important;
+}

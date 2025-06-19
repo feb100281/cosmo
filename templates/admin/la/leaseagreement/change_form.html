@@ -1,0 +1,94 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block footer %}
+    {% if plots %}
+    <div style="margin: 20px 0; padding: 120px; border: 1px solid #dee2e6; background: white; border-radius: 4px;">
+        <style>
+            .plot-tabs input[type="radio"] { display: none; }
+            .plot-tabs label {
+                cursor: pointer;
+                padding: 6px 12px;
+                margin-right: 5px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                background: #f8f9fa;
+            }
+            .plot-tabs label:hover {
+                background: #e2e6ea;
+            }
+            .plot-content > div { 
+                display: none; 
+                width: 100%;
+                max-width: 100%;
+                margin: 15px 0;
+            }
+            .plot-tabs input[type="radio"]:checked + label {
+                background: #007bff;
+                color: white;
+                border-color: #007bff;
+            }
+            #tab1:checked ~ .plot-content #content1,
+            #tab2:checked ~ .plot-content #content2,
+            #tab3:checked ~ .plot-content #content3,
+            #tab4:checked ~ .plot-content #content4,
+            #tab5:checked ~ .plot-content #content5,
+            #tab6:checked ~ .plot-content #content6{
+                display: block;
+                margin-top: 15px;
+            }
+        </style>
+
+        <div class="plot-tabs">
+            {% if plots.0 %}
+            <input type="radio" name="plot-tab" id="tab1" checked>
+            <label for="tab1">Гант</label>
+            {% endif %}
+            {% if plots.1 %}
+            <input type="radio" name="plot-tab" id="tab2" {% if not plots.0 %}checked{% endif %}>
+            <label for="tab2">Площади и кол-во</label>
+            {% endif %}
+            {% if plots.2 %}
+            <input type="radio" name="plot-tab" id="tab3" {% if not plots.0 and not plots.1 %}checked{% endif %}>
+            <label for="tab3">МАП и индексации</label>
+            {% endif %}
+            {% if plots.3 %}
+            <input type="radio" name="plot-tab" id="tab4" {% if not plots.0 and not plots.1 and not plots.2 %}checked{% endif %}>
+            <label for="tab4">Условия</label>
+            {% endif %}
+            {% if plots.4 %}
+            <input type="radio" name="plot-tab" id="tab5" {% if not plots.0 and not plots.1 and not plots.2 and not plots.3  %}checked{% endif %}>
+            <label for="tab5">Начисления</label>
+            {% endif %}
+            {% if plots.5 %}
+            <input type="radio" name="plot-tab" id="tab6" {% if not plots.0 and not plots.1 and not plots.2 and not plots.3 and not plots.4  %}checked{% endif %}>
+            <label for="tab6">Оплаты</label>
+            {% endif %}
+
+            <div class="plot-content">
+                {% if plots.0 %}
+                <div id="content1">{{ plots.0|safe }}</div>
+                {% endif %}
+                {% if plots.1 %}
+                <div id="content2">{{ plots.1|safe }}</div>
+                {% endif %}
+                {% if plots.2 %}
+                <div id="content3">{{ plots.2|safe }}</div>
+                {% endif %}
+                {% if plots.3 %}
+                <div id="content4">{{ plots.3|safe }}</div>
+                {% endif %}
+                {% if plots.4 %}
+                <div id="content5">{{ plots.4|safe }}</div>
+                {% endif %}
+                {% if plots.5 %}
+                <div id="content6">{{ plots.5|safe }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}
+
+

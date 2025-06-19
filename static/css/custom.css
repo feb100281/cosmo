@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@100..900&display=swap');
+
+/* Переопределение .text-sm */
+.text-sm {    
+    font-family: "Noto Sans", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 350; /* Выберите нужный вес (100-900) */
+    font-style: normal;
+}
+
+/* Уменьшение размера шрифта для навбара */
+.navbar {
+    font-family: 'Montserrat', serif;
+    font-size: 12px !important;
+}
+
+.navbar-brand {
+    font-family: 'Montserrat', serif;
+    font-size: 12px !important;
+}
+
+.navbar .nav-link {
+    font-family: 'Montserrat', serif;
+    font-size: 12px !important;
+}
+
+/* Уменьшение размера шрифта для сайдбара */
+.sidebar {
+    font-family: 'Montserrat', serif;
+    font-size: 12px !important;
+}
+
+.sidebar .nav-sidebar .nav-link {
+    font-family: 'Montserrat', serif;
+    font-size: 12px !important;
+}
+
+/* Уменьшение размера шрифта для футера */
+.main-footer {
+    font-family: 'Montserrat', serif;
+    font-size: 12px !important;
+}
+
+.main-footer .footer-text {
+    font-family: 'Montserrat', serif;
+    font-size: 12px !important;
+}
+
+
+.modal-dialog {
+    max-width: 95% !important;
+    width: 95% !important;
+}

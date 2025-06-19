@@ -1,0 +1,117 @@
+{% extends 'admin/change_list.html' %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    <style>
+        .daterangepicker {
+            z-index: 1100 !important;
+            font-family: Arial, sans-serif;
+        }
+        .date-range-filter {
+            padding: 10px;
+            background: #f8f9fa;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .daterangepicker .calendar-table th,
+        .daterangepicker .calendar-table td {
+            font-size: 14px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="date-range-filter">
+        <div class="input-group">
+            <input type="text" class="form-control" id="date_range"
+                   placeholder="Выберите период"
+                   {% if request.GET.start_date and request.GET.end_date %}
+                       value="{{ request.GET.start_date }} - {{ request.GET.end_date }}"
+                   {% endif %}>
+            <input type="hidden" name="start_date" id="start_date"
+                   {% if request.GET.start_date %} value="{{ request.GET.start_date }}" {% endif %}>
+            <input type="hidden" name="end_date" id="end_date"
+                   {% if request.GET.end_date %} value="{{ request.GET.end_date }}" {% endif %}>
+            <button type="button" class="btn btn-outline-primary" id="apply-filter">Применить</button>
+            {% if request.GET.start_date %}
+                <a href="." class="btn btn-outline-secondary">Сбросить</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {{ block.super }}
+{% endblock %}
+
+{% block extrajs %}
+    {{ block.super }}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            const dateInput = $('#date_range');
+            const startDateInput = $('#start_date');
+            const endDateInput = $('#end_date');
+
+            const rusLocale = {
+                format: 'YYYY-MM-DD',
+                applyLabel: "Применить",
+                cancelLabel: "Отмена",
+                daysOfWeek: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
+                monthNames: [
+                    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+                    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+                ],
+                firstDay: 1,
+                customRangeLabel: "Выбрать вручную"
+            };
+
+            dateInput.daterangepicker({
+                opens: 'right',
+                autoUpdateInput: false,
+                locale: rusLocale,
+                ranges: {
+                    'Сегодня': [moment(), moment()],
+                    'Вчера': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                    'Последние 7 дней': [moment().subtract(6, 'days'), moment()],
+                    'Последние 30 дней': [moment().subtract(29, 'days'), moment()],
+                    'Этот месяц': [moment().startOf('month'), moment().endOf('month')],
+                    'Прошлый месяц': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+                }
+            });
+
+            dateInput.on('apply.daterangepicker', function (ev, picker) {
+                const start = picker.startDate.format('YYYY-MM-DD');
+                const end = picker.endDate.format('YYYY-MM-DD');
+                dateInput.val(start + ' - ' + end);
+                startDateInput.val(start);
+                endDateInput.val(end);
+            });
+
+            dateInput.on('cancel.daterangepicker', function () {
+                dateInput.val('');
+                startDateInput.val('');
+                endDateInput.val('');
+            });
+
+            $('#apply-filter').on('click', function () {
+                const params = new URLSearchParams(window.location.search);
+                const start = startDateInput.val();
+                const end = endDateInput.val();
+                if (start && end) {
+                    params.set('start_date', start);
+                    params.set('end_date', end);
+                }
+                window.location.search = params.toString();  // обновляем URL
+            });
+
+            // Установим текст, если уже выбрано
+            {% if request.GET.start_date and request.GET.end_date %}
+                dateInput.val('{{ request.GET.start_date }} - {{ request.GET.end_date }}');
+            {% endif %}
+        });
+    </script>
+{% endblock %}
