@@ -340,6 +340,36 @@ class SalesReportMonthly:
         ]
         )
         
+        ranging_creteria = [["revenue", "Выручка"], ["quant", "Количество"], ["margin", "Маржинальность"]]
+        
+        
+        self.creteria_radio = dmc.Group([dmc.RadioGroup(
+            children=dmc.Group([dmc.Radio(l, value=k) for k, l in ranging_creteria], my=10),
+            id="radiogroup-creteria",
+            value="revenue",
+            label="Выбирете критерий",
+            size="sm",
+            mb=10,
+        ),   
+       
+        ]
+        )
+        
+        storing_creteria = [["all", "Все"], ["retail", "Ритейл"], ["online", "Онлайн"]]
+        
+        
+        self.storing_radio = dmc.Group([dmc.RadioGroup(
+            children=dmc.Group([dmc.Radio(l, value=k) for k, l in storing_creteria], my=10),
+            id="storing_radio",
+            value="all",
+            label="Выбирете датасет",
+            size="sm",
+            mb=10,
+        ),   
+       
+        ]
+        )
+        
         
         self.area_chart = dmc.Box(
             [ 
@@ -707,7 +737,21 @@ class SalesReportMonthly:
              ]
              return data, series
         
-     
+    def get_sub_cat(self, cat_list=None):  # Лучше использовать None как значение по умолчанию
+        if not cat_list:  # Проверка на None и пустой список
+            return []
+        
+        df = self.df.copy()
+        
+        # Безопасная фильтрация (на случай отсутствия колонок)
+        try:
+            filtered_df = df[df['parent_cat'].isin(cat_list)]
+            return filtered_df['cat_name'].unique().tolist()
+        except KeyError:
+            print("Ошибка: отсутствуют колонки 'parent_cat' или 'cat_name'")
+            return []
+        
+         
 
 def create_dash_app_test():
     _dash_renderer._set_react_version("18.2.0")
@@ -716,6 +760,8 @@ def create_dash_app_test():
     srm =  SalesReportMonthly()
     initial_theme = "dark"
     
+    # ======== Компоненты ============
+       
     
     theme_switch1 = dmc.Switch(
         id="color-scheme-toggle",
@@ -734,6 +780,188 @@ def create_dash_app_test():
         )
 
     
+    matrix_title =  dmc.Title("АССОРТИМЕНТНАЯ МАТРИЦА", c="blue",id = 'matrix_title',order=2)
+    
+    abc_group = dmc.Stack([
+    dmc.Title('ABC настройки',order=5),
+    dmc.NumberInput(
+        label="Для категории A",       
+        description="Топ продаж в процентах:",
+        value=25,
+        min=0,
+        step=5,
+        leftSection=DashIconify(icon="fa6-solid:weight-scale"),
+        w=250,
+        suffix="%",
+        id = 'cat_a'
+    ),
+    dmc.NumberInput(
+        label="Для категории B",
+        description="Следующия группа продаж в процентах: ",
+        value=25,
+        min=0,
+        step=5,
+        leftSection=DashIconify(icon="fa6-solid:weight-scale"),
+        w=250,
+        suffix="%",
+        id = 'cat_b'
+    ),
+    dmc.NumberInput(
+        label="Для категории C",
+        description="Остальные: ",
+        value=50,
+        min=0,
+        step=5,
+        leftSection=DashIconify(icon="fa6-solid:weight-scale"),
+        w=250,
+        suffix="%",
+        id = 'cat_c',
+        disabled=True,
+    ),    
+    ]                          
+                          )
+    
+    xyz_group = dmc.Stack([
+    dmc.Title('XYZ настройки',order=5),
+    dmc.NumberInput(
+        label="Для категории X",       
+        description="CV меньше или равно",
+        value=10,
+        min=0,
+        step=5,
+        leftSection=DashIconify(icon="fa6-solid:weight-scale"),
+        w=250,
+        suffix="%",
+        id = 'cat_x'
+    ),
+    dmc.NumberInput(
+        label="Для категории Y",
+        description="CV от X до ",
+        value=25,
+        min=0,
+        step=5,
+        leftSection=DashIconify(icon="fa6-solid:weight-scale"),
+        w=250,
+        suffix="%",
+        id = 'cat_y'
+    ),
+    dmc.NumberInput(
+        label="Для категории Z",
+        description="CV больше",
+        value=25,
+        min=0,
+        step=5,
+        leftSection=DashIconify(icon="fa6-solid:weight-scale"),
+        w=250,
+        suffix="%",
+        id = 'cat_z',
+        disabled=True,
+    ),    
+    ]
+    )
+    
+    cat_filter = dmc.MultiSelect(
+            placeholder="Категория",      
+            label="Выбирите категорию",        
+            variant="default",
+            size="xs",
+            data=srm.cat_list,
+            radius="sm",
+            withAsterisk=False,
+            disabled=False,
+            clearable=True,
+            id = 'cat_filter',
+        )
+    
+    sub_cat_filter = dmc.MultiSelect(
+            placeholder="Подкатегория", 
+            label="Выбирите подкатегорю",           
+            variant="default",
+            size="xs",
+            data=[],
+            radius="sm",
+            withAsterisk=False,
+            disabled=False,
+            clearable=True,
+            id = 'sub_cat_filter',
+        )
+    
+    cat_options_groups = dmc.Stack(
+        [
+            dmc.Title('Выбор категорий и подкатегорий', order=5),
+            dmc.SimpleGrid(
+                cols=2,
+                spacing="md",
+                verticalSpacing="md",
+                children=[
+                    cat_filter,
+                    sub_cat_filter,   
+                ],),
+            dmc.SimpleGrid(
+                        cols=1,
+                        verticalSpacing="md",
+                        children=[dmc.Title('Ранжирование матрицы', order=5),
+                                  srm.creteria_radio,                                  
+                                  ],
+                        
+            ),
+            dmc.SimpleGrid(
+                        cols=1,
+                        verticalSpacing="md",
+                        children=[dmc.Title('Датасет по продажам', order=5),
+                                  srm.storing_radio,                                  
+                                  ],
+                        
+            ), 
+            
+        ]
+    )
+    
+    calc_btn = dmc.Button(
+            "Расчитать матрицу",
+            justify="center",
+            fullWidth=True,
+            #leftSection=icon,
+            #rightSection=icon,
+            variant="default",
+        ),
+    
+    matrix_box = dmc.Box(
+        children=[dmc.SimpleGrid(
+            cols=3,
+            spacing="md",
+            verticalSpacing="md",
+            children=[
+                abc_group,
+                xyz_group,
+                cat_options_groups
+            ]
+        ), 
+        dmc.Title('Вибирите период анализа', order=5),
+        srm.month_slider,
+        #calc_btn        
+        ]
+    ) 
+    
+    
+    
+    # ========== Контейнера =============
+    
+    matrix_container = dmc.Container(
+        children=[
+            matrix_title,
+            dmc.Space(h=60),
+            matrix_box,
+            
+        ],
+        fluid=True,
+        h=500,
+    )
+    
+    
+    
+    
+    # ========= Layout ===============
 
     layout = dmc.AppShell(
         [
@@ -762,32 +990,18 @@ def create_dash_app_test():
                 "top": 0,
                 "left": 0,
                 "right": 0,
-                "zIndex": 1000,  # чтобы он был поверх остального
-                #"backgroundColor": "white",  # иначе может быть прозрачным
-                #"borderBottom": "1px solid #e0e0e0",
+                "zIndex": 1000,  # чтобы он был поверх остального                
             },
             
             ),
             dmc.AppShellAside("ссылка", withBorder=False),
             dmc.Space(h=60),
-            # dmc.AppShellNavbar(
-            #     id="navbar",
-            #     children=[
-            #         "Navbar",
-            #         *[dmc.Skeleton(height=28, mt="sm", animate=False) for _ in range(15)],
-            #     ],
-            #     p="md",
-            # ),
-            dmc.AppShellMain("Основное окно"),
+            
+            dmc.AppShellMain(children=matrix_container),
         ],
         header={"height": 60},
         aside={'width':100},
-        padding="md",
-        # navbar={
-        #     "width": 300,
-        #     "breakpoint": "sm",
-        #     "collapsed": True,
-        # },
+        padding="md",        
         id="appshell",
         
     )
@@ -801,6 +1015,11 @@ def create_dash_app_test():
             dcc.Store(id='theme-init', storage_type='local'),
         ]
         )
+
+
+# ==== CALLBACKS =======
+
+    # THEME
 
     @app.callback(
         Output('header_content_group','children'),
@@ -839,6 +1058,63 @@ def create_dash_app_test():
         Input('theme-init', 'modified_timestamp')
     )
     
+    
+    # ABC SWITCHER
+    
+    @app.callback(
+        Output('cat_c', 'value'),
+        Input('cat_a', 'value'),
+        Input('cat_b', 'value'),
+        prevent_initial_call=True
+    )
+    def update_c(a_value, b_value):
+        if a_value is None or b_value is None:
+            return 50  # Значение по умолчанию
+        
+        c_value = 100 - a_value - b_value
+        c_value = max(0, (c_value // 5) * 5)  # Округляем до ближайшего кратного 5
+        return c_value
+    
+    # ABC XYZ SWITCHER
+    
+    @app.callback(
+        Output('cat_y', 'value'),  # Y обновляется при изменении X
+        Output('cat_z', 'value'),  # Z обновляется при изменении Y
+        Input('cat_x', 'value'),   # Триггер: изменение X
+        Input('cat_y', 'value'),   # Триггер: изменение Y
+        prevent_initial_call=True
+    )
+    def update_xyz(x_value, y_value):
+        ctx = dash.callback_context  # Определяем, какой Input вызвал callback
+
+        # Если сработало изменение X → Y = X + 15 (кратно 5)
+        if ctx.triggered[0]['prop_id'] == 'cat_x.value':
+            if x_value is not None:
+                y_new = x_value + 15
+                y_new = (y_new // 5) * 5  # Округление до 5
+                return y_new, dash.no_update  # Z не меняем
+
+        # Если сработало изменение Y → Z = Y (кратно 5)
+        elif ctx.triggered[0]['prop_id'] == 'cat_y.value':
+            if y_value is not None:
+                z_new = y_value
+                z_new = (z_new // 5) * 5  # Округление до 5
+                return dash.no_update, z_new  # Y не меняем
+
+        return dash.no_update, dash.no_update
+    
+    # SUBCAT SWITCHER
+    @app.callback(
+        Output('sub_cat_filter','data'),
+        Input('cat_filter','value'),
+        prevent_initial_call=True,
+    )
+    def change_subcat_data(val):
+        a = srm.get_sub_cat(val)
+        return a
+    
+    
+            
     return app.server 
 
 
