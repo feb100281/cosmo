@@ -768,7 +768,7 @@ def create_dash_app_test():
             },
             
             ),
-            dmc.AppShellAside("Aside", withBorder=False),
+            dmc.AppShellAside("ссылка", withBorder=False),
             dmc.Space(h=60),
             # dmc.AppShellNavbar(
             #     id="navbar",
@@ -778,7 +778,7 @@ def create_dash_app_test():
             #     ],
             #     p="md",
             # ),
-            dmc.AppShellMain("Main Test"),
+            dmc.AppShellMain("Основное окно"),
         ],
         header={"height": 60},
         aside={'width':100},
