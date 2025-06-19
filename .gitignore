@@ -8,13 +8,14 @@ venv/
 *.pyc
 __pycache__/
 db.sqlite3
-# media/
-staticfiles/
 
+staticfiles/
+/fr/
+/media/
 # IDE
 .vscode/
 .idea/
-
+/utils/update_redis.py
 # Environment variables
 .env
 .env.local
