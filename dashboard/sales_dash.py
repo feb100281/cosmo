@@ -1389,7 +1389,11 @@ def create_dash_app_test():
             matrix_title,
             dmc.Space(h=60),
             matrix_box,
-            grid,      
+            dcc.Loading(                
+            children=[grid], 
+            id='lodading',
+            type="default",
+            ),    
                         
         ],
         fluid=True,
@@ -1438,15 +1442,16 @@ def create_dash_app_test():
             
             dmc.AppShellMain(
             children=[
-                dcc.Loading(
-                children = [
                 matrix_container,  # Ваш контейнер с таблицей
                 dmc.Space(h=60),   # Отступ 60px
+                dcc.Loading( 
+                children = [
                 TreeMap_box,
                 ],
-                id="loading-1",
+                id='lodading2',
                 type="default",
-                )
+                
+                ),
             ],
              # Небольшой отступ по краям
         ),         
