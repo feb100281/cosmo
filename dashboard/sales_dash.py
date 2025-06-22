@@ -1,8 +1,10 @@
 import redis
 import pickle
 import pandas as pd
+import numpy as np
 import dash
 from dash import dcc, html, Input, Output, State, _dash_renderer, clientside_callback
+import dash_ag_grid as dag
 import dash_mantine_components as dmc
 import plotly.express as px
 from dash_iconify import DashIconify
@@ -49,6 +51,10 @@ class SalesReportMonthly:
         
         self.short_marks = [mark.copy() for mark in self.month_marks]  # Копируем month_marks
 
+        
+        self.cat_numbers = self.prepare_dataset(periods=[self.max_month_id-12, self.max_month_id])['fullname'].nunique()
+        
+        
         # Индексы месяцев, которые сохраняют label (первый, последний, середина)
         keep_indices = {
             0,  # Первый месяц
@@ -355,7 +361,7 @@ class SalesReportMonthly:
         ]
         )
         
-        storing_creteria = [["all", "Все"], ["retail", "Ритейл"], ["online", "Онлайн"]]
+        storing_creteria = [["all", "Все"], ["RETAIL", "Ритейл"], ["ONLINE", "Онлайн"]]
         
         
         self.storing_radio = dmc.Group([dmc.RadioGroup(
@@ -751,7 +757,156 @@ class SalesReportMonthly:
             print("Ошибка: отсутствуют колонки 'parent_cat' или 'cat_name'")
             return []
         
-         
+    def get_add_cat(self,subcat=None):
+        if not subcat:  # Проверка на None и пустой список
+            return []
+        
+        df = self.df.copy()
+        
+        # Безопасная фильтрация (на случай отсутствия колонок)
+        try:
+            filtered_df = df[df['cat_name'].isin(subcat)]
+            return filtered_df['sub_cat'].unique().tolist()
+        except KeyError:
+            print("Ошибка: отсутствуют колонки 'parent_cat' или 'cat_name'")
+            return []
+           
+    def prepare_dataset(self,periods=None, cat_filter=None, subcat_filter=None,add_cat_filter=None,f_filter='all'):
+        selected_range = [self.max_month_id-11,self.max_month_id] if periods is None else periods
+        
+        df = self.df[
+            (self.df['month_id'] >= selected_range[0]) & 
+            (self.df['month_id'] <= selected_range[1])
+        ].copy()
+        
+        if cat_filter:
+           df = df[df['parent_cat'].isin(cat_filter)] 
+           
+        if subcat_filter:
+            df = df[df['cat_name'].isin(subcat_filter)]  
+        
+        if add_cat_filter:
+            df = df[df['sub_cat'].isin(add_cat_filter)]  
+        
+        if f_filter == 'all':
+            return df
+        else:
+            return df[df['chanel_name']==f_filter]
+        
+            
+        
+        
+    
+    def prepare_matrix(self,df:pd.DataFrame,a=25,b=25,x=100,y=200):
+        
+        
+        if df.empty:
+            return pd.DataFrame()
+        
+        a = a
+        x_limit = x / 100
+        y_limit = y / 100
+        
+        xyz_df = df[df['dt'] > 0].copy()
+
+        # Создаем уникальный период "год-месяц" для правильной группировки
+        xyz_df['year_month'] = xyz_df['date'].dt.strftime('%Y-%m')  # Формат "2023-01"
+
+        xyz = xyz_df.pivot_table(
+            index=['parent_cat', 'cat_name', 'fullname'],
+            columns='year_month',
+            values='quant_dt',
+            aggfunc='sum',
+            fill_value=0
+        )
+
+        # Рассчитываем статистики
+        xyz['xyz_mean'] = xyz.mean(axis=1)
+        xyz['xyz_std'] = xyz.std(axis=1)
+
+        # Безопасный расчет коэффициента вариации
+        mask = (xyz['xyz_mean'] > 0) & xyz['xyz_std'].notna()
+        xyz['cv'] = np.where(mask, xyz['xyz_std'] / xyz['xyz_mean'], np.nan)
+
+        # XYZ-классификация (можно настроить пороги)
+        conditions = [
+            (xyz['cv'].notna()) & (xyz['cv'] < x_limit),  # X - стабильные
+            (xyz['cv'].notna()) & (xyz['cv'] >= x_limit) & (xyz['cv'] < y_limit),  # Y - сезонные
+            (xyz['cv'].notna()) & (xyz['cv'] >= y_limit)  # Z - нестабильные
+        ]
+
+        choices = ['X', 'Y', 'Z']
+
+        xyz['xyz_class'] = np.select(conditions, choices, default='N/A')
+        
+        xyz_stats = xyz[['xyz_mean', 'xyz_std', 'cv', 'xyz_class']].reset_index()
+        
+        
+        # Основная группировка (все записи)
+        grouped = df.groupby(['parent_cat', 'cat_name', 'fullname'])
+        
+        # 1. Основные метрики (все записи)
+        main_stats = grouped.agg({
+            'dt': 'sum',
+            'cr': 'sum',
+            'quant_dt': 'sum',
+            'quant_cr': 'sum',
+            'date': ['min', 'max']
+        })
+        main_stats.columns = ['_'.join(col) for col in main_stats.columns]
+        
+        # 2. Статистики по ценам (только dt > 0)
+        sales_df = df[df['dt'] > 0].copy()
+        if not sales_df.empty:
+            sales_df['price'] = sales_df['dt'] / sales_df['quant_dt'].replace(0, 1)
+            price_stats = sales_df.groupby(['parent_cat', 'cat_name', 'fullname'])[['price', 'quant_dt']].agg(
+                ['min', 'max', 'mean', 'median']
+            )
+            price_stats.columns = [f'{col[0]}_{col[1]}' for col in price_stats.columns]
+
+            
+            # Объединение с сохранением всех строк
+            result = main_stats.join(price_stats, how='left')
+        else:
+            result = main_stats.copy()
+            for col in ['price_min', 'price_max', 'price_mean', 'price_median']:
+                result[col] = None
+        
+        result = result.merge(xyz_stats, on=['parent_cat', 'cat_name', 'fullname'], how='left')
+        # Добавляем расчетные поля
+        result = result.reset_index()
+        result['amount'] = result['dt_sum'] - result['cr_sum']
+        result['quant'] = result['quant_dt_sum'] - result['quant_cr_sum']
+        result['return_ratio'] = np.where(
+            result['cr_sum'] == 0, np.nan, result['cr_sum'] / result['dt_sum'] * 100  
+        )
+        
+        tot_amount =  result['amount'].sum()
+        result['amount_share'] = result['amount'] / tot_amount * 100
+        result = result.sort_values(by='amount_share',ascending=False)
+        result['amount_cum'] =  result['amount_share'].cumsum()
+        result['date_min'] =  result['date_min'].dt.strftime('%d %b %Y')  
+        result['date_max'] =  result['date_max'].dt.strftime('%d %b %Y')              
+        
+        if len(result) < 4:
+            result['abc_rank'] = None  # Используем None вместо np.nan для строковых значений
+        else:
+           
+            conditions = [
+                (result['amount_cum'] <= a),
+                (result['amount_cum'] > a) & (result['amount_cum'] <= (a+b)),
+                (result['amount_cum'] > b)
+            ]
+            choices = ['A', 'B', 'C'] 
+            
+            # Вариант 1: Используем строковое значение по умолчанию
+            result['abc_rank'] = np.select(conditions, choices, default=None)
+        
+        result['tot_rank'] = np.where(
+            result['xyz_class'].notna, result['abc_rank'].astype(str) + result['xyz_class'].astype(str),np.nan
+        )
+        return result
+        
 
 def create_dash_app_test():
     _dash_renderer._set_react_version("18.2.0")
@@ -791,18 +946,18 @@ def create_dash_app_test():
         min=0,
         step=5,
         leftSection=DashIconify(icon="fa6-solid:weight-scale"),
-        w=250,
+        w=200,
         suffix="%",
         id = 'cat_a'
     ),
     dmc.NumberInput(
         label="Для категории B",
-        description="Следующия группа продаж в процентах: ",
+        description="Следующия группа продаж",
         value=25,
         min=0,
         step=5,
         leftSection=DashIconify(icon="fa6-solid:weight-scale"),
-        w=250,
+        w=200,
         suffix="%",
         id = 'cat_b'
     ),
@@ -813,7 +968,7 @@ def create_dash_app_test():
         min=0,
         step=5,
         leftSection=DashIconify(icon="fa6-solid:weight-scale"),
-        w=250,
+        w=200,
         suffix="%",
         id = 'cat_c',
         disabled=True,
@@ -826,33 +981,33 @@ def create_dash_app_test():
     dmc.NumberInput(
         label="Для категории X",       
         description="CV меньше или равно",
-        value=10,
+        value=100,
         min=0,
         step=5,
         leftSection=DashIconify(icon="fa6-solid:weight-scale"),
-        w=250,
+        w=200,
         suffix="%",
         id = 'cat_x'
     ),
     dmc.NumberInput(
         label="Для категории Y",
         description="CV от X до ",
-        value=25,
+        value=200,
         min=0,
         step=5,
         leftSection=DashIconify(icon="fa6-solid:weight-scale"),
-        w=250,
+        w=200,
         suffix="%",
         id = 'cat_y'
     ),
     dmc.NumberInput(
         label="Для категории Z",
         description="CV больше",
-        value=25,
+        value=200,
         min=0,
         step=5,
         leftSection=DashIconify(icon="fa6-solid:weight-scale"),
-        w=250,
+        w=200,
         suffix="%",
         id = 'cat_z',
         disabled=True,
@@ -875,7 +1030,7 @@ def create_dash_app_test():
     
     sub_cat_filter = dmc.MultiSelect(
             placeholder="Подкатегория", 
-            label="Выбирите подкатегорю",           
+            label="Выбирите подкатегию",           
             variant="default",
             size="xs",
             data=[],
@@ -886,25 +1041,33 @@ def create_dash_app_test():
             id = 'sub_cat_filter',
         )
     
+    add_cat_filter = dmc.MultiSelect(
+            placeholder="Доп категория", 
+            label="Выбирите доп категорию",           
+            variant="default",
+            size="xs",
+            data=[],
+            radius="sm",
+            withAsterisk=False,
+            disabled=False,
+            clearable=True,
+            id = 'add_cat_filter',
+        )
+    
+    
     cat_options_groups = dmc.Stack(
         [
             dmc.Title('Выбор категорий и подкатегорий', order=5),
             dmc.SimpleGrid(
-                cols=2,
+                cols=3,
                 spacing="md",
                 verticalSpacing="md",
                 children=[
                     cat_filter,
-                    sub_cat_filter,   
+                    sub_cat_filter,  
+                    add_cat_filter 
                 ],),
-            dmc.SimpleGrid(
-                        cols=1,
-                        verticalSpacing="md",
-                        children=[dmc.Title('Ранжирование матрицы', order=5),
-                                  srm.creteria_radio,                                  
-                                  ],
-                        
-            ),
+            
             dmc.SimpleGrid(
                         cols=1,
                         verticalSpacing="md",
@@ -917,32 +1080,306 @@ def create_dash_app_test():
         ]
     )
     
-    calc_btn = dmc.Button(
+    calc_btn = dmc.Indicator(
+         dmc.Button(
             "Расчитать матрицу",
             justify="center",
             fullWidth=True,
             #leftSection=icon,
             #rightSection=icon,
-            variant="default",
+            variant="outline",
+            id = 'calc_button'
         ),
+        #inline=True,
+        size=16,
+        label=f"{srm.cat_numbers} номенклатур", 
+        processing=True,
+        withBorder=True,
+        position="top-center",
+        id = 'noms_ind'
+        
+    )
     
     matrix_box = dmc.Box(
-        children=[dmc.SimpleGrid(
-            cols=3,
-            spacing="md",
-            verticalSpacing="md",
+        children=[dmc.Grid(
             children=[
-                abc_group,
-                xyz_group,
-                cat_options_groups
-            ]
+                dmc.GridCol(abc_group, span=3),
+                dmc.GridCol(xyz_group, span=3),
+                dmc.GridCol(cat_options_groups, span=6),                
+            ],
+            gutter='xl'
+            
         ), 
         dmc.Title('Вибирите период анализа', order=5),
         srm.month_slider,
-        #calc_btn        
+        calc_btn,        
         ]
     ) 
     
+    TreeMap_box = dmc.Box(
+        children=[        
+        dmc.Title('Анализ матрицы', order=3, c='blue'),
+        dcc.Graph(figure=px.treemap(
+            
+        ),
+        id = 'tree_map'
+        )
+        ]
+    )
+    
+    # ========= Data Table (AG GRID) ==========
+    
+    columnDefs = [
+    {
+        "field": "fullname", 
+        "headerName": "Товар",
+        "pinned": "left",
+        "lockPosition": True, 
+        "width": 400,
+        "cellStyle": {"fontWeight": "bold"},
+        "filter": True
+    },
+    {
+        "headerName": "Продажи",  # Родительская группа
+        "marryChildren": True,   # Колонки двигаются вместе
+        "children": [            # Вложенные колонки
+            {
+                "field": "amount",
+                "headerName": "Выручка",
+                "type": "numericColumn",
+               
+                "valueFormatter": {"function": "params.value ? '₽' + d3.format('(,.0f')(params.value) : ''"},
+                "filter": True,
+                "width": 180,
+                'columnGroupShow': 'open',
+                 "headerTooltip": "Продажи минус возвраты",
+            },
+            {
+                "field": "amount_share",
+                "headerName": "Доля в выручки",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? d3.format(',.2f')(params.value) + '%' : ''"},
+                "width": 180,
+                'columnGroupShow': 'open',
+                 "headerTooltip": "Доля в общей выручки по выбраным категориям и диапозону",
+                
+            },
+            {
+                "field": "amount_cum",
+                "headerName": "Доля накоп.",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? d3.format(',.2f')(params.value) + '%' : ''"},
+                "width": 180,
+                'columnGroupShow': 'open',
+                "headerTooltip": "Накопленная доля в общей выручки по выбраным категориям и диапозону исходя из сортировки долей в убывающем порядке",
+                
+            },
+                                    
+            {
+                "field": "dt_sum",
+                "headerName": "Продажи",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? '₽' + d3.format(',.0f')(params.value) : ''"},
+                "width": 120,
+                'columnGroupShow': 'closed'
+            },
+            {
+                "field": "cr_sum",
+                "headerName": "Возвраты",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? '₽' + d3.format(',.0f')(params.value) : ''"},
+                "width": 120,
+                "cellStyle": {"color": "red"},
+                'columnGroupShow': 'closed'
+            },
+            {
+                "field": "return_ratio",
+                "headerName": "K возвратов",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? d3.format(',.2f')(params.value) + '%' : ''"},
+                "width": 120,
+                'columnGroupShow': 'closed',
+                "cellStyle": {"color": "red"},
+            },
+            
+            
+        ]
+    },
+    {
+     "headerName": "Количество",  # Родительская группа
+        "marryChildren": True,   # Колонки двигаются вместе
+        "children": [            # Вложенные колонки   
+             {
+                "field": "quant",
+                "headerName": "Общее",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? d3.format(',.0f')(params.value) : ''"},
+                "width": 120,
+                'columnGroupShow': 'open',
+            },
+              {
+                "field": "quant_dt_sum",
+                "headerName": "Продано",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? d3.format(',.0f')(params.value) : ''"},
+                "width": 120,
+                'columnGroupShow': 'open',
+            },
+              {
+                "field": "quant_cr_sum",
+                "headerName": "Возвращено",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? d3.format(',.0f')(params.value) : ''"},
+                "width": 120,
+                'columnGroupShow': 'open',
+                "cellStyle": {"color": "red"},
+            },
+              #  xyz_stats = xyz[['xyz_mean', 'xyz_std', 'xyz_cv', 'xyz_class']].reset_index()
+              {
+                "field": "xyz_mean",
+                "headerName": "Ср в мес",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? d3.format(',.2f')(params.value) : ''"},
+                "width": 120,
+                'columnGroupShow': 'closed',
+                 "headerTooltip": "Средние количество за 1 календарный месяц по товару в выбраном диапозоне",
+                
+            },
+              {
+                "field": "quant_dt_max",
+                "headerName": "Макс. продажи",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? d3.format(',.2f')(params.value) : ''"},
+                "width": 120,
+                'columnGroupShow': 'closed',
+                 "headerTooltip": "Максимальное количество единоразово проданого товара",
+                
+            },
+              {
+                "field": "xyz_std",
+                "headerName": "Ст. отклонение",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? d3.format(',.2f')(params.value) : ''"},
+                "width": 120,
+                'columnGroupShow': 'closed',
+                
+            },
+               {
+                "field": "cv",
+                "headerName": "К-т вариации",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? d3.format(',.2f')(params.value) : ''"},
+                "width": 120,
+                'columnGroupShow': 'closed',
+                 "headerTooltip": "Данный коэффициент показывает откошение стандарного отклонения к среднему. Чем меньше, тем спрос стабильнее",
+                
+            },
+           
+        ]
+    },
+    {
+        "headerName": "Рейтинг", 
+        "marryChildren": True,
+         "children": [
+              {
+                "field": "tot_rank",
+                "headerName": "Общий",                
+                "width": 120,
+                "cellStyle": {"textAlign": "center"},
+                "filter": True,
+                "headerTooltip": "Общий рейтинг товара", 
+            },
+              {
+                "field": "abc_rank",
+                "headerName": "ABC рейтинг",                
+                "width": 120,
+                "cellStyle": {"textAlign": "center"},
+                "filter": True,
+                "headerTooltip": "Рейтинг основаный на доли выручки в общей выручке",
+            },   
+               {
+                "field": "xyz_class",
+                "headerName": "XYZ рейтинг",                
+                "width": 120,
+                "cellStyle": {"textAlign": "center"},
+                "filter": True,
+                "headerTooltip": "Рейтинг основаный на коэффициенте вариации",
+            },
+               
+                          
+         ],           
+          "headerClass": "ag-center-header"  # Выравнивание заголовка группы
+        
+        },
+    {
+        "headerName": "Цены", 
+        "marryChildren": True,
+        "children": [
+            {
+                "field": "price_median",
+                "headerName": "Медианная",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? '₽' + d3.format(',.0f')(params.value) : ''"},
+                "width": 120,
+                "headerTooltip": "Медианная цена в выбраном диапазоне", 
+            },
+            {
+                "field": "price_mean",
+                "headerName": "Средняя",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? '₽' + d3.format(',.0f')(params.value) : ''"},
+                "width": 120,
+                "headerTooltip": "Средняя цена в выбраном диапазоне", 
+            },
+            {
+                "field": "price_max",
+                "headerName": "Макс.",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? '₽' + d3.format(',.0f')(params.value) : ''"},
+                "width": 120,
+                "headerTooltip": "Максимальная цена в выбраном диапазоне", 
+            },
+            {
+                "field": "price_min",
+                "headerName": "Мин.",
+                "type": "numericColumn",
+                "valueFormatter": {"function": "params.value ? '₽' + d3.format(',.0f')(params.value) : ''"},
+                "width": 120,
+                 "headerTooltip": "Минимальная цена в выбраном диапазоне", 
+            }
+        ]
+    },
+    {
+        "headerName": "Даты",  # Группа для дат
+        "children": [
+            {
+                "field": "date_min",
+                "headerName": "Первая",
+                "filter": False,
+                "sortable": False, 
+                "width": 145,
+                "headerTooltip": "Дата первой продажи товара в выбраном диапазоне", 
+            },
+            {
+                "field": "date_max",
+                "headerName": "Последняя",
+                "filter": False,
+                "sortable": False, 
+                "width": 145,
+                "headerTooltip": "Дата последней продажи товара в выбраном диапазоне", 
+                
+            }
+        ]
+    }
+]
+    
+    grid = dag.AgGrid(   
+    rowData=[],#srm.prepare_dataset().to_dict("records"),
+    columnDefs=columnDefs,
+    className="ag-theme-alpine-dark",
+    #columnSize="sizeToFit",
+    id = 'mx_grid'
+    )
     
     
     # ========== Контейнера =============
@@ -952,10 +1389,12 @@ def create_dash_app_test():
             matrix_title,
             dmc.Space(h=60),
             matrix_box,
-            
+            grid,      
+                        
         ],
         fluid=True,
-        h=500,
+        #h=500,
+        style={"marginBottom": "30px"},
     )
     
     
@@ -997,9 +1436,18 @@ def create_dash_app_test():
             dmc.AppShellAside("ссылка", withBorder=False),
             dmc.Space(h=60),
             
-            dmc.AppShellMain(children=matrix_container),
+            dmc.AppShellMain(
+            children=[
+                matrix_container,  # Ваш контейнер с таблицей
+                dmc.Space(h=60),   # Отступ 60px
+                TreeMap_box, # Текст после отступа
+            ],
+             # Небольшой отступ по краям
+        ),         
+            dmc.AppShellFooter('Footer'),
         ],
         header={"height": 60},
+        footer={"height": 60}, 
         aside={'width':100},
         padding="md",        
         id="appshell",
@@ -1023,12 +1471,14 @@ def create_dash_app_test():
 
     @app.callback(
         Output('header_content_group','children'),
+        Output('mx_grid','className'),
         Input('color-scheme-toggle','checked'),
         prevent_initial_call=True       
     )
     def theme_switch_change(checked):
         a = [srm.logo_dark, dmc.Title("СЕГМЕНТНЫЙ АНАЛИЗ", c="blue")] if checked else [srm.logo_light, dmc.Title("СЕГМЕНТНЫЙ АНАЛИЗ", c="blue")]
-        return a
+        b = "ag-theme-alpine-dark" if checked else "ag-theme-alpine"
+        return a,b
 
     app.clientside_callback(
         """
@@ -1090,8 +1540,8 @@ def create_dash_app_test():
         # Если сработало изменение X → Y = X + 15 (кратно 5)
         if ctx.triggered[0]['prop_id'] == 'cat_x.value':
             if x_value is not None:
-                y_new = x_value + 15
-                y_new = (y_new // 5) * 5  # Округление до 5
+                y_new = x_value + 100
+                #y_new = (y_new // 5) * 5  # Округление до 5
                 return y_new, dash.no_update  # Z не меняем
 
         # Если сработало изменение Y → Z = Y (кратно 5)
@@ -1105,13 +1555,55 @@ def create_dash_app_test():
     
     # SUBCAT SWITCHER
     @app.callback(
-        Output('sub_cat_filter','data'),
-        Input('cat_filter','value'),
+        Output('sub_cat_filter', 'data'),  # Ожидает данные для options (скорее всего список)
+        Output('noms_ind', 'label'),    # Ожидает компонент для отображения (например, строку)
+        Output('add_cat_filter', 'data'),  
+        Input('cat_filter', 'value'),      # val
+        Input('sub_cat_filter', 'value'),  # sc
+        Input('month_slider', 'value'), 
+        Input('add_cat_filter', 'value'),# period storing_radio
+        Input('storing_radio', 'value'),
         prevent_initial_call=True,
     )
-    def change_subcat_data(val):
+    def change_subcat_data(val, sc, period,ac,ff):
+        d: pd.DataFrame = srm.prepare_dataset(periods=period, cat_filter=val, subcat_filter=sc,add_cat_filter=ac,f_filter=ff)
+        b = d['fullname'].nunique()
         a = srm.get_sub_cat(val)
-        return a
+        t = srm.get_add_cat(sc)
+        return a, f'{b} номенклатур',t  # Порядок соответствует Output
+    
+    # DATA_LOADER
+    @app.callback(
+        Output('mx_grid', 'rowData'),
+        Output('tree_map','figure'),
+        Input('calc_button', 'n_clicks'),  # Основной триггер
+        State('cat_filter', 'value'),      # Дополнительные параметры
+        State('sub_cat_filter', 'value'),
+        State('month_slider', 'value'),
+        State('add_cat_filter', 'value'),
+        State('storing_radio', 'value'),
+        State('cat_a', 'value'),
+        State('cat_b', 'value'),
+        State('cat_x', 'value'),
+        State('cat_y', 'value'),
+        prevent_initial_call=True,
+    )
+    def change_mx_data(n_clicks, val, sc, period, ac,ff,a,b,x,y):  # Порядок соответствует декоратору
+        d: pd.DataFrame = srm.prepare_dataset(
+            periods=period,
+            cat_filter=val,
+            subcat_filter=sc,
+            add_cat_filter=ac,
+            f_filter=ff
+            
+            
+        )
+        mx = srm.prepare_matrix(d,a,b,x,y)
+        mx_fig = mx[['abc_rank', 'xyz_class','fullname', 'amount','amount_share']].dropna()  # выбираем все нужные столбцы
+        fig = px.treemap(mx_fig, path=[px.Constant("all"), 'abc_rank', 'xyz_class','fullname'],
+        values='amount',)
+        return mx.to_dict('records'),fig
+    
     
     
             
