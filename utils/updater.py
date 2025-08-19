@@ -25,15 +25,6 @@ connection_string = f"mysql+pymysql://{user}:{password}@{host}/{database}"
 # Создание движка SQLAlchemy
 engine = create_engine(connection_string)
 
-from corporate.models import (
-            ItemManufacturer, 
-            Stores,
-            Items,
-            Agents,
-            Managers,
-            ItemBrend,
-            ItemCollections
-        )
 
 # Деляем класс updater
 
@@ -66,6 +57,16 @@ def set_data(d:dict):
     #     return
     
     sucsess_list = []
+    from corporate.models import (
+            ItemManufacturer, 
+            Stores,
+            Items,
+            Agents,
+            Managers,
+            ItemBrend,
+            ItemCollections
+        )
+
     
     for k, v in d.items():
         if k == 'ItemManufacturer':
@@ -348,6 +349,16 @@ class Updater:
         
 
     def get_data(self):
+        from corporate.models import (
+            ItemManufacturer, 
+            Stores,
+            Items,
+            Agents,
+            Managers,
+            ItemBrend,
+            ItemCollections
+        )
+
         df = pd.read_excel(self.file, skiprows=3, skipfooter=1)
         
         df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
