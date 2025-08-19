@@ -41,7 +41,7 @@ class ItemMaterial(models.Model):
         return f"{self.name}"
 
 class ItemManufacturer(models.Model):
-    name = models.CharField(max_length=250,verbose_name='Наименование производителя')    
+    name = models.CharField(max_length=250,verbose_name='Наименование производителя',unique=True)    
     country = CountryField(verbose_name='Страна',default='RU')
         
     class Meta:       
@@ -145,8 +145,8 @@ class SubCategory(models.Model):
 
 class Items(models.Model):
     guid = models.CharField(max_length=200,verbose_name='1c id',null=True,blank=True)
-    fullname = models.CharField(max_length=250,verbose_name='Наименование 1С') 
-    name = models.CharField(max_length=200,verbose_name='Наименование')
+    fullname = models.CharField(max_length=250,verbose_name='Наименование 1С',unique=True) 
+    name = models.CharField(max_length=200,verbose_name='Название товара на сайте')
     article = models.CharField(max_length=250,verbose_name='Артикль',blank=True,null=True)
     description = models.TextField(verbose_name='Описание',help_text='Краткое описание товара', blank=True,null=True)
     weight = models.DecimalField(max_digits=12,decimal_places=2,verbose_name='Вес', null=True,blank=True)
@@ -163,6 +163,9 @@ class Items(models.Model):
     init_date = models.DateField(verbose_name='Дата инициализации',help_text='Дата появления номенклатуры в ассортименте',default=timezone.now)
     zones = models.ManyToManyField(ItemZones, verbose_name='Доп сегментации',blank=True)
     subcat = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, verbose_name='Подкатегория', null=True, blank=True)
+    im_id = models.CharField(max_length=200,verbose_name='im id',null=True,blank=True)
+    onec_cat = models.CharField(max_length=200,verbose_name='Группа номенклатуры 1С',null=True,blank=True)
+    onec_subcat = models.CharField(max_length=200,verbose_name='Вид номенклатуры 1С',null=True,blank=True)
 
     
     class Meta:
@@ -202,3 +205,40 @@ class Stores(models.Model):
 
     def __str__(self):
         return f"{self.name}"
+    
+
+class Managers(models.Model):
+    name = models.CharField(max_length=250,verbose_name='Имя в 1С',unique=True,help_text='Как в 1С выгрузке')
+    report_name = models.CharField(max_length=250,verbose_name='Имя в отчете',unique=True,help_text='Как в отчете показывать',null=True,blank=True)
+    tel = models.CharField(max_length=20,verbose_name='Телефон',blank=True,null=True)
+    email = models.EmailField('Почта',null=True,blank=True)
+    
+    class Meta:
+        verbose_name = "Менеджер"
+        verbose_name_plural = "Менеджеры"
+
+    def __str__(self):
+        return f"{self.name}"
+    
+    def save(self, *args, **kwargs):
+        if not self.report_name:  # если пустое
+            self.report_name = self.name
+        super().save(*args, **kwargs)
+
+class Agents(models.Model):
+    name = models.CharField(max_length=250,verbose_name='Наименование',unique=True,help_text='Как в 1С выгрузке')
+    report_name = models.CharField(max_length=250,verbose_name='Имя в отчете',unique=True,help_text='Как в отчете показывать',null=True,blank=True)
+    tel = models.CharField(max_length=20,verbose_name='Телефон',blank=True,null=True)
+    email = models.EmailField('Почта',null=True,blank=True)
+    
+    class Meta:
+        verbose_name = "Агент"
+        verbose_name_plural = "Агенты"
+
+    def __str__(self):
+        return f"{self.name}"
+    
+    def save(self, *args, **kwargs):
+        if not self.report_name:  # если пустое
+            self.report_name = self.name
+        super().save(*args, **kwargs)

@@ -12,7 +12,8 @@ from .models import (Companies,
                      ItemBrend,
                      ItemManufacturer,
                      ItemMaterial,
-                     ItemZones,SubCategory)
+                     ItemZones,SubCategory,
+                     Managers,Agents)
 from mptt.admin import DraggableMPTTAdmin # type: ignore
 from django.utils.html import format_html
 from django import forms
@@ -123,6 +124,9 @@ class ItemsAdmin(admin.ModelAdmin):
         ("Характеристики", {
             "fields": ("item_property","colors","sizes",'material')
         }),
+        ("Прочие", {
+            "fields": ("im_id","onec_cat",'onec_subcat')
+        }),
     )
     actions = ['assign_category']
     
@@ -179,6 +183,9 @@ admin.site.register(ItemManufacturer)
 admin.site.register(ItemBrend)
 admin.site.register(ItemZones)
 admin.site.register(SubCategory,SubCatAdmin)
+admin.site.register(Managers)
+admin.site.register(Agents)
+
 
 
 

@@ -11,6 +11,7 @@ from dash_iconify import DashIconify
 import locale
 locale.setlocale(locale.LC_TIME, "ru_RU.UTF-8")
 
+
 mantine_colors = [
     "indigo.6", "teal.6", "gray.6", "blue.6", "cyan.6", "pink.6",
     "lime.6", "orange.6", "violet.6", "grape.6", "red.6", "green.6",
@@ -50,6 +51,22 @@ class SalesReportMonthly:
         self.max_month_id = dff.month_id.max()
         
         self.short_marks = [mark.copy() for mark in self.month_marks]  # Копируем month_marks
+        
+        self.in_construction = dmc.Badge(
+            [
+            dmc.Group(
+                [
+                  dmc.Center(DashIconify(icon="twemoji:hammer-and-wrench")),
+                  dmc.Center(' В разработке'),  
+                ]                
+            ),
+           
+            ],
+            variant="outline",
+            color="red",
+            size="md",
+            radius="xs",
+        )
 
         
         self.cat_numbers = self.prepare_dataset(periods=[self.max_month_id-12, self.max_month_id])['fullname'].nunique()
@@ -330,6 +347,10 @@ class SalesReportMonthly:
                 }
             }
         )
+        
+        
+        
+        
         
         area_chart_radio_data = [["general", "Общее"], ["channel", "Каналы"], ["stores", "Магазины"], ["cats", "Категории"],['regions','Регионы']]
         
@@ -742,7 +763,124 @@ class SalesReportMonthly:
                 for i, col in enumerate(columns)
              ]
              return data, series
+    
+    def make_cat_area_data(self, periods=None, df: pd.DataFrame = None, parent_cat: dict = None):
+        def getting_levels(parent_cat):
+            parent_cat = parent_cat['points'][0]
+            cur_path = parent_cat.get('currentPath', None)   
+            entry = parent_cat.get('entry',None)
+            parent = parent_cat.get('parent',None)            
+            root = parent_cat.get('root',None)                   
+            lev_id = parent_cat.get('id', None)
+            parts = lev_id.split('/') if lev_id else []
+            #print('root:',root,'cur_path:',cur_path,'parts:',parts,'entry:',entry,'parent:',parent)
+            
+            return len(parts), parts, parent, entry, cur_path
+
+            
+
+        selected_range = [self.max_month_id - 11, self.max_month_id] if periods is None else periods
+
+        df = self.df[
+            (self.df['month_id'] >= selected_range[0]) &
+            (self.df['month_id'] <= selected_range[1])
+        ].copy()
+
+        df['date'] = pd.to_datetime(df.date)
+        df['me'] = df['date'] + pd.offsets.MonthEnd(0)
+        df['amount'] = df.dt - df.cr
         
+
+        # Определяем уровень фильтрации и группировки
+        cols = 'parent_cat'
+        if parent_cat:
+            level, parts, parent, entry, cur_path  = getting_levels(parent_cat)
+            
+            if entry != '' and entry != parts[0]:                
+                level = level - 1 
+            if entry != '' and entry == parts[0] and len(parts) == 1: 
+                level = level - 1 
+            
+            
+            print('level',level,parts,entry)
+
+            if level == 0:
+                df = df.pivot_table(
+                    index='me',
+                    columns='parent_cat',
+                    values='amount',
+                    aggfunc='sum'
+                ).fillna(0) 
+            
+            elif level == 1:
+                df = df[df['parent_cat'] == parts[0]]
+                df = df.pivot_table(
+                    index='me',
+                    columns='cat_name',
+                    values='amount',
+                    aggfunc='sum'
+                ).fillna(0) 
+            elif level == 2: 
+                df = df[df['parent_cat'] == parts[0]]
+                df = df[df['cat_name'] == parts[1]]
+                df = df.pivot_table(
+                    index='me',
+                    columns='sub_cat',
+                    values='amount',
+                    aggfunc='sum'
+                ).fillna(0) 
+            elif level == 3:
+                df = df[df['parent_cat'] == parts[0]]
+                df = df[df['cat_name'] == parts[1]]
+                df = df[df['sub_cat'] == parts[2]]
+                df = df.pivot_table(
+                    index='me',
+                    columns='sub_cat',
+                    values='amount',
+                    aggfunc='sum'
+                ).fillna(0) 
+            
+                
+        else:
+            df = df.pivot_table(
+                    index='me',
+                    columns='parent_cat',
+                    values='amount',
+                    aggfunc='sum'
+                ).fillna(0) 
+                
+        
+        # # Пивотим
+        # df = df.pivot_table(
+        #     index='me',
+        #     columns='parent_cat',
+        #     values='amount',
+        #     aggfunc='sum'
+        # ).fillna(0)
+
+        # Удаляем пустые категории
+        cols_to_keep = [col for col in df.columns if df[col].sum() != 0]
+        df = df[cols_to_keep]
+
+        # Финальная подготовка
+        df = df.reset_index()
+        df = df.sort_values(by='me')
+        df['month'] = df.me.dt.strftime('%b %y')
+
+        data = df.to_dict(orient='records')
+        columns = [col for col in df.columns if col not in ['month', 'me']]
+
+        series = [
+            {"name": col, "color": mantine_colors[i % len(mantine_colors)]}
+            for i, col in enumerate(columns)
+        ]
+
+        return data, series
+            
+            
+        
+    
+    
     def get_sub_cat(self, cat_list=None):  # Лучше использовать None как значение по умолчанию
         if not cat_list:  # Проверка на None и пустой список
             return []
@@ -792,10 +930,6 @@ class SalesReportMonthly:
             return df
         else:
             return df[df['chanel_name']==f_filter]
-        
-            
-        
-        
     
     def prepare_matrix(self,df:pd.DataFrame,a=25,b=25,x=100,y=200):
         
@@ -907,13 +1041,125 @@ class SalesReportMonthly:
         )
         return result
         
+    def make_price_distribution(self, df: pd.DataFrame, bins_n=7):
+        if df.empty:
+            return None
+        
+        n = len(df)
+        bins = int(1 + np.log2(n)) if n > 0 else 5
+        
+        dff = df.copy()
+        price_col = 'price_median'
+        quant_col = 'quant'
+        
+        # Определяем границы бинов
+        min_price = dff[price_col].min()
+        max_price = dff[price_col].max()
+        bin_edges = np.linspace(min_price, max_price, bins + 1)
+        
+        # Создаем понятные подписи для бинов
+        bin_labels = []
+        for i in range(bins):
+            if i == 0:
+                label = f"менее ₽{bin_edges[i+1]/1_000:,.1f} тыс"
+            elif i == bins_n - 1:
+                label = f"более ₽{bin_edges[i]/1_000:,.1f} тыс"
+            else:
+                label = f"от ₽{bin_edges[i]//1_000:,.1f} до ₽{bin_edges[i+1]/1_000:,.1f} тыс"
+            bin_labels.append(label)
+        
+        # Применяем бины
+        dff['bins'] = pd.cut(
+            dff[price_col],
+            bins=bin_edges,
+            labels=bin_labels,
+            include_lowest=True
+        )
+        
+        # Группируем и суммируем количество
+        result = dff.groupby('bins', observed=True)[quant_col].sum().reset_index()
+        result_revenue = dff.groupby('bins', observed=True)['amount'].sum().reset_index()
+        # Добавляем столбец с границами бинов для сортировки
+        result['bin_order'] = result['bins'].apply(
+            lambda x: float(
+                x.split('₽')[-1]  # Берем часть после знака рубля
+                .replace('тыс', '')  # Удаляем "K"
+                .split()[0]       # Берем первое число (для "от X до Y")
+                .strip()
+            )
+        )
+        result = result.sort_values('bin_order').drop('bin_order', axis=1)
+        
+        return result, result_revenue
 
+    def make_month_slider(self,id):
+            return dmc.RangeSlider(
+            id=id,
+            value=[self.max_month_id-12, self.max_month_id],
+            marks=self.short_marks,
+            mb=35,
+            min=1,
+            max=self.max_month_id,
+            minRange=2,
+            labelAlwaysOn=True,
+            size=10,
+            mt="xl",
+            styles={"thumb": {"borderWidth": 2, "padding": 3}},
+            #color="red",
+            thumbSize=26,
+            thumbChildren=[
+            DashIconify(icon="mdi:heart", width=16),
+            DashIconify(icon="mdi:heart", width=16),],
+            label={
+                "function": "formatMonthLabel",  # Наша JS-функция
+                "options": {
+                    "monthDict": {  
+                        month["value"]: month["label"] 
+                        for month in self.month_marks
+                    }
+                }
+            }
+        )
+    
+    def make_sunburst_cat(self,df:pd.DataFrame=None,option='revenue'):
+        if df is None:
+            df = self.prepare_dataset()
+
+        df['revenue'] = df.dt - df.cr
+        df['quant'] = df.quant_dt - df.quant_cr
+
+        if option == 'equ':  # равные доли
+            dff = df[['parent_cat', 'cat_name', 'sub_cat']].drop_duplicates()
+            fig = px.sunburst(
+                dff,
+                path=["parent_cat", "cat_name", "sub_cat"]
+                # без values → равные доли
+            )
+        else:
+            dff = df.pivot_table(
+                index=['parent_cat', 'cat_name', 'sub_cat'],
+                values=option,
+                aggfunc='sum'
+            ).fillna(0).reset_index()
+
+            fig = px.sunburst(
+                dff,
+                path=["parent_cat", "cat_name", "sub_cat"],
+                values=option
+            )
+
+        fig.update_layout(margin=dict(t=0, l=0, r=0, b=0))
+        return fig
+            
+    
+    
 def create_dash_app_test():
     _dash_renderer._set_react_version("18.2.0")
     app = dash.Dash(__name__, requests_pathname_prefix='/my-dash-app-test/',external_stylesheets=dmc.styles.ALL,suppress_callback_exceptions=True)
     
     srm =  SalesReportMonthly()
     initial_theme = "dark"
+    dmc.add_figure_templates(default="mantine_dark")
     
     # ======== Компоненты ============
        
@@ -935,7 +1181,160 @@ def create_dash_app_test():
         )
 
     
-    matrix_title =  dmc.Title("АССОРТИМЕНТНАЯ МАТРИЦА", c="blue",id = 'matrix_title',order=2)
+    
+    # ===== Компоненты анализа категорий =======
+    
+    cat_title =  dmc.Title("АНАЛИЗ КАТЕГОРИЙ", c="blue",id = 'cat_title',order=2)
+    
+    cat_analisis_title = dmc.Title("Описание" ,order=5)
+    
+    cat_analisis_text = dmc.Text(
+    [
+        "Анализ категорий необходим для понимания общей тенденции ассортимента в разрезе выручки и количества проданных товаров. Более детальный анализ см. в ",
+        dmc.Button(
+                            "ассортиментной матрице",
+                            id="scroll_link",
+                            variant="subtle",
+                            #compact=True,
+                            color="blue",
+                            styles={"root": {"padding": 0}},
+                        ),
+            "."
+    ],
+    size='xs' 
+    )
+    
+   
+    
+    cat_slider = srm.make_month_slider('cat_slider')   
+    
+    donut_raging = [["revenue", "Выручка"], ["quant", "Количество"], ["equ", "Равные доли"]]
+    area_raging = [["revenue", "Выручка"], ["quant", "Количество"],]
+    
+    donut_radio = dmc.RadioGroup(
+            children=dmc.Group([dmc.Radio(l, value=k) for k, l in donut_raging], my=10),
+            id="donuts_radio",
+            value="revenue",
+            label="Выбирете отображение",
+            size="sm",
+            mb=10,
+        )  
+    
+    cat_sunburst = dcc.Graph(
+        id = 'cat_sunburst',
+        figure=srm.make_sunburst_cat()        
+    ) 
+    
+    cat_area_radio = dmc.RadioGroup(
+            children=dmc.Group([dmc.Radio(l, value=k) for k, l in area_raging], my=10),
+            id="cat_area_radio",
+            value="revenue",
+            label="Выбирете отображение",
+            size="sm",
+            mb=10,
+        )   
+   
+    
+    cat_area = dmc.AreaChart(
+                    id="cat_area",
+                    h=450,
+                    dataKey="month",
+                    data=srm.make_cat_area_data()[0],
+                    tooltipAnimationDuration=500,
+                    areaProps={
+                        "isAnimationActive": True,
+                        "animationDuration": 500,
+                        "animationEasing": "ease-in-out",
+                        "animationBegin": 500,
+                    },
+                    series = srm.make_cat_area_data()[1], 
+                    valueFormatter={'function':'formatNumberIntl'},
+                    #type="stacked",
+                    withLegend=True,
+                    legendProps={"verticalAlign": "bottom"},
+                    type="default",
+                    
+                )
+    
+    
+    
+    charts_boxes = dmc.Box(
+        children=[
+            cat_slider,  # Заглушка
+            dmc.Grid([
+                dmc.GridCol(
+                    dmc.Stack(
+                        children=[
+                            donut_radio,  # Заглушка
+                            cat_sunburst,
+                        ]
+                    ),
+                    span=5
+                ),
+                dmc.GridCol(
+                    dmc.Stack(
+                        children=[
+                            cat_area_radio,
+                            cat_area,
+                        ]
+                    ),
+                    span=7
+                ),              
+                
+            ],
+                     gutter='xl'
+                     )
+        ]
+    )
+        
+    
+    cat_analisis_box = dmc.Container(
+        children=[
+            cat_title,
+            dmc.Space(h=30),
+            dmc.Stack(
+                children=[
+                    cat_analisis_title,
+                    cat_analisis_text,
+                    charts_boxes,
+                    dmc.Space(h=60),
+                ]
+            )
+        ],
+        fluid=True
+    )
+    
+    # ===== Callbacks категория анализ ========
+    
+    @app.callback(
+    Output("cat_area", "data"),
+    Output("cat_area", "series"),
+    Input("cat_sunburst", "clickData"),
+    )
+    def updtae_area_chart(val):
+        print("Callback triggered")
+        print(val)
+        data, series = srm.make_cat_area_data(parent_cat=val)
+        return data, series
+    
+    # ===== month slider ======
+    @app.callback(
+        Output("cat_sunburst", "figure"),        
+        Input("cat_slider", "value"),
+        Input("donuts_radio", "value"),       
+        
+        prevent_initial_call=True
+    )
+    def updtae_area_chart(val,opt):
+        ds = srm.prepare_dataset(periods=val)
+        figure = srm.make_sunburst_cat(df=ds,option=opt)  
+        return figure
+    
+    
+    
+    
+    # ===== Компоненты матрицы =========
+    matrix_title =  html.Div(dmc.Title("АССОРТИМЕНТНАЯ МАТРИЦА", c="blue",order=2),id = 'matrix_title')
     
     abc_group = dmc.Stack([
     dmc.Title('ABC настройки',order=5),
@@ -1116,16 +1515,84 @@ def create_dash_app_test():
         ]
     ) 
     
+    # ======= Тримап по матрице ========
+    
     TreeMap_box = dmc.Box(
         children=[        
         dmc.Title('Анализ матрицы', order=3, c='blue'),
-        dcc.Graph(figure=px.treemap(
-            
-        ),
-        id = 'tree_map'
-        )
-        ]
+        dcc.Graph(figure=px.treemap(), id = 'tree_map',)
+        ],
+        px=20 
     )
+    
+    
+    # ========= Ценовое распределение =========
+    
+    Price_distribution_chart = dmc.BarChart(
+    h=300,
+    dataKey="bins",  # должно соответствовать названию столбца с бинами
+    data=[],
+    series=[],
+    tickLine="xy",
+    gridAxis="x",
+    withXAxis=True,
+    withYAxis=True,
+    id='pd_chart',
+    style={"marginBottom": 60},   
+    yAxisLabel="Количество",
+    
+    
+   
+)
+    
+    Price_distribution_chart_revenue = dmc.BarChart(
+    h=300,
+    dataKey="bins",  # должно соответствовать названию столбца с бинами
+    data=[],
+    series=[{"name": "Выручка", "color": "teal.6", "dataKey": "Выручка"}],
+    tickLine="xy",
+    gridAxis="x",
+    withXAxis=True,
+    withYAxis=True,
+    id='pd_chart_revenue',
+    valueFormatter={'function':'formatNumberIntl'},
+    style={"marginBottom": 60},
+    yAxisLabel="Выручка",
+)
+   
+    
+    mx_store = dcc.Store(id='matrix_store')
+    
+    price_distibution_box = dmc.Box(
+        children=[
+            mx_store,          
+            dmc.SimpleGrid(
+                cols=2,
+                children=[
+                    dmc.Stack(
+                        children = [
+                            dmc.Title('Распределение количество по ценовому диапазону',order=5),
+                            dmc.Text('График ниже показывае распредления количества проданных товаров по ценовым диапазонам. График нужен что бы оценить различные ценовые сегменты в выбранной матрице',size='xs'),
+                            Price_distribution_chart,
+                        ]
+                    ),
+                    dmc.Stack(
+                        children = [
+                            dmc.Title('Распределение выручки по ценовому диапазону',order=5),
+                            Price_distribution_chart_revenue,
+                        ]
+                    )
+                   
+                   
+                ],
+                spacing="xl",
+                
+            )
+        ],
+        my="xl", 
+    )
+    
+    
     
     # ========= Data Table (AG GRID) ==========
     
@@ -1382,6 +1849,83 @@ def create_dash_app_test():
     )
     
     
+    # ========= Акоордионы =============
+    
+    Items_prop_list = [
+        {
+            "id": "general",
+            "image": "https://img.icons8.com/?size=100&id=35185&format=png&color=000000",
+            "label": "Общий анализ матрицы и рейтинги",
+            "description": "Морфиус считает всю статистику по матрице и показывает обобщенные данные и рейтинги, которые могут понадобится для анализа выбранных категорий ",
+            "content":srm.in_construction
+        },
+        {
+            "id": "tree",
+            "image": "https://img.icons8.com/?size=100&id=35184&format=png&color=000000",
+            "label": "Анализ Treemap",
+            "description": "Нео собирает все данные в обобщенный график по рейтингам ABC и XYZ и создает единый график по каждой номенклатуре. У него не всегда получается ", 
+            "content":TreeMap_box
+        },
+        {
+            "id": "price_dist",
+            "image": "https://img.icons8.com/?size=100&id=35183&format=png&color=000000",
+            "label": "Ценовой анализ",
+            "description": "Тринити распределляет матрицу по ценовым категориям на группы по выручке и количеству проданных товаров, что помогает анализировать ценовые сегменты ",
+            "content": price_distibution_box
+        },
+        {
+            "id": "dist_chart",
+            "image": "https://img.icons8.com/?size=100&id=35598&format=png&color=000000",
+            "label": "Схема дистрибуции",
+            "description": "Агент Смит анализирует схему дистрибуции выбранных категорий по подразделениям и строит диаграмму Sanky которая позволяет понять каналы дистрибуции ",
+            "content": 'В разработке'
+        },
+        
+    ]
+    
+    def create_accordion_label(label, image, description):
+        return dmc.AccordionControl(
+            dmc.Group(
+                [
+                    dmc.Avatar(src=image, radius="xl", size="lg"),
+                    html.Div(
+                        [
+                            dmc.Text(label),
+                            dmc.Text(description, size="sm", fw=400, c="dimmed"),
+                        ]
+                    ),
+                ]
+            )
+        )
+
+
+    def create_accordion_content(content):
+        return dmc.AccordionPanel(dmc.Text(content, size="sm"))
+
+
+    results_accordion = dmc.Accordion(
+        chevronPosition="right",
+        variant="contained",
+        chevron=DashIconify(icon="streamline-emojis:pill"),
+        #disableChevronRotation=True,
+        children=[
+            dmc.AccordionItem(
+                [
+                    create_accordion_label(
+                        character["label"], character["image"], character["description"]
+                    ),
+                    create_accordion_content(character["content"]),
+                ],
+                value=character["id"],
+            )
+            for character in Items_prop_list
+        ],
+    )
+    
+    
+    
+    
+    
     # ========== Контейнера =============
     
     matrix_container = dmc.Container(
@@ -1393,8 +1937,8 @@ def create_dash_app_test():
             children=[grid], 
             id='lodading',
             type="default",
-            ),    
-                        
+            ),
+            
         ],
         fluid=True,
         #h=500,
@@ -1442,18 +1986,27 @@ def create_dash_app_test():
             
             dmc.AppShellMain(
             children=[
+                cat_analisis_box,
+               
                 matrix_container,  # Ваш контейнер с таблицей
                 dmc.Space(h=60),   # Отступ 60px
-                dcc.Loading( 
-                children = [
-                TreeMap_box,
-                ],
-                id='lodading2',
-                type="default",
+            #     dcc.Loading( 
+            #     children = [
+            #     TreeMap_box,
                 
-                ),
+            #     ],
+            #     id='lodading2',
+            #     type="default",
+                
+            #     ),
+            #     dcc.Loading(                
+            # children=[ price_distibution_box], 
+            # id='lodading 3',
+            # type="default",
+            # ),
+                results_accordion,
             ],
-             # Небольшой отступ по краям
+            
         ),         
             dmc.AppShellFooter('Footer'),
         ],
@@ -1468,12 +2021,19 @@ def create_dash_app_test():
 
     app.layout = dmc.MantineProvider(
         id="mantine-provider",
-        theme={"colorScheme": initial_theme},
-        children= [
+        theme={"colorScheme": "light"},
+        children=[
+            dcc.Store(id="scroll_trigger"),
             layout,
             dcc.Store(id='theme-init', storage_type='local'),
+            
+            # Клиентский callback для обработки hash
+            html.Div(id='dummy-output', style={'display': 'none'})
         ]
-        )
+    )
+    
+    
+
 
 
 # ==== CALLBACKS =======
@@ -1489,6 +2049,7 @@ def create_dash_app_test():
     def theme_switch_change(checked):
         a = [srm.logo_dark, dmc.Title("СЕГМЕНТНЫЙ АНАЛИЗ", c="blue")] if checked else [srm.logo_light, dmc.Title("СЕГМЕНТНЫЙ АНАЛИЗ", c="blue")]
         b = "ag-theme-alpine-dark" if checked else "ag-theme-alpine"
+       
         return a,b
 
     app.clientside_callback(
@@ -1518,6 +2079,22 @@ def create_dash_app_test():
         Output('color-scheme-toggle', 'checked'),
         Input('theme-init', 'modified_timestamp')
     )
+    
+    app.clientside_callback(
+    """
+    function(n_clicks) {
+        if (n_clicks) {
+            const el = document.getElementById('matrix_title');
+            if (el) {
+                el.scrollIntoView({behavior: 'smooth', block: 'start'});
+            }
+        }
+        return null;
+    }
+    """,
+    Output('scroll_trigger', 'data'),
+    Input('scroll_link', 'n_clicks')
+)
     
     
     # ABC SWITCHER
@@ -1587,6 +2164,11 @@ def create_dash_app_test():
     @app.callback(
         Output('mx_grid', 'rowData'),
         Output('tree_map','figure'),
+        Output('pd_chart','data'),
+        Output('pd_chart','series'),
+        Output('pd_chart_revenue','data'),
+        Output('pd_chart', 'xAxisProps'),
+        Output('pd_chart_revenue', 'xAxisProps'),
         Input('calc_button', 'n_clicks'),  # Основной триггер
         State('cat_filter', 'value'),      # Дополнительные параметры
         State('sub_cat_filter', 'value'),
@@ -1613,12 +2195,46 @@ def create_dash_app_test():
         mx_fig = mx[['abc_rank', 'xyz_class','fullname', 'amount','amount_share']].dropna()  # выбираем все нужные столбцы
         fig = px.treemap(mx_fig, path=[px.Constant("all"), 'abc_rank', 'xyz_class','fullname'],
         values='amount',)
-        return mx.to_dict('records'),fig
+        fig.update_layout(
+            margin=dict(l=0, r=0, t=0, b=0),  # убирает внешние отступы
+            # убирает внутренние отступы между элементами
+        )
+            # 4. Подготовка данных для BarChart
+        price_data = srm.make_price_distribution(df=mx)[0]
+        price_data_revenue =  srm.make_price_distribution(df=mx)[1]
+        
+        # Преобразуем данные в нужный формат
+        chart_data = [{'bins': item['bins'], 'Количество': item['quant']} 
+                    for item in price_data.to_dict('records')]
+        
+        
+        chart_data_revenue = [{'bins': item['bins'], 'Выручка': item['amount']} 
+                    for item in price_data_revenue.to_dict('records')]
+        # Конфигурация серий
+        chart_series = [{"name": "Количество", "color": "blue", "dataKey": "Количество"}]
+        
+        xAxisProps={
+            "angle": -45,
+            "tickMargin": 10,        # можно задать отступ между метками и осью
+            "textAnchor": "end"      # выравнивание по концу
+            }
+        
+        
+        return (
+            mx.to_dict('records'),
+            fig,
+            chart_data,  # Обновленные данные
+            chart_series,  # Обновленные серии
+            chart_data_revenue,
+            xAxisProps,
+            xAxisProps
+        )
     
+   
     
     
             
-    return app.server 
+    return app.server
 
 
 def create_dash_app():
