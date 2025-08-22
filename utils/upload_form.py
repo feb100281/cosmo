@@ -1,5 +1,3 @@
-import redis
-import pickle
 import base64
 import io
 import pandas as pd
@@ -14,6 +12,7 @@ import locale
 
 locale.setlocale(locale.LC_TIME, "ru_RU.UTF-8")
 from utils.updater import Updater, set_data
+
 
 
 
