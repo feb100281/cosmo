@@ -60,7 +60,7 @@ def redis_form_uplaoder():
 
     def save_sales_domain(df:pd.DataFrame,key='sales_domain'):
         df['date'] = pd.to_datetime(df['date'])
-        df['eom'] = pd.to_datetime(df['date'])
+        df['eom'] = pd.to_datetime(df['eom'])
         pickled = pickle.dumps(df)
         r.set(key, pickled)
     
