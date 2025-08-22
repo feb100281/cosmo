@@ -19,8 +19,14 @@ mantine_colors = [
     "azure.6", "magenta.6"
 ]
 
+from django.conf import settings
+
 # 🔌 Загрузка данных из Redis
-r = redis.Redis(host='localhost', port=6379, db=0)
+# r = redis.Redis(host='localhost', port=6379, db=0, )
+
+r = settings.REDIS_CLIENT
+
+
 raw_data = r.get("sales_data")
 df_full:pd.DataFrame = pickle.loads(raw_data) if raw_data else pd.DataFrame()
 last_date = r.get("last_date")
