@@ -56,7 +56,6 @@ def redis_form_uplaoder():
         r.set('first_date', first_date.strftime('%Y-%m-%d'))
         
         print(f"Сохранено {len(df)} строк под ключом '{key}' в Redis.") 
-    
 
     def save_sales_domain(df:pd.DataFrame,key='sales_domain'):
         df['date'] = pd.to_datetime(df['date'])
@@ -64,6 +63,16 @@ def redis_form_uplaoder():
         pickled = pickle.dumps(df)
         r.set(key, pickled)
     
+    
+    def save_sales_dinamix_monthly(key='sales_dynamix_monthly'):
+        df = pd.DataFrame()
+        with connection.cursor() as cursor:
+            df = pd.read_sql("SELECT * FROM shop_dinamix_monthly", connection)
+        
+        df['eom'] = pd.to_datetime(df['eom'])
+        pickled = pickle.dumps(df)
+        r.set(key, pickled)
+
     title = dmc.Title("Обновление данных для отчета", order=1, c="blue")
     
     button = dmc.Button(
@@ -104,8 +113,11 @@ def redis_form_uplaoder():
     )
     def redis_update(nclicks):
         if nclicks > 0:
+            r.flushall()
             save_df_to_redis(load_sales_with_related_to_df())
-            save_sales_domain(load_sales_domain())
+            save_sales_dinamix_monthly()
+            #save_sales_domain(load_sales_domain())
+            
         
         return 'Загрузка'
             
