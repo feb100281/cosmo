@@ -361,7 +361,13 @@ class Updater:
 
         df = pd.read_excel(self.file, skiprows=3, skipfooter=1)
         
+        
         df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
+                
+        df['Номер Заказа клиента'] = df['Номер Заказа клиента'].fillna(df['Регистратор'])
+        df(columns=['Регистратор'], inplace=True)
+        
+        
         df = df.rename(columns=FILE_COLUMNS)
         df["fullname"] = df.fullname.str.strip()
         df['store_name'] = df['store_name'].str.strip()
