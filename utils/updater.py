@@ -365,7 +365,7 @@ class Updater:
         df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
                 
         df['Номер Заказа клиента'] = df['Номер Заказа клиента'].fillna(df['Регистратор'])
-        df(columns=['Регистратор'], inplace=True)
+        df.drop(columns=['Регистратор'], inplace=True)
         
         
         df = df.rename(columns=FILE_COLUMNS)
@@ -379,7 +379,7 @@ class Updater:
         
         min_date = pd.to_datetime(df['date'].min())
         max_date = pd.to_datetime(df['date'].max())
-        self.log['Период'] = f'C {min_date.strftime('%d %B %Y')} по {max_date.strftime('%d %B %Y')} '
+        self.log['Период'] = f"C {min_date.strftime('%d %B %Y')} по {max_date.strftime('%d %B %Y')}"
         self.log["Всего записей"] = len(df.index)
         self.log["Всего заказов"] = df["client_order"].nunique()
         
