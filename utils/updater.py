@@ -114,9 +114,11 @@ def set_data(d:dict):
         
     
     df = pd.read_sql("SELECT * FROM new_sales", con=engine)
-    df['client_order_date'] = pd.to_datetime(df['client_order_date'])
-    df = df.sort_values(by='client_order_date')
     df['client_order_date'] = df['client_order_date'].fillna('date')
+    df['client_order_date'] = pd.to_datetime(df['client_order_date'], errors='coerce')
+    # df['date'] = pd.to_datetime(df['date'])
+    df = df.sort_values(by='client_order_date')
+    
     
     df = df.pivot_table(
         index = 'fullname',
