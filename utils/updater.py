@@ -166,6 +166,8 @@ def set_data(d:dict):
     """
     df = pd.read_sql(q,con=engine)
     df.to_sql('temp_sales',index=False,con=engine,if_exists='replace')
+    df.to_sql('temp_sales_check',index=False,con=engine,if_exists='replace')
+    
     del df
     
     q_insert = """
