@@ -116,15 +116,16 @@ def set_data(d:dict):
     df = pd.read_sql("SELECT * FROM new_sales", con=engine)
     df['client_order_date'] = df['client_order_date'].fillna('date')
     df['client_order_date'] = pd.to_datetime(df['client_order_date'], errors='coerce')
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
     # df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values(by='client_order_date')
     
     
     df = df.pivot_table(
         index = 'fullname',
-        values= ['client_order_date','article','manufacturer','brend','im_id_item','im_name',"collection","item_cat","cat_type"],
+        values= ['date','article','manufacturer','brend','im_id_item','im_name',"collection","item_cat","cat_type"],
         aggfunc={
-            'client_order_date':'min',
+            'date':'min',
             'article':'last',
             'manufacturer':'last',
             'brend':'last',
@@ -155,7 +156,7 @@ def set_data(d:dict):
         t.fullname,
         t.article,
         b.id as brend_id,
-        t.client_order_date as init_date,
+        t.date as init_date,
         c.id as itemcollections_id,
         t.im_id_item,
         COALESCE(t.im_name, t.fullname) AS im_name,
