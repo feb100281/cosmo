@@ -21,3 +21,12 @@ class CatDash(models.Model): # type: ignore
 
     def __str__(self):
         return "Сегментный анализ"
+    
+class SalesReport(models.Model): # type: ignore
+    class Meta:
+        managed = False  # Django не будет создавать таблицу
+        verbose_name = "Панель продаж"
+        verbose_name_plural = "Панель продаж"
+
+    def __str__(self):
+        return "Панель продаж"

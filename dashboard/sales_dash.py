@@ -24,6 +24,7 @@ from django.conf import settings
 # 🔌 Загрузка данных из Redis
 # r = redis.Redis(host='localhost', port=6379, db=0, )
 
+
 r = settings.REDIS_CLIENT
 
 
