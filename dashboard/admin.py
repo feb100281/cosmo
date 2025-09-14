@@ -43,7 +43,7 @@ class SalesReportAdmin(admin.ModelAdmin):
         
         extra_context.update({
             'title': 'Панель продаж',
-            'dash_url': 'http://127.0.0.1:8050',  # URL вашего Dash
+            'dash_url': 'http://37.46.129.233:8050/',  # URL вашего Dash
         })
         
         return TemplateResponse(request, self.change_list_template, extra_context)
