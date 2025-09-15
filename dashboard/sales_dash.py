@@ -1162,7 +1162,7 @@ class SalesReportMonthly:
     
 def create_dash_app_test():
     _dash_renderer._set_react_version("18.2.0")
-    app = dash.Dash(__name__, requests_pathname_prefix='/my-dash-app-test/',external_stylesheets=dmc.styles.ALL,suppress_callback_exceptions=True)
+    app = dash.Dash(__name__, external_stylesheets=dmc.styles.ALL,suppress_callback_exceptions=True,requests_pathname_prefix='/my-dash-app-test/') #requests_pathname_prefix='/my-dash-app-test/'
     
     srm =  SalesReportMonthly()
     initial_theme = "dark"

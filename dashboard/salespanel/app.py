@@ -239,20 +239,25 @@ class MainWnidow:
 def salespanel():
     app = Dash(
         __name__,
-        requests_pathname_prefix="/salespanel/",
-        routes_pathname_prefix="/salespanel/",
+        #requests_pathname_prefix="/salespanel/",
+        #routes_pathname_prefix="/salespanel/",
         use_pages=True,
         pages_folder="",
-        title="Панель продаж"
+        title="Панель продаж",
+        serve_locally=False,
+        suppress_callback_exceptions=True
     )
+    
+    app.css.config.serve_locally = False
+    app.scripts.config.serve_locally = False
 
     MainWnidow().main_page_callbacks(app)
     sd_components().register_callbacks(app)
 
-    dash.register_page("Резюме", path="/", layout=SummaryComponents().layout, app=app)
-    dash.register_page("Динамика продаж", path="/Sales_dimamix", layout=sd_components().make_layout(), app=app)
-    dash.register_page("Сегментный анализ", path="/Segments", layout=html.Div("page 1 subject 1"), app=app)
-    dash.register_page("Матрица", path="/Matrix", layout=html.Div("page 1 subject 2"), app=app)
+    dash.register_page("Резюме", path="/", layout=SummaryComponents().layout)
+    dash.register_page("Динамика продаж", path="/Sales_dimamix", layout=sd_components().make_layout())
+    dash.register_page("Сегментный анализ", path="/Segments", layout=html.Div("page 1 subject 1"))
+    dash.register_page("Матрица", path="/Matrix", layout=html.Div("page 1 subject 2"))
 
     app.layout = MainWnidow().page_layout
 

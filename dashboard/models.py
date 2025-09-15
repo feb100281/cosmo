@@ -24,9 +24,10 @@ class CatDash(models.Model): # type: ignore
     
 class SalesReport(models.Model): # type: ignore
     class Meta:
-        managed = False  # Django не будет создавать таблицу
+        managed = False  # Django не будет создавать/мигрировать таблицу
         verbose_name = "Панель продаж"
         verbose_name_plural = "Панель продаж"
+        default_permissions = ('view',)
 
     def __str__(self):
         return "Панель продаж"
