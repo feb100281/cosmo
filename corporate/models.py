@@ -121,7 +121,7 @@ class CatTree(MPTTModel):
     name = models.CharField(max_length=255, verbose_name="Наименование категории")
     parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children', verbose_name="Родительская категория")
     icon = models.TextField(verbose_name='Иконка',null=True,blank=True,help_text='Скопируйте и вставьте svg код')
-    
+    comments = models.TextField(verbose_name='Комментарий',null=True,blank=True)
     class Meta:
         verbose_name = "Категория"
         verbose_name_plural = "Категории"
@@ -134,6 +134,7 @@ class SubCategory(models.Model):
     name = models.CharField(max_length=255, verbose_name='Подкатегория')
     category = models.ForeignKey(CatTree, on_delete=models.CASCADE, verbose_name='Категория', related_name='subcategories')
     icon = models.TextField(verbose_name='Иконка',null=True,blank=True,help_text='Скопируйте и вставьте svg код')
+    comments = models.TextField(verbose_name='Комментарий',null=True,blank=True)
 
     def __str__(self):
         return self.name

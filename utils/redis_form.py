@@ -24,169 +24,97 @@ from django.db import connection
 
 r = settings.REDIS_CLIENT
 
+   
 
-KEYS_LIST = [b"sales_dynamix_monthly", b"first_date", b"last_date", b"sales_data"]
+def get_data():
 
-COLS_DICT = {
-    "date": "Дата",
-    "client_order_date": "Дата заказа",
-    "client_order_number": "Номер заказа",
-    "client_order": "Заказ клиента",
-    "operation": "Операция",
-    "dt": "dt",
-    "cr": "cr",
-    "amount": "Сумма",
-    "quant_dt": "quant_dt",
-    "quant_cr": "quant_cr",
-    "quant": "Количество",
-    "warehouse": "Склад",
-    "spec": "Спецификация",
-    "fullname": "Номенклатура",
-    "imname": "Название в ИМ",
-    "article": "Артикл",
-    "onec_cat": "onec_cat",
-    "onec_subcat": "onec_subcat",
-    "init_date": "Дата первого заказа",
-    "im_id": "Код товара в ИМ",
-    "cat": "Категория",
-    "cat_icon": "cat_icon",
-    "parent_cat": "Группа",
-    "parent_icon": "parent_icon",
-    "manu": "Производитель",
-    "manu_origin": "Стана происхождения",
-    "brend": "Бренд",
-    "brend_origin": "Страна бренда",
-    "subcat": "Подкатегоря",
-    "store": "Торговая точка",
-    "chanel": "Канал продаж",
-    "store_gr_name": "Магазин",
-    "store_region": "Регион",
-    "agent": "_Агент",
-    "agent_name": "Агент",  # report_name
-    "manager": "_Менеджер",
-    "manager_name": "Менеджер",  # report_name
-    "eom": "Отчетный период",
-    "month_fmt": "Месяц",
-    "quarter_fmt": "Квартал",
-    "week_fmt": "_Неделя",  # сокращенная
-    "week_fullname": "Неделя",
-    "month_id": "month_id",
-    "client_order_num": "Количество заказов",
-}
+    SALES_DOMAIN = pd.read_sql("SELECT * FROM sales_domain order by eom", connection)
+    SALES_DOMAIN['client_order_date'] = SALES_DOMAIN['client_order_date'].fillna(SALES_DOMAIN['date'])
 
-COLS_LIST = [
-    "date",
-    "client_order_date",
-    "client_order_number",
-    "client_order",
-    "operation",
-    "dt",
-    "cr",
-    "amount",
-    "quant_dt",
-    "quant_cr",
-    "quant",
-    "warehouse",
-    "spec",
-    "fullname",
-    "imname",
-    "article",
-    "onec_cat",
-    "onec_subcat",
-    "init_date",
-    "im_id",
-    "cat",
-    "cat_icon",
-    "parent_cat",
-    "parent_icon",
-    "manu",
-    "manu_origin",
-    "brend",
-    "brend_origin",
-    "subcat",
-    "store",
-    "chanel",
-    "store_gr_name",
-    "store_region",
-    "agent",
-    "agent_name",
-    "manager",
-    "manager_name",
-    "eom",
-    "month_fmt",
-    "quarter_fmt",
-    "week_fmt",
-    "week_fullname",
-    "month_id",
-]
-
-
-def load_sales_domain():
-    def sales_dynamix_monthly(df: pd.DataFrame):
-        cols_to_keep = [
-            "client_order",
-            "amount",
-            "quant",
-            "chanel",
-            "store_gr_name",
-            "store",
-            "store_region",
-            "month_id",
-            "eom",
-            "quarter_fmt",
-        ]
-        df = df[[cols_to_keep]]
-        df["eom"] = pd.to_datetime(df["eom"])
-        df["month_fmt"] = df["eom"].dt.strftime("%b %y").str.capitalize()
-        grouped = (
-            df.groupby(
-                [
-                    "eom" "month_id",
-                    "month_fmt",
-                    "chanel",
-                    "store_gr_name",
-                    "store",
-                    "store_region",
-                    "quarter_fmt",
-                ]
-            )
-            .agg(
-                amount=("amount", "sum"),
-                quant=("quant", "sum"),
-                client_order_num=(
-                    "client_order",
-                    "nunique",
-                ),  # количество уникальных заказов
-            )
-            .reset_index()
-            .sort_values(by="eom")
-        )
-
-        return grouped
-
-    def range_slider_data(df: pd.DataFrame):
-        pass
-
-    df = pd.read_sql("SELECT * FROM sales_domain", connection)
-    cols_to_fill = [
-        "chanel",
-        "store_gr_name",
-        "store",
-        "store_region",
-        "manager_name",
-        "agent_name",
+    SALES_DOMAIN['date'] = pd.to_datetime(SALES_DOMAIN['date'],errors='coerce').dt.normalize()
+    SALES_DOMAIN['client_order_date'] = pd.to_datetime(SALES_DOMAIN['client_order_date'],errors='coerce').dt.normalize()
+    SALES_DOMAIN['year'] = SALES_DOMAIN['date'].dt.year
+    
+    cols_for_non_data = [
+    'client_order_number','client_order','warehouse','spec','imname','article',"onec_cat", "onec_subcat",
+    'manu','manu_origin','brend','brend_origin','agent','agent_name','manager','manager_name','store_region'    
     ]
-    for col in cols_to_fill:
-        df[col] = df[col].fillna("Нет данных")
 
-    # сохраняем sales_dynamix_monthly
-    key = "sales_dynamix_monthly"
-    pickled = pickle.dumps(sales_dynamix_monthly(df))
-    r.set(key, pickled)
+    # колонки для аналитики
+    a_cols = [
+        'store_gr_name',    
+        'manager_name',
+        'agent_name',
+        'fullname',
+        'brend',
+        'manu',
+        
+    ]
 
-    # Делаем данные для слайдера
-    key = "range_sliders_data"
+    d_cols = [
+        'dt',
+        'cr',
+        'quant_dt',
+        'quant_cr',
+        'amount',
+        'quant',
+    ]
 
+    # for col in cols_for_non_data:
+    #     SALES_DOMAIN[col] = SALES_DOMAIN[col].fillna('Нет данных')
+
+
+
+    SALES_DOMAIN['parent_cat'] = SALES_DOMAIN['parent_cat'].fillna('Группа не указана')
+    SALES_DOMAIN['cat'] = SALES_DOMAIN['cat'].fillna('Категория не указана')
+    SALES_DOMAIN['subcat'] = SALES_DOMAIN['subcat'].fillna('Подкатегория не указана')
+
+    SALES_DOMAIN['fullname'] = SALES_DOMAIN['fullname'].fillna('Номенклатура не указана')  
+
+    # SALES_DOMAIN['subcat_agg'] = SALES_DOMAIN['parent_cat'] + '-' + SALES_DOMAIN['cat'] + SALES_DOMAIN['subcat'] #Для аггрегации по подгатегориям
+
+    SALES_DOMAIN['store'] = SALES_DOMAIN['store'].fillna('Магазин не указан')
+    SALES_DOMAIN['store_gr_name'] = SALES_DOMAIN['store_gr_name'].fillna('Магазин не указан')
+    SALES_DOMAIN['chanel'] = SALES_DOMAIN['chanel'].fillna('Канал не указан')
+    # упорядочиваем на всяк
+    SALES_DOMAIN = SALES_DOMAIN.sort_values(by='date')
+
+    # Делаем значения YTD для отмеченных колонок
+
+    for analitics in a_cols:
+        for item in d_cols:
+            col_name = f"{analitics}_{item}_ytd"
+            SALES_DOMAIN[col_name] = (
+                SALES_DOMAIN
+                .sort_values("eom")  # чтобы cum правильно шел
+                .groupby(["year", analitics])[item]
+                .cumsum()
+            )
+
+
+    total_memory = str(SALES_DOMAIN.memory_usage(deep=True).sum() / 1024**2) + "MB использует REDIS для всей херни"
+    # SALES_DOMAIN.to_csv('data.csv',sep='|',index=False)
+
+    return SALES_DOMAIN, total_memory
+
+def set_data(df):
+    SALES_DOMAIN = df
+    
+    for eom in SALES_DOMAIN["eom"].unique():
+        chunk_df = SALES_DOMAIN[SALES_DOMAIN["eom"] == eom]
+        for col in chunk_df.columns:
+            key = f"mydf:{col}:{eom}"
+            # сохраняем как Series
+            r.set(key, pickle.dumps(chunk_df[col]))
+            print(key + ' saved')
+            
+            # обновляем мета с доступными чанками
+            meta_key = f"mydf:{col}:__chunks__"
+            chunks_list = pickle.loads(r.get(meta_key)) if r.exists(meta_key) else []
+            if eom not in chunks_list:
+                chunks_list.append(eom)
+                r.set(meta_key, pickle.dumps(chunks_list))
+  
 
 def redis_form_uplaoder():
     # _dash_renderer._set_react_version("18.2.0")
@@ -196,43 +124,6 @@ def redis_form_uplaoder():
         external_stylesheets=dmc.styles.ALL,
         suppress_callback_exceptions=True,
     )
-
-    def load_sales_with_related_to_df():
-        with connection.cursor() as cursor:
-            df = pd.read_sql("SELECT * FROM sales_summary", connection)
-        return df
-
-    def load_sales_domain():
-        with connection.cursor() as cursor:
-            df = pd.read_sql("SELECT * FROM sales_domain", connection)
-        return df
-
-    def save_df_to_redis(df: pd.DataFrame, key="sales_data"):
-        df["date"] = pd.to_datetime(df["date"])
-        pickled = pickle.dumps(df)
-        r.set(key, pickled)
-        last_date = df["date"].max()
-        first_date = df["date"].min()
-
-        r.set("last_date", last_date.strftime("%Y-%m-%d"))
-        r.set("first_date", first_date.strftime("%Y-%m-%d"))
-
-        print(f"Сохранено {len(df)} строк под ключом '{key}' в Redis.")
-
-    def save_sales_domain(df: pd.DataFrame, key="sales_domain"):
-        df["date"] = pd.to_datetime(df["date"])
-        df["eom"] = pd.to_datetime(df["eom"])
-        pickled = pickle.dumps(df)
-        r.set(key, pickled)
-
-    def save_sales_dinamix_monthly(key="sales_dynamix_monthly"):
-        df = pd.DataFrame()
-        with connection.cursor() as cursor:
-            df = pd.read_sql("SELECT * FROM shop_dinamix_monthly", connection)
-
-        df["eom"] = pd.to_datetime(df["eom"])
-        pickled = pickle.dumps(df)
-        r.set(key, pickled)
 
     title = dmc.Title("Обновление данных для отчета", order=1, c="blue")
 
@@ -247,11 +138,12 @@ def redis_form_uplaoder():
         id="btn",
         # other props...
     )
+    mem_text = dmc.Text(id='mem_text')
 
     progress = dmc.Text("Прогресс...", id="progress")
 
     upload_conteiner = dmc.Container(
-        dmc.Stack([title, dcc.Loading([button, progress])]), fluid=True
+        dmc.Stack([title, dcc.Loading([button, progress]),mem_text]), fluid=True
     )
 
     app.layout = dmc.MantineProvider(
@@ -262,23 +154,18 @@ def redis_form_uplaoder():
 
     @app.callback(
         Output("progress", "children"),
+        Output("mem_text",'children'),
         Input("btn", "n_clicks"),
-        # State('new_manu','data'),
-        # State('new_items','data'),
-        # State('new_agents','data'),
-        # State('new_stores','data'),
-        # State('new_managers','data'),
-        # State('new_brends','data'),
-        # State('new_collection','data'),
+        
         prevent_initial_call=True,
     )
     def redis_update(nclicks):
         if nclicks > 0:
             r.flushall()
-            save_df_to_redis(load_sales_with_related_to_df())
-            save_sales_dinamix_monthly()
-            # save_sales_domain(load_sales_domain())
+            data, text = get_data()
+            set_data(data)
+            
 
-        return "Загрузка"
+        return "Загрузка", text
 
     return app.server
