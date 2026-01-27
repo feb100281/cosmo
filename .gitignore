@@ -10,7 +10,6 @@ __pycache__/
 db.sqlite3
 
 staticfiles/
-/fr/
 /media/
 # IDE
 .vscode/
@@ -24,4 +23,3 @@ staticfiles/
 .DS_Store
 
 # Миграции (можно исключить, но осторожно!)
-migrations/
