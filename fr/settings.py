@@ -278,4 +278,4 @@ REDIS_CLIENT = redis.Redis(
     decode_responses=False  # Оставляем False для работы с pickle
 )
 
-SALES_REPORT_KEY = os.getenv('DB_ENGINE',""),
+SALES_REPORT_KEY = os.getenv('SALES_REPORT_KEY',""),
