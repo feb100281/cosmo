@@ -40,15 +40,16 @@ FILE_COLUMNS = {
     "Группа номенклатуры":'item_cat',
     "Вид номенклатуры":'cat_type',
     "Артикул":'article',
-    "Производитель ":'manufacturer',
+    "Производитель":'manufacturer',
     "ID товара":'im_id_item',
     "Номенклатура":'fullname',
     "Название товара на сайте":'im_name',
     "Характеристика":'characterictic',
     "Количество":'quant',
     "Выручка":'amount',
-    "Номенклатура.Коллекция (Прочие товары с характеристиками)":'collection',
-    "Номенклатура.Производитель":'brend'
+    "Коллекция":'collection',
+    "Марка (бренд)":'brend',
+    "Штрихкод":"barcode"
 }
 
 
@@ -64,7 +65,8 @@ def set_data(d:dict):
             Agents,
             Managers,
             ItemBrend,
-            ItemCollections
+            ItemCollections,
+            Barcode
         )
 
     
@@ -149,6 +151,7 @@ def set_data(d:dict):
             df[col] = None
     
     df.to_sql('temp_sales',index=False,con=engine,if_exists='replace')
+    df.to_sql('_temp_sales',index=False,con=engine,if_exists='replace')
     del df
 
     q = """
@@ -351,7 +354,9 @@ class Updater:
         self.new_brends = []
         self.new_collection = []
         
-        
+    
+    def update_barcode():
+        pass
         
 
     def get_data(self):
@@ -362,19 +367,22 @@ class Updater:
             Agents,
             Managers,
             ItemBrend,
-            ItemCollections
+            ItemCollections,
+            Barcode
         )
 
-        df = pd.read_excel(self.file, skiprows=3, skipfooter=1)
+        df = pd.read_excel(self.file, skiprows=0, skipfooter=1)
         
         
-        df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
+        mask = df.columns.astype(str).str.startswith("Unnamed")
+        df = df.loc[:, ~mask]
                 
         df['Номер Заказа клиента'] = df['Номер Заказа клиента'].fillna(df['Регистратор'])
         df.drop(columns=['Регистратор'], inplace=True)
         
         
         df = df.rename(columns=FILE_COLUMNS)
+        
         df["fullname"] = df.fullname.str.strip()
         df['store_name'] = df['store_name'].str.strip()
         df["date"] = pd.to_datetime(df["date"], format="%d.%m.%Y")
@@ -438,6 +446,8 @@ class Updater:
         if len(new_collection) > 0:
             self.log["Новые колеекции"] = len(new_collection) 
         self.new_collection = new_collection
+        
+        
         
         
         

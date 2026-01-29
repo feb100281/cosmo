@@ -144,6 +144,18 @@ class SubCategory(models.Model):
         verbose_name_plural = "Подкатегории"
 
 
+class Barcode(models.Model):
+    barcode = models.CharField(max_length=50,verbose_name='Штрихкод',unique=True)
+    
+    
+
+    class Meta:
+        verbose_name = "Штрихкод"
+        verbose_name_plural = "Штрихкоды"
+        
+    def __str__(self):
+        return self.barcode
+
 class Items(models.Model):
     guid = models.CharField(max_length=200,verbose_name='1c id',null=True,blank=True)
     fullname = models.CharField(max_length=250,verbose_name='Наименование 1С',unique=True) 
@@ -167,6 +179,7 @@ class Items(models.Model):
     im_id = models.CharField(max_length=200,verbose_name='im id',null=True,blank=True)
     onec_cat = models.CharField(max_length=200,verbose_name='Группа номенклатуры 1С',null=True,blank=True)
     onec_subcat = models.CharField(max_length=200,verbose_name='Вид номенклатуры 1С',null=True,blank=True)
+    barcode = models.ManyToManyField(Barcode,verbose_name='Штрихкод',blank=True)
 
     
     class Meta:
@@ -243,3 +256,6 @@ class Agents(models.Model):
         if not self.report_name:  # если пустое
             self.report_name = self.name
         super().save(*args, **kwargs)
+        
+
+    
