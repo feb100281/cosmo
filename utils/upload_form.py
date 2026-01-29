@@ -25,6 +25,13 @@ def upload_form():
         suppress_callback_exceptions=True,
     )
 
+    # app.enable_dev_tools(
+    #     debug=True,
+    #     dev_tools_ui=True,
+    #     dev_tools_props_check=True,
+    #     dev_tools_hot_reload=True,
+    # )
+
     # ==== компоненты формы
 
     
@@ -104,6 +111,7 @@ def upload_form():
         prevent_initial_call=True
     )
     def update_output(contents, filename):
+        print('hello')
         if contents is None:
             return (
                 dmc.Alert("Файл не загружен", color="red", title="Ошибка"),
@@ -324,7 +332,7 @@ def upload_form():
     
     @app.callback(
         Output('dummy','data'),
-        Output("alert", "children"),
+        # Output("alert", "children"),
         Input('btn','n_clicks'),
         State('new_manu','data'),
         State('new_items','data'),
@@ -337,7 +345,10 @@ def upload_form():
        
     )
     def upload(nclick,new_manu,new_items,new_agents,new_stores,new_managers,new_brends,new_collection ):
+        print("CALLBACK FIRED, n_clicks =", nclick)
         if nclick:
+            print('hello')
+
             d = {}
             if new_manu:
                 d["ItemManufacturer"] = new_manu
@@ -353,6 +364,8 @@ def upload_form():
                 d["ItemBrend"] = new_brends
             if new_collection:
                 d["ItemCollections"] = new_collection
+                
+            
 
             succsee_list = set_data(d)    
             
@@ -370,9 +383,9 @@ def upload_form():
 
             
              
-            return '',summary_list
+            return summary_list
         else:
-            return '', no_update
+            return no_update
         
         
     

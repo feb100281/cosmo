@@ -56,7 +56,7 @@ FILE_COLUMNS = {
 def set_data(d:dict):
     # if not d:
     #     return
-    
+    print(d)
     sucsess_list = []
     from corporate.models import (
             ItemManufacturer, 
@@ -333,7 +333,35 @@ def set_data(d:dict):
     
     except Exception as e:
         sucsess_list.append(f'{e} Ошибка')
+        
+        
+    def update_barcode():
+        q = """
+        INSERT IGNORE INTO corporate_barcode (barcode)
+        SELECT DISTINCT barcode
+        FROM djangodb._new_sales
+        WHERE barcode IS NOT NULL;       
+        
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(q)
+        
+        q_mtm = """
+        INSERT IGNORE INTO corporate_items_barcode (items_id, barcode_id)
+        SELECT 
+            i.id AS items_id,
+            b.id AS barcode_id
+        FROM _new_sales AS t
+        JOIN corporate_items AS i ON i.fullname = t.fullname
+        JOIN corporate_barcode AS b ON b.barcode = t.barcode;
+        
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(q_mtm)
+            
+        return 'all good'
     
+    update_barcode()
     
     return sucsess_list
 
@@ -355,8 +383,9 @@ class Updater:
         self.new_collection = []
         
     
-    def update_barcode():
-        pass
+    
+            
+    
         
 
     def get_data(self):
@@ -388,7 +417,7 @@ class Updater:
         df["date"] = pd.to_datetime(df["date"], format="%d.%m.%Y")
         df["client_order_date"] = pd.to_datetime(df["client_order_date"], format="%d.%m.%Y")           
         df.to_sql(name='new_sales',con=engine,if_exists='replace')
-        #df.to_sql(name='new_sales_to_drop',con=engine,if_exists='replace')
+        df.to_sql(name='_new_sales',con=engine,if_exists='replace')
         
         
         min_date = pd.to_datetime(df['date'].min())
