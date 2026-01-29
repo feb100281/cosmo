@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SalesData
+from .models import SalesData,MV_Daily_Sales
 
 from django.utils.html import format_html
 from django import forms
@@ -39,6 +39,44 @@ class SalesDataAdmin(admin.ModelAdmin):
         return obj.item
     icon_preview.short_description = 'Наименование'
     
+
+@admin.register(MV_Daily_Sales)
+class MVSalesDailyAdmin(admin.ModelAdmin):
+    list_display = (
+        "date",
+        "amount",         
+        "quant",
+        "orders",
+        "ave_check",
+        "dt",
+        "cr",
+        "rtr_ratio"
+    )
+    search_fields = ("date",)
+    list_filter = ("date", )
+    list_per_page = 25
     
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
     
-admin.site.register(SalesData,SalesDataAdmin)
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+
+        # если тебе не нужен object_id, можно оставить статикой:
+        extra_context["iframe_url"] = f"/apps/app/dailysales_app/?object_id={object_id}"
+
+        # если нужно фильтровать даш по конкретной записи/дате:
+        # extra_context["iframe_url"] = f"/apps/app/dailysales_app/?object_id={object_id}"
+
+        return super().changeform_view(
+            request, object_id, form_url, extra_context=extra_context
+        )
+        
+    
+
+
+
+    
+# admin.site.register(SalesData,SalesDataAdmin)
+
+

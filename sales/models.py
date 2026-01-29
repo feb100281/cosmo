@@ -122,3 +122,28 @@ class SalesData(models.Model):
 
     def __str__(self):
         return f"{self.date} {self.item}"
+    
+
+#MV MODELs
+class MV_Daily_Sales(models.Model):
+    date = models.DateField(primary_key=True,verbose_name='Дата')    
+    amount = models.DecimalField(verbose_name='Выручка',max_digits=12,decimal_places=2,null=True,blank=True)
+    quant = models.DecimalField(verbose_name='Кол-во товаров',max_digits=12,decimal_places=2,null=True,blank=True)
+    orders = models.BigIntegerField(verbose_name='Кол-во заказов',null=True,blank=True)
+    ave_check = models.DecimalField(verbose_name='Ср чек',max_digits=12,decimal_places=2,null=True,blank=True)
+    dt = models.DecimalField(verbose_name='Продажи',max_digits=12,decimal_places=2,null=True,blank=True)
+    cr = models.DecimalField(verbose_name='Возвраты',max_digits=12,decimal_places=2,null=True,blank=True)
+    rtr_ratio = models.DecimalField(verbose_name='К возв. (%)',max_digits=12,decimal_places=2,null=True,blank=True)
+    quant_dt = models.DecimalField(verbose_name='Кол-во продано',max_digits=12,decimal_places=2,null=True,blank=True)
+    quant_cr = models.DecimalField(verbose_name='Кол-во возвращено',max_digits=12,decimal_places=2,null=True,blank=True)
+    
+    class Meta: 
+        managed = False 
+        db_table = "mv_daily_sales"
+        verbose_name = "Дневные продажи"
+        verbose_name_plural = "Дневные продажи"
+        
+       
+    def __str__(self):
+        return self.date.strftime("%d %b-%Y")
+

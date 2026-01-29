@@ -361,7 +361,20 @@ def set_data(d:dict):
             
         return 'all good'
     
+    def refresh_mv_daily_sales():
+        with connection.cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS mv_daily_sales")
+            cursor.execute("""
+                CREATE TABLE mv_daily_sales AS
+                SELECT * FROM daily_sales
+            """)
+            cursor.execute("""
+                ALTER TABLE mv_daily_sales
+                ADD UNIQUE KEY ux_mv_daily_sales_date (`date`)
+            """)
+        
     update_barcode()
+    refresh_mv_daily_sales()
     
     return sucsess_list
 
