@@ -1,0 +1,397 @@
+/* ===== Список админки ===== */
+#changelist-search{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+/* обёртка для позиционирования иконок внутри инпута */
+.admin-search-wrap{
+  position:relative;
+  display:inline-block;
+}
+
+/* поле поиска: место под лупу и крестик */
+#changelist-search input[name="q"]{
+  width:380px;
+  padding-left:30px;  /* под лупу слева */
+  padding-right:30px; /* под крестик справа */
+}
+
+/* скрыть нативный cancel у webkit */
+#changelist-search input[name="q"]::-webkit-search-cancel-button{
+  -webkit-appearance:none;
+  appearance:none;
+}
+
+/* 🔍 лупа слева */
+.admin-search-icon{
+  position:absolute;
+  left:10px;
+  top:50%;
+  transform:translateY(-50%);
+  pointer-events:none;
+  opacity:.85;
+}
+.admin-search-icon svg{
+  stroke:#888;
+  width:16px;
+  height:16px;
+}
+.admin-search-wrap:focus-within .admin-search-icon svg{
+  stroke:#444; /* темнее при фокусе */
+}
+
+/* × крестик справа */
+.admin-clear-btn{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:18px;
+  line-height:1;
+  cursor:pointer;
+  color:#777;
+  user-select:none;
+}
+.admin-clear-btn:hover{ color:#333; }
+
+/* таблица — косметика */
+.change-list table#result_list tbody tr{ height:44px; }
+th.column-logo_preview, td.field-logo_preview{ text-align:center; width:72px; }
+.change-list .results table thead th{ border-bottom-color:#e5e7eb; }
+
+
+
+
+
+
+
+/* ===== Glyph select in admin ===== */
+#id_logo_glyph,
+#id_logo_glyph option {
+  font-family: "NotoManuGlyph", "NotoManu", sans-serif !important;
+  font-size: 18px;
+  font-variant-ligatures: none;
+}
+
+
+
+
+/* ===== Select2 glyph list ===== */
+.glyph2-wrap{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+}
+
+.glyph2-icon{
+  font-family:"NotoManu", sans-serif !important; /* как ты просила — первый */
+  font-size:20px;
+  line-height:1;
+  width:22px;
+  text-align:center;
+  display:inline-block;
+}
+
+.glyph2-label{
+  white-space:nowrap;
+}
+
+/* высота поля select2 в админке */
+.select2-container--default .select2-selection--single{
+  height: 42px;
+  padding-top: 6px;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered{
+  line-height: 28px;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow{
+  height: 40px;
+}
+
+
+
+
+
+/* 1) Чтобы flex-обёртки умели сжиматься (ключевое: min-width:0) */
+.form-row .related-widget-wrapper,
+.inline-group .related-widget-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* 2) Поле внутри должно занимать доступную ширину */
+.related-widget-wrapper > select,
+.related-widget-wrapper > input,
+.related-widget-wrapper > textarea {
+  flex: 1 1 auto;
+  width: 100% !important;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* 3) Select2 (autocomplete_fields) — принудительно во всю ширину */
+.related-widget-wrapper .select2-container {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+
+
+
+
+
+
+
+
+/* === Changelist (список) === */
+.change-list #result_list th,
+.change-list #result_list td {
+  padding: 10px 14px;      /* вернули “воздух” */
+  vertical-align: middle;
+}
+
+/* чтобы заголовки не слипались визуально */
+.change-list #result_list th {
+  white-space: nowrap;
+}
+
+/* лёгкий разделитель между колонками (можно убрать если не нравится) */
+.change-list #result_list th,
+.change-list #result_list td {
+  border-right: 1px solid rgba(148,163,184,.25);
+}
+.change-list #result_list th:last-child,
+.change-list #result_list td:last-child {
+  border-right: none;
+}
+
+/* конкретно валюта — узкая колонка, выровнять и задать ширину */
+.change-list #result_list .column-currency {
+  width: 90px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* балансовый счёт — пусть имеет нормальную ширину */
+.change-list #result_list .column-bs_acc {
+  min-width: 320px;
+}
+
+
+
+
+
+/* ==========================================
+   INLINE "Ставки налога" — стиль "карточки"
+   Работает для tabular inline, визуально как stacked
+   ========================================== */
+
+/* убираем "табличность": границы/вертикальные линии */
+.inline-group .tabular {
+  width: 100%;
+  border: 0;
+  border-collapse: separate;
+  border-spacing: 0 12px; /* расстояние между "карточками" */
+  table-layout: auto;
+}
+
+.inline-group .tabular thead th {
+  border: 0 !important;
+  padding: 0 8px 10px 8px;
+  font-weight: 800;
+  color: rgba(15, 23, 42, .68);
+  letter-spacing: .2px;
+}
+
+/* каждая строка = карточка */
+.inline-group .tabular tbody tr {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .08);
+  overflow: hidden; /* чтобы радиус работал */
+}
+
+/* td без сетки, нормальные паддинги */
+.inline-group .tabular tbody td {
+  border: 0 !important;
+  padding: 14px 14px;
+  vertical-align: middle;
+}
+
+/* лёгкий разделитель внутри карточки (между колонками) */
+.inline-group .tabular tbody td + td {
+  box-shadow: inset 1px 0 0 rgba(148, 163, 184, .22);
+}
+
+/* поля — одинаковые, аккуратные */
+.inline-group .tabular input,
+.inline-group .tabular select {
+  height: 40px;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+/* дата: инпут не огромный */
+.inline-group .tabular input.vDateField {
+  width: 160px;
+}
+
+/* ставка: аккуратнее */
+.inline-group .tabular input[type="number"] {
+  width: 140px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* блок shortcuts ("Сегодня | 📅") сделать компактнее и в одну строку */
+.inline-group .tabular .datetimeshortcuts {
+  white-space: nowrap;
+  margin-left: 10px;
+  opacity: .9;
+}
+
+/* убираем повторяющийся текст-предупреждение (он реально мешает) */
+.inline-group .tabular .help {
+  display: none !important;
+}
+
+/* чекбокс "Удалить?" — по центру, компактный */
+.inline-group .tabular td.delete,
+.inline-group .tabular th.column-DELETE {
+  text-align: center;
+  width: 90px;
+}
+
+.inline-group .tabular td.delete input[type="checkbox"] {
+  transform: scale(1.15);
+}
+
+/* "Текущая" строка — первая, с левой полосой + бейдж */
+.inline-group .tabular tbody tr:first-child {
+  box-shadow:
+    0 10px 28px rgba(15, 23, 42, .10),
+    inset 4px 0 0 rgba(14, 165, 233, .70);
+  background: linear-gradient(0deg, rgba(14,165,233,.06), rgba(14,165,233,.06)), #fff;
+  position: relative;
+}
+
+
+
+.inline-group .tabular tbody tr:first-child td:last-child::after {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(14,165,233,.12);
+  color: rgba(3,105,161,1);
+  border: 1px solid rgba(14,165,233,.25);
+}
+
+/* "Добавить ещё один"  */
+.inline-group .add-row {
+  border: 0 !important;
+  padding-top: 8px;
+  text-align: center;
+  opacity: .8;
+}
+.inline-group .add-row a {
+  font-weight: 700;
+}
+
+
+
+
+
+
+
+
+/* 1) Убираем табличную логику и растягиваем строку инлайна */
+#cfitemauto_set-group .inline-related{
+  width: 100% !important;
+  max-width: none !important;
+}
+
+#cfitemauto_set-group .inline-related fieldset,
+#cfitemauto_set-group .inline-related .module,
+#cfitemauto_set-group .inline-related table{
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* 2) Сама строка инлайна (tr) — делаем блочной и широкой */
+#cfitemauto_set-group tr.form-row{
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* 3) td тоже делаем блочными, чтобы не схлопывались */
+#cfitemauto_set-group tr.form-row > td{
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* 4) Прячем "original" ячейку (она часто ломает сетку) */
+#cfitemauto_set-group td.original{
+  display: none !important;
+}
+
+/* 5) И уже внутри td.field-regex / field-defaultcfdt / field-defaultcfcr
+      строим нормальную сетку */
+#cfitemauto_set-group tr.form-row{
+  display: grid !important;
+  grid-template-columns: minmax(280px, 420px) minmax(420px, 1fr);
+  grid-template-areas:
+    "regex dt"
+    "regex cr"
+    "del   del";
+  gap: 14px 22px;
+  padding: 18px;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,.75);
+}
+
+/* зоны */
+#cfitemauto_set-group td.field-regex{ grid-area: regex; }
+#cfitemauto_set-group td.field-defaultcfdt{ grid-area: dt; }
+#cfitemauto_set-group td.field-defaultcfcr{ grid-area: cr; }
+#cfitemauto_set-group td.delete{ grid-area: del; }
+
+/* 6) Растягиваем инпуты/select2 */
+#cfitemauto_set-group input[type="text"],
+#cfitemauto_set-group select{
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box;
+}
+
+#cfitemauto_set-group .select2-container{
+  width: 100% !important;
+  max-width: none !important;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

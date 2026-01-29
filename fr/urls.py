@@ -16,7 +16,7 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path, re_path
+from django.urls import path, re_path, include
 from dashboard.views import DashProxyView
 
 from django.conf import settings
@@ -29,6 +29,7 @@ urlpatterns = [
     path('', views.landing_page, name='landing'),
     path('go-to-admin/', views.redirect_to_admin, name='go_to_admin'),
     path("admin/", admin.site.urls),
+    path("apps/", include('django_plotly_dash.urls')), #ДЛЯ PLOTLY DASH
     
     path("dashboard/", include("dashboard.urls")),  # ваш прокси-роут для /dashboard/dash/
     # ---- проксируем корневые урлы, которые генерирует Dash (static + служебные) ----

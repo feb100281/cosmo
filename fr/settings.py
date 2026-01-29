@@ -38,6 +38,7 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 50000
 INSTALLED_APPS = [
     "jazzmin",
     'django_mptt_admin', 
+    'django_plotly_dash.apps.DjangoPlotlyDashConfig',    
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
