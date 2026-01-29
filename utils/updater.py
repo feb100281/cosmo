@@ -40,22 +40,23 @@ FILE_COLUMNS = {
     "Группа номенклатуры":'item_cat',
     "Вид номенклатуры":'cat_type',
     "Артикул":'article',
-    "Производитель ":'manufacturer',
+    "Производитель":'manufacturer',
     "ID товара":'im_id_item',
     "Номенклатура":'fullname',
     "Название товара на сайте":'im_name',
     "Характеристика":'characterictic',
     "Количество":'quant',
     "Выручка":'amount',
-    "Номенклатура.Коллекция (Прочие товары с характеристиками)":'collection',
-    "Номенклатура.Производитель":'brend'
+    "Коллекция":'collection',
+    "Марка (бренд)":'brend',
+    "Штрихкод":"barcode"
 }
 
 
 def set_data(d:dict):
     # if not d:
     #     return
-    
+    print(d)
     sucsess_list = []
     from corporate.models import (
             ItemManufacturer, 
@@ -64,7 +65,8 @@ def set_data(d:dict):
             Agents,
             Managers,
             ItemBrend,
-            ItemCollections
+            ItemCollections,
+            Barcode
         )
 
     
@@ -149,6 +151,7 @@ def set_data(d:dict):
             df[col] = None
     
     df.to_sql('temp_sales',index=False,con=engine,if_exists='replace')
+    df.to_sql('_temp_sales',index=False,con=engine,if_exists='replace')
     del df
 
     q = """
@@ -330,7 +333,35 @@ def set_data(d:dict):
     
     except Exception as e:
         sucsess_list.append(f'{e} Ошибка')
+        
+        
+    def update_barcode():
+        q = """
+        INSERT IGNORE INTO corporate_barcode (barcode)
+        SELECT DISTINCT barcode
+        FROM djangodb._new_sales
+        WHERE barcode IS NOT NULL;       
+        
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(q)
+        
+        q_mtm = """
+        INSERT IGNORE INTO corporate_items_barcode (items_id, barcode_id)
+        SELECT 
+            i.id AS items_id,
+            b.id AS barcode_id
+        FROM _new_sales AS t
+        JOIN corporate_items AS i ON i.fullname = t.fullname
+        JOIN corporate_barcode AS b ON b.barcode = t.barcode;
+        
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(q_mtm)
+            
+        return 'all good'
     
+    update_barcode()
     
     return sucsess_list
 
@@ -351,7 +382,10 @@ class Updater:
         self.new_brends = []
         self.new_collection = []
         
-        
+    
+    
+            
+    
         
 
     def get_data(self):
@@ -362,25 +396,28 @@ class Updater:
             Agents,
             Managers,
             ItemBrend,
-            ItemCollections
+            ItemCollections,
+            Barcode
         )
 
-        df = pd.read_excel(self.file, skiprows=3, skipfooter=1)
+        df = pd.read_excel(self.file, skiprows=0, skipfooter=1)
         
         
-        df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
+        mask = df.columns.astype(str).str.startswith("Unnamed")
+        df = df.loc[:, ~mask]
                 
         df['Номер Заказа клиента'] = df['Номер Заказа клиента'].fillna(df['Регистратор'])
         df.drop(columns=['Регистратор'], inplace=True)
         
         
         df = df.rename(columns=FILE_COLUMNS)
+        
         df["fullname"] = df.fullname.str.strip()
         df['store_name'] = df['store_name'].str.strip()
         df["date"] = pd.to_datetime(df["date"], format="%d.%m.%Y")
         df["client_order_date"] = pd.to_datetime(df["client_order_date"], format="%d.%m.%Y")           
         df.to_sql(name='new_sales',con=engine,if_exists='replace')
-        #df.to_sql(name='new_sales_to_drop',con=engine,if_exists='replace')
+        df.to_sql(name='_new_sales',con=engine,if_exists='replace')
         
         
         min_date = pd.to_datetime(df['date'].min())
@@ -438,6 +475,8 @@ class Updater:
         if len(new_collection) > 0:
             self.log["Новые колеекции"] = len(new_collection) 
         self.new_collection = new_collection
+        
+        
         
         
         

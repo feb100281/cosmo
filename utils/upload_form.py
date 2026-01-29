@@ -3,7 +3,7 @@ import io
 import pandas as pd
 import numpy as np
 import dash
-from dash import dcc, html, Input, Output, State, _dash_renderer, clientside_callback
+from dash import dcc, html, Input, Output, State, _dash_renderer, clientside_callback,no_update
 import dash_ag_grid as dag
 import dash_mantine_components as dmc
 import plotly.express as px
@@ -24,6 +24,13 @@ def upload_form():
         external_stylesheets=dmc.styles.ALL,
         suppress_callback_exceptions=True,
     )
+
+    # app.enable_dev_tools(
+    #     debug=True,
+    #     dev_tools_ui=True,
+    #     dev_tools_props_check=True,
+    #     dev_tools_hot_reload=True,
+    # )
 
     # ==== компоненты формы
 
@@ -104,215 +111,228 @@ def upload_form():
         prevent_initial_call=True
     )
     def update_output(contents, filename):
+        print('hello')
         if contents is None:
-            return dmc.Alert("Файл не загружен", color="red", title="Ошибка")
-
-        try:
-            # достаем base64
-            content_type, content_string = contents.split(",")
-            decoded = base64.b64decode(content_string)
-            file_obj = io.BytesIO(decoded)
-
-            # обработка через Updater
-            updater = Updater(file_obj)
-
-           
-            df = updater.get_data()
-            df_new_manu = df[df["manufacturer"].isin(updater.new_manufactures)]
-            if not df_new_manu.empty:
-                df_new_manu = (
-                    df_new_manu.pivot_table(
-                        index="manufacturer",
-                        values=["date", "client_order_date"],
-                        aggfunc="min",
-                    )
-                    .sort_values(by="date")
-                    .reset_index()
-                )
-
-            df_new_stores = df[df["store_name"].isin(updater.new_stores)]
-            if not df_new_stores.empty:
-                df_new_stores = (
-                    df_new_stores.pivot_table(
-                        index="store_name",
-                        values=["date", "client_order_date"],
-                        aggfunc="min",
-                    )
-                    .sort_values(by="date")
-                    .reset_index()
-                )
-
-            df_new_items = df[df["fullname"].isin(updater.new_itemes)]
-            if not df_new_items.empty:
-                df_new_items = (
-                    df_new_items.pivot_table(
-                        index=["fullname"],
-                        values=["date", "client_order_date"],
-                        aggfunc="min",
-                    )
-                    .sort_values(by="date")
-                    .reset_index()
-                )
-
-            df_new_managers = df[df["manager"].isin(updater.new_managers)]
-            if not df_new_managers.empty:
-                df_new_managers = (
-                    df_new_managers.pivot_table(
-                        index=["manager"],
-                        values=["date", "client_order_date"],
-                        aggfunc="min",
-                    )
-                    .sort_values(by="date")
-                    .reset_index()
-                )
-
-            df_new_agents = df[df["agent"].isin(updater.new_agents)]
-            if not df_new_agents.empty:
-                df_new_agents = (
-                    df_new_agents.pivot_table(
-                        index=["agent"],
-                        values=["date", "client_order_date"],
-                        aggfunc="min",
-                    )
-                    .sort_values(by="date")
-                    .reset_index()
-                )
-            
-            df_new_brends = df[df["brend"].isin(updater.new_brends)]
-            if not df_new_brends.empty:
-                df_new_brends = (
-                    df_new_brends.pivot_table(
-                        index=["brend"],
-                        values=["date", "client_order_date"],
-                        aggfunc="min",
-                    )
-                    .sort_values(by="date")
-                    .reset_index()
-                )
-            
-            df_new_collections = df[df["collection"].isin(updater.new_collection)]
-            if not df_new_collections.empty:
-                df_new_collections = (
-                    df_new_collections.pivot_table(
-                        index=["collection"],
-                        values=["date", "client_order_date"],
-                        aggfunc="min",
-                    )
-                    .sort_values(by="date")
-                    .reset_index()
-                )
-
-            summary_list = dmc.List(
-                icon=dmc.ThemeIcon(
-                    DashIconify(icon="radix-icons:check-circled", width=16),
-                    radius="xl",
-                    color="teal",
-                    size=24,
-                ),
-                size="sm",
-                spacing="sm",
-                children=[dmc.ListItem(f"{k}: {v}") for k, v in updater.log.items()],
-            )
-
-            details = dmc.Tabs(
-                color="teal",
-                value="manu",
-                children=[
-                    dmc.TabsList(
-                        children=[
-                            dmc.TabsTab("Новые производители", value="manu"),
-                            dmc.TabsTab(
-                                "Новые подраздения", value="stores", color="blue"
-                            ),
-                            dmc.TabsTab(
-                                "Новые номенклатуры", value="items", color="blue"
-                            ),
-                            dmc.TabsTab(
-                                "Новые менеджеры", value="managers", color="blue"
-                            ),
-                            dmc.TabsTab("Новые агенты", value="agents", color="blue"
-                            ),
-                            dmc.TabsTab("Новые бренды", value="brends", color="blue"
-                            ),
-                            dmc.TabsTab("Новые колеекции", value="collections", color="blue"
-                            )
-                            
-                        ]
-                    ),
-                    dmc.TabsPanel(
-                        children=dmc.ScrollArea(
-                            html.Pre(df_new_manu.to_string()), h=200
-                        ),
-                        value="manu",
-                        pt="xs",
-                    ),
-                    dmc.TabsPanel(
-                        children=dmc.ScrollArea(
-                            html.Pre(df_new_stores.to_string()), h=200
-                        ),
-                        value="stores",
-                        pt="xs",
-                    ),
-                    dmc.TabsPanel(
-                        children=dmc.ScrollArea(
-                            html.Pre(df_new_items.to_string()), h=200
-                        ),
-                        value="items",
-                        pt="xs",
-                    ),
-                    dmc.TabsPanel(
-                        children=dmc.ScrollArea(
-                            html.Pre(df_new_managers.to_string()), h=200
-                        ),
-                        value="managers",
-                        pt="xs",
-                    ),
-                    dmc.TabsPanel(
-                        children=dmc.ScrollArea(
-                            html.Pre(df_new_agents.to_string()), h=200
-                        ),
-                        value="agents",
-                        pt="xs",
-                    ),
-                    dmc.TabsPanel(
-                        children=dmc.ScrollArea(
-                            html.Pre(df_new_brends.to_string()), h=200
-                        ),
-                        value="brends",
-                        pt="xs",
-                    ),
-                    dmc.TabsPanel(
-                        children=dmc.ScrollArea(
-                            html.Pre(df_new_collections.to_string()), h=200
-                        ),
-                        value="collections",
-                        pt="xs",
-                    ),
-                ],
-            )
-            # формируем красивый вывод
             return (
-                dmc.Stack(
-                    [
-                        dmc.Alert(f"Файл {filename} успешно загружен", color="green",id='alert'),
-                        summary_list,
-                        details,
-                        # dmc.ScrollArea(
-                        #     html.Pre(df.head().to_string()),
-                        #     h=200
-                        # )
+                dmc.Alert("Файл не загружен", color="red", title="Ошибка"),
+                True,                 # btn.disabled
+                no_update, no_update, no_update, no_update, no_update, no_update, no_update
+            )
+
+        # try:
+        # достаем base64
+        content_type, content_string = contents.split(",")
+        decoded = base64.b64decode(content_string)
+        file_obj = io.BytesIO(decoded)
+
+        # обработка через Updater
+        updater = Updater(file_obj)
+
+        
+        df = updater.get_data()
+        # print(df)
+        df_new_manu = df[df["manufacturer"].isin(updater.new_manufactures)]
+        if not df_new_manu.empty:
+            df_new_manu = (
+                df_new_manu.pivot_table(
+                    index="manufacturer",
+                    values=["date", "client_order_date"],
+                    aggfunc="min",
+                )
+                .sort_values(by="date")
+                .reset_index()
+            )
+
+        df_new_stores = df[df["store_name"].isin(updater.new_stores)]
+        if not df_new_stores.empty:
+            df_new_stores = (
+                df_new_stores.pivot_table(
+                    index="store_name",
+                    values=["date", "client_order_date"],
+                    aggfunc="min",
+                )
+                .sort_values(by="date")
+                .reset_index()
+            )
+
+        df_new_items = df[df["fullname"].isin(updater.new_itemes)]
+        if not df_new_items.empty:
+            df_new_items = (
+                df_new_items.pivot_table(
+                    index=["fullname"],
+                    values=["date", "client_order_date"],
+                    aggfunc="min",
+                )
+                .sort_values(by="date")
+                .reset_index()
+            )
+
+        df_new_managers = df[df["manager"].isin(updater.new_managers)]
+        if not df_new_managers.empty:
+            df_new_managers = (
+                df_new_managers.pivot_table(
+                    index=["manager"],
+                    values=["date", "client_order_date"],
+                    aggfunc="min",
+                )
+                .sort_values(by="date")
+                .reset_index()
+            )
+
+        df_new_agents = df[df["agent"].isin(updater.new_agents)]
+        if not df_new_agents.empty:
+            df_new_agents = (
+                df_new_agents.pivot_table(
+                    index=["agent"],
+                    values=["date", "client_order_date"],
+                    aggfunc="min",
+                )
+                .sort_values(by="date")
+                .reset_index()
+            )
+        
+        df_new_brends = df[df["brend"].isin(updater.new_brends)]
+        if not df_new_brends.empty:
+            df_new_brends = (
+                df_new_brends.pivot_table(
+                    index=["brend"],
+                    values=["date", "client_order_date"],
+                    aggfunc="min",
+                )
+                .sort_values(by="date")
+                .reset_index()
+            )
+        
+        df_new_collections = df[df["collection"].isin(updater.new_collection)]
+        if not df_new_collections.empty:
+            df_new_collections = (
+                df_new_collections.pivot_table(
+                    index=["collection"],
+                    values=["date", "client_order_date"],
+                    aggfunc="min",
+                )
+                .sort_values(by="date")
+                .reset_index()
+            )
+
+        summary_list = dmc.List(
+            icon=dmc.ThemeIcon(
+                DashIconify(icon="radix-icons:check-circled", width=16),
+                radius="xl",
+                color="teal",
+                size=24,
+            ),
+            size="sm",
+            spacing="sm",
+            children=[dmc.ListItem(f"{k}: {v}") for k, v in updater.log.items()],
+        )
+
+        details = dmc.Tabs(
+            color="teal",
+            value="manu",
+            children=[
+                dmc.TabsList(
+                    children=[
+                        dmc.TabsTab("Новые производители", value="manu"),
+                        dmc.TabsTab(
+                            "Новые подраздения", value="stores", color="blue"
+                        ),
+                        dmc.TabsTab(
+                            "Новые номенклатуры", value="items", color="blue"
+                        ),
+                        dmc.TabsTab(
+                            "Новые менеджеры", value="managers", color="blue"
+                        ),
+                        dmc.TabsTab("Новые агенты", value="agents", color="blue"
+                        ),
+                        dmc.TabsTab("Новые бренды", value="brends", color="blue"
+                        ),
+                        dmc.TabsTab("Новые колеекции", value="collections", color="blue"
+                        )
+                        
                     ]
                 ),
-               
-            ), False, updater.new_manufactures, updater.new_managers, updater.new_agents, updater.new_itemes, updater.new_stores, updater.new_brends, updater.new_collection 
-            
-        except Exception as e:
-            return dmc.Alert(str(e), color="red", title="Ошибка")
+                dmc.TabsPanel(
+                    children=dmc.ScrollArea(
+                        html.Pre(df_new_manu.to_string()), h=200
+                    ),
+                    value="manu",
+                    pt="xs",
+                ),
+                dmc.TabsPanel(
+                    children=dmc.ScrollArea(
+                        html.Pre(df_new_stores.to_string()), h=200
+                    ),
+                    value="stores",
+                    pt="xs",
+                ),
+                dmc.TabsPanel(
+                    children=dmc.ScrollArea(
+                        html.Pre(df_new_items.to_string()), h=200
+                    ),
+                    value="items",
+                    pt="xs",
+                ),
+                dmc.TabsPanel(
+                    children=dmc.ScrollArea(
+                        html.Pre(df_new_managers.to_string()), h=200
+                    ),
+                    value="managers",
+                    pt="xs",
+                ),
+                dmc.TabsPanel(
+                    children=dmc.ScrollArea(
+                        html.Pre(df_new_agents.to_string()), h=200
+                    ),
+                    value="agents",
+                    pt="xs",
+                ),
+                dmc.TabsPanel(
+                    children=dmc.ScrollArea(
+                        html.Pre(df_new_brends.to_string()), h=200
+                    ),
+                    value="brends",
+                    pt="xs",
+                ),
+                dmc.TabsPanel(
+                    children=dmc.ScrollArea(
+                        html.Pre(df_new_collections.to_string()), h=200
+                    ),
+                    value="collections",
+                    pt="xs",
+                ),
+            ],
+        )
+        # формируем красивый вывод
+        return (
+            dmc.Stack(
+                [
+                    dmc.Alert(f"Файл {filename} успешно загружен", color="green"),
+                    summary_list,
+                    details,
+                ]
+            ),
+            False,
+            updater.new_manufactures,
+            updater.new_managers,
+            updater.new_agents,
+            updater.new_itemes,
+            updater.new_stores,
+            updater.new_brends,
+            updater.new_collection,
+        )
+
+        # except Exception as e:
+        #     return (
+        #         dmc.Alert(str(e), color="red", title="Ошибка"),
+        #         True,
+        #         no_update, no_update, no_update, no_update, no_update, no_update, no_update
+        #     )
 
     
     @app.callback(
         Output('dummy','data'),
-        Output("alert", "children"),
+        # Output("alert", "children"),
         Input('btn','n_clicks'),
         State('new_manu','data'),
         State('new_items','data'),
@@ -325,7 +345,10 @@ def upload_form():
        
     )
     def upload(nclick,new_manu,new_items,new_agents,new_stores,new_managers,new_brends,new_collection ):
+        print("CALLBACK FIRED, n_clicks =", nclick)
         if nclick:
+            print('hello')
+
             d = {}
             if new_manu:
                 d["ItemManufacturer"] = new_manu
@@ -341,6 +364,8 @@ def upload_form():
                 d["ItemBrend"] = new_brends
             if new_collection:
                 d["ItemCollections"] = new_collection
+                
+            
 
             succsee_list = set_data(d)    
             
@@ -358,9 +383,9 @@ def upload_form():
 
             
              
-            return '',summary_list
+            return summary_list
         else:
-            return ''
+            return no_update
         
         
     
