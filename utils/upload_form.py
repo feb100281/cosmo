@@ -25,12 +25,12 @@ def upload_form():
         suppress_callback_exceptions=True,
     )
 
-    # app.enable_dev_tools(
-    #     debug=True,
-    #     dev_tools_ui=True,
-    #     dev_tools_props_check=True,
-    #     dev_tools_hot_reload=True,
-    # )
+    app.enable_dev_tools(
+        debug=True,
+        dev_tools_ui=True,
+        dev_tools_props_check=True,
+        dev_tools_hot_reload=True,
+    )
 
     # ==== компоненты формы
 
@@ -110,7 +110,7 @@ def upload_form():
         State("upload-data", "filename"),
         prevent_initial_call=True
     )
-    def update_output(contents, filename):
+    def update_output(contents, filename,background_callback_manager=None, **kwargs):
         print('hello')
         if contents is None:
             return (
@@ -344,7 +344,7 @@ def upload_form():
         prevent_initial_call=True   
        
     )
-    def upload(nclick,new_manu,new_items,new_agents,new_stores,new_managers,new_brends,new_collection ):
+    def upload(nclick,new_manu,new_items,new_agents,new_stores,new_managers,new_brends,new_collection, background_callback_manager=None, **kwargs ):
         print("CALLBACK FIRED, n_clicks =", nclick)
         if nclick:
             print('hello')
