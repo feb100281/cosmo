@@ -1,5 +1,5 @@
 from django.db import models
-from corporate.models import Items, Stores, Managers, Agents
+from corporate.models import Items, Stores, Managers, Agents,Barcode
 from utils.choices import OPERATION_TYPES
 
 
@@ -115,6 +115,10 @@ class SalesData(models.Model):
         null=True,
         blank=True,
     )
+    barcode = models.ForeignKey(
+        Barcode, on_delete=models.CASCADE, verbose_name="Баркод", null=True, blank=True
+    )
+    
 
     class Meta:
         verbose_name = "Данные продаж"
