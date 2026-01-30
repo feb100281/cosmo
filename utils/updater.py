@@ -234,6 +234,35 @@ def set_data(d:dict):
     SELECT item_id, itemcollections_id
     FROM temp_sales;
     """
+    def update_barcode():
+        q = """
+        INSERT IGNORE INTO corporate_barcode (barcode)
+        SELECT DISTINCT barcode
+        FROM djangodb._new_sales
+        WHERE barcode IS NOT NULL;       
+        
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(q)
+        
+        q_mtm = """
+        INSERT IGNORE INTO corporate_items_barcode (items_id, barcode_id)
+        SELECT 
+            i.id AS items_id,
+            b.id AS barcode_id
+        FROM _new_sales AS t
+        JOIN corporate_items AS i ON i.fullname = t.fullname
+        JOIN corporate_barcode AS b ON b.barcode = t.barcode;
+        
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(q_mtm)
+            
+        return 'all good'
+    
+    update_barcode()
+    
+    
     
     try:
     
@@ -245,7 +274,7 @@ def set_data(d:dict):
         sucsess_list.append(f'{e} Ошибка')
     
     q_new_sales = """
-    SELECT 
+    SELECT
         date,
         case when amount > 0 then 'Sales' else 'Return' end as operation,
         case when amount > 0 then amount end as dt,
@@ -260,12 +289,15 @@ def set_data(d:dict):
         client_order_number as client_order_number,
         m.id as manager_id,
         warehouse,
+        b.id as barcode_id,
         characterictic as spec
         FROM new_sales
         left join corporate_items as i on i.fullname = new_sales.fullname
         left join corporate_stores as s on s.name = new_sales.store_name
         left join corporate_agents as a on a.name = new_sales.agent
         left join corporate_managers as m on m.name = new_sales.manager
+        left join corporate_barcode as b on b.barcode = new_sales.barcode
+        
     
     """
     df = pd.read_sql(q_new_sales,con=engine)
@@ -304,6 +336,7 @@ def set_data(d:dict):
         client_order_number,
         manager_id,
         warehouse,
+        barcode_id,
         spec
         )
         SELECT
@@ -321,6 +354,7 @@ def set_data(d:dict):
         client_order_number,
         manager_id,
         warehouse,
+        barcode_id,
         spec
         FROM new_sales       
     """
@@ -335,31 +369,7 @@ def set_data(d:dict):
         sucsess_list.append(f'{e} Ошибка')
         
         
-    def update_barcode():
-        q = """
-        INSERT IGNORE INTO corporate_barcode (barcode)
-        SELECT DISTINCT barcode
-        FROM djangodb._new_sales
-        WHERE barcode IS NOT NULL;       
-        
-        """
-        with connection.cursor() as cursor:
-            cursor.execute(q)
-        
-        q_mtm = """
-        INSERT IGNORE INTO corporate_items_barcode (items_id, barcode_id)
-        SELECT 
-            i.id AS items_id,
-            b.id AS barcode_id
-        FROM _new_sales AS t
-        JOIN corporate_items AS i ON i.fullname = t.fullname
-        JOIN corporate_barcode AS b ON b.barcode = t.barcode;
-        
-        """
-        with connection.cursor() as cursor:
-            cursor.execute(q_mtm)
-            
-        return 'all good'
+    
     
     def refresh_mv_daily_sales():
         with connection.cursor() as cursor:
@@ -373,7 +383,6 @@ def set_data(d:dict):
                 ADD UNIQUE KEY ux_mv_daily_sales_date (`date`)
             """)
         
-    update_barcode()
     refresh_mv_daily_sales()
     
     return sucsess_list
