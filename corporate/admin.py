@@ -22,10 +22,12 @@ from django.shortcuts import render, redirect
 from django.urls import path
 
 
-# Register your models here.
+
 
 class AssignCategoryForm(forms.Form):
     category = forms.ModelChoiceField(queryset=CatTree.objects.all(), label="Категория")
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
 
 class CatTreeForm(forms.ModelForm):
     class Meta:
@@ -34,6 +36,8 @@ class CatTreeForm(forms.ModelForm):
         widgets = {
             'icon': forms.Textarea(attrs={'rows': 4, 'style': 'font-family: monospace;'}),
         }
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
 
 
 class ItemsAdminForm(forms.ModelForm):
@@ -59,6 +63,8 @@ class ItemsAdminForm(forms.ModelForm):
                 self.fields['subcat'].queryset = SubCategory.objects.filter(category=cat)
             else:
                 self.fields['subcat'].queryset = SubCategory.objects.none()
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
 
 
 
@@ -74,11 +80,15 @@ class ItemsInline(admin.TabularInline):
         return obj.subcat.name if obj.subcat else "-"
     
     item_subcat.short_description = "Подкатегория"
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
 
 
 
 class StoreAdmin(admin.ModelAdmin):
     list_display = ('name','gr','chanel',)
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
 
 class StoreGroupAdmin(admin.ModelAdmin):
     list_display = ('name', 'region','logo_preview')
@@ -87,6 +97,9 @@ class StoreGroupAdmin(admin.ModelAdmin):
             return format_html('<img src="{}" style="height: 25px;" />', obj.pict.url)
         return "-"
     logo_preview.short_description = "Логотип"
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
+
 
 class SubCatAdmin(admin.ModelAdmin):
     list_display = ('name','category','icon_preview',)
@@ -96,6 +109,8 @@ class SubCatAdmin(admin.ModelAdmin):
         if obj.icon and obj.icon.strip().startswith('<svg'):
             return format_html('{}', mark_safe(obj.icon))
         return "-"
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
 
 class CatTreeAdmin(DraggableMPTTAdmin):
     mptt_indent_field = "name"
@@ -108,6 +123,8 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         if obj.icon and obj.icon.strip().startswith('<svg'):
             return format_html('{}', mark_safe(obj.icon))
         return "-"
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
     
 
 class ItemsAdmin(admin.ModelAdmin):
@@ -167,6 +184,9 @@ class ItemsAdmin(admin.ModelAdmin):
             path('assign-category/', self.admin_site.admin_view(self.assign_category))
         ]
         return custom_urls + urls
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
+
 
 admin.site.register(Companies)
 admin.site.register(Projects)

@@ -79,4 +79,6 @@ def get_ytd_data(date):
         rows = cur.fetchall()
         cols = [c[0] for c in cur.description]
     return pd.DataFrame(rows, columns=cols)
-    
+
+
+
