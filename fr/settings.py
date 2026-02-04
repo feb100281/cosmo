@@ -266,6 +266,10 @@ DATABASES = {
         "PORT": os.getenv('DB_PORT', '3306'),  # Порт для MySQL
         'OPTIONS': {
             'charset': 'utf8mb4',
+            # ⏱ таймауты соединения и выполнения запросов
+            "connect_timeout": 60,     # соединиться с БД
+            "read_timeout": 300,       # ждать результат SELECT
+            "write_timeout": 300,      # ждать INSERT/UPDATE
         },
     }
 }
