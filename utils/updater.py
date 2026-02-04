@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 import pymysql
 from django.conf import settings
 from django.db import connection
+from django.db import transaction
 
 db_settings = settings.DATABASES["default"]
 
@@ -211,12 +212,22 @@ def set_data(d:dict):
             onec_subcat = VALUES(onec_subcat);
     """
     
+    # try:
+    
+    #     with connection.cursor() as cursor:
+    #         cursor.execute(q_insert)
+    #     sucsess_list.append('Новые наменклатуры загружены в базу данных')
+    
+    # except Exception as e:
+    #     sucsess_list.append(f'{e} Ошибка')
+    
+    
     try:
-    
-        with connection.cursor() as cursor:
-            cursor.execute(q_insert)
-        sucsess_list.append('Новые наменклатуры загружены в базу данных')
-    
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(q_insert)
+        sucsess_list.append('Новые номенклатуры загружены в базу данных')
+
     except Exception as e:
         sucsess_list.append(f'{e} Ошибка')
     
@@ -265,10 +276,11 @@ def set_data(d:dict):
     
     
     try:
+        with transaction.atomic():
     
-        with connection.cursor() as cursor:
-            cursor.execute(q_m2m_insert)
-        sucsess_list.append('Kолекции обновлены')
+            with connection.cursor() as cursor:
+                cursor.execute(q_m2m_insert)
+            sucsess_list.append('Kолекции обновлены')
     
     except Exception as e:
         sucsess_list.append(f'{e} Ошибка')
@@ -360,10 +372,11 @@ def set_data(d:dict):
     """
     
     try:
+        with transaction.atomic():
     
-        with connection.cursor() as cursor:
-            cursor.execute(insert_sales)
-        sucsess_list.append('Продажи обновлены')
+            with connection.cursor() as cursor:
+                cursor.execute(insert_sales)
+            sucsess_list.append('Продажи обновлены')
     
     except Exception as e:
         sucsess_list.append(f'{e} Ошибка')
