@@ -11,7 +11,7 @@ def get_month_data(date):
     d = pd.to_datetime(date).date()
 
     ms = d.replace(day=1)
-    me_excl = d #+ timedelta(days=1)          # включительно по d
+    me_excl = d + timedelta(days=1)          # включительно по d
 
     ms_prev = ms - relativedelta(years=1)
     me_prev_excl = me_excl - relativedelta(years=1)
@@ -38,7 +38,7 @@ def get_ytd_data(date):
     d = pd.to_datetime(date).date()
 
     ms = d.replace(month=1, day=1)
-    me_excl = d # + timedelta(days=1)
+    me_excl = d  + timedelta(days=1)
 
     ms_prev = ms - relativedelta(years=1)
     me_prev_excl = me_excl - relativedelta(years=1)
