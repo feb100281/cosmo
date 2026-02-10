@@ -1,16 +1,33 @@
-<div class="toc">
-  <a href="#kpi">I. Итоги периода (KPI)</a>
+<div class="toc" aria-label="Содержание отчёта">
+  <div class="toc-title">Содержание</div>
 
-  <a href="#totals">II. Накопленные итоги</a>
-  <div class="toc-sub">
-    {% if report_type != "monthly" %}
-      <a href="#totals-mtd">II.1 MTD (месяц, к прошлому году)</a>
-    {% endif %}
-    <a href="#totals-ytd">II.2 YTD (год, к прошлому году)</a>
-  </div>
+  <nav class="toc-list">
+    <a class="toc-item" href="#kpi">
+      <span class="toc-text">I. Итоги периода (KPI)</span>
+    </a>
 
-  <a href="#stores">III. Структура продаж по магазинам</a>
+    <a class="toc-item" href="#totals">
+      <span class="toc-text">II. Накопленные итоги</span>
+    </a>
+
+    <div class="toc-sub">
+      {% if report_type != "monthly" %}
+        <a class="toc-item toc-item--sub" href="#totals-mtd">
+          <span class="toc-text">II.1 MTD (месяц, к прошлому году)</span>
+        </a>
+      {% endif %}
+
+      <a class="toc-item toc-item--sub" href="#totals-ytd">
+        <span class="toc-text">II.2 YTD (год, к прошлому году)</span>
+      </a>
+    </div>
+
+    <a class="toc-item" href="#stores">
+      <span class="toc-text">III. Структура продаж по магазинам</span>
+    </a>
+  </nav>
 </div>
+
 
 
 

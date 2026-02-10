@@ -61,17 +61,28 @@ def fmt_pp(pct, digits: int = 1) -> str:
     return f"{s}%"
 
 
+# def fmt_delta_money(v):
+#     if v is None:
+#         return "—"
+#     sign = "+" if v > 0 else "−" if v < 0 else ""
+#     return f"{sign}{fmt_money(abs(v))}"
+
 def fmt_delta_money(v):
     if v is None:
         return "—"
-    sign = "+" if v > 0 else "−" if v < 0 else ""
-    return f"{sign}{fmt_money(abs(v))}"
+    return fmt_money(abs(v))
+
+
+# def fmt_delta_int(v):
+#     if v is None:
+#         return "—"
+#     sign = "+" if v > 0 else "−" if v < 0 else ""
+#     return f"{sign}{fmt_int(abs(v))}"
 
 def fmt_delta_int(v):
     if v is None:
         return "—"
-    sign = "+" if v > 0 else "−" if v < 0 else ""
-    return f"{sign}{fmt_int(abs(v))}"
+    return fmt_int(abs(v))
 
 def fmt_delta_pct(v, digits=1):
     if v is None:
