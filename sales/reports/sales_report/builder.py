@@ -1,0 +1,509 @@
+# sales/reports/sales_report/builder.py
+from datetime import date
+
+from sales.models import MV_Daily_Sales
+from sales.dash_apps.dailysales.data import get_month_data, get_ytd_data
+from sales.print_utils import build_mtd_table, build_ytd_table
+
+from .charts import build_charts
+from .insights import build_insights
+from .period import classify_report, format_period, report_number
+from .summary import build_summary
+
+from .ranges import period_range, prev_period_range
+from .trends import trend_ranges, trend_meta
+from .kpi import build_kpi_for_range
+
+from .stores import get_store_sales_for_range
+from .store_chart import build_store_amount_bar_svg
+from .store_logos import attach_store_logos
+from .trend_chart import build_trend_chart_svg
+
+from .formatters import (
+    fmt_money,
+    fmt_int,
+    fmt_pct,
+    fmt_delta_money,
+    fmt_delta_pct,
+)
+
+
+# def build_daily_sales_report_context(d: date, request=None) -> dict:
+#     # объект дня (может быть нужен для insights/секций, но KPI теперь не из него)
+#     obj = MV_Daily_Sales.objects.get(pk=d)
+
+#     # тип отчёта + период (строки для обложки)
+#     rtype = classify_report(d)
+#     period = format_period(d, rtype)
+
+#     # диапазон дат для KPI (итог за период)
+#     period_start, period_end = period_range(d, rtype)
+#     kpi = build_kpi_for_range(period_start, period_end)
+    
+    
+#     trend = []
+#     for s, e, label in trend_ranges(rtype, d, points=12):
+#         k = build_kpi_for_range(s, e)
+#         trend.append({
+#             "label": label,
+#             "amount": k.get("amount") or 0,
+#             "dt": k.get("dt") or 0,
+#             "orders": k.get("orders") or 0,
+#             "cr": k.get("cr") or 0,
+#             "ave_check": k.get("ave_check") or 0,
+#         })
+
+
+
+#     # продажи по магазинам за период (RAW)
+#     store_rows_raw = get_store_sales_for_range(period_start, period_end)
+    
+
+#     # предыдущий период для сравнения (RAW)
+#     prev_start, prev_end = prev_period_range(period_start, period_end, rtype)
+#     store_prev_raw = get_store_sales_for_range(prev_start, prev_end)
+
+#     # индекс прошлого периода по store_id
+#     prev_map = {r["store_id"]: r for r in store_prev_raw}
+    
+#     # ✅ данные для графика: current vs prev (amount)
+#     store_rows_chart = []
+#     for r in store_rows_raw:
+#         p = prev_map.get(r["store_id"])
+#         store_rows_chart.append({
+#             "store": r["store"],
+#             "amount": r.get("amount") or 0,
+#             "prev_amount": (p.get("amount") if p else 0) or 0,
+#         })
+
+
+#     # ✅ график (SVG) по магазинам (TOP-12 по чистой выручке)
+#     store_chart_svg = build_store_amount_bar_svg(
+#         store_rows_chart,
+#         title="Чистая выручка по магазинам (было / стало)",
+#     )
+
+
+#     def _delta(curr, prev):
+#         if prev is None:
+#             return None
+#         return (curr or 0) - (prev or 0)
+
+#     def _delta_pct(curr, prev):
+#         if prev in (None, 0):
+#             return None
+#         return ((curr or 0) - prev) / prev * 100
+
+#     def _dir(v):
+#         if v is None:
+#             return "na"
+#         if v > 0:
+#             return "up"
+#         if v < 0:
+#             return "down"
+#         return "flat"
+
+#     # ✅ ИТОГО (по текущему периоду)
+#     total_dt = 0
+#     total_cr = 0
+#     total_amount = 0
+#     total_quant = 0
+#     total_orders = 0
+
+#     for r in store_rows_raw:
+#         total_dt += r.get("dt") or 0
+#         total_cr += r.get("cr") or 0
+#         total_amount += r.get("amount") or 0
+#         total_quant += r.get("quant") or 0
+#         total_orders += r.get("orders") or 0
+
+#     total_ave_check = (total_amount / total_orders) if total_orders else None
+#     total_rtr_ratio = (total_cr / total_dt) if total_dt else None
+
+#     # форматируем строки магазинов + дельты к прошлому периоду
+#     store_rows = []
+#     for r in store_rows_raw:
+#         p = prev_map.get(r["store_id"])
+
+#         # дельты (RAW)
+#         d_amount = _delta(r.get("amount"), p.get("amount") if p else None)
+#         d_amount_pct = _delta_pct(r.get("amount"), p.get("amount") if p else None)
+
+#         d_dt = _delta(r.get("dt"), p.get("dt") if p else None)
+#         d_dt_pct = _delta_pct(r.get("dt"), p.get("dt") if p else None)
+
+#         d_orders = _delta(r.get("orders"), p.get("orders") if p else None)
+#         d_orders_pct = _delta_pct(r.get("orders"), p.get("orders") if p else None)
+
+#         d_ave = _delta(r.get("ave_check"), p.get("ave_check") if p else None)
+#         d_ave_pct = _delta_pct(r.get("ave_check"), p.get("ave_check") if p else None)
+
+#         # ⚠ возвраты: рост — плохо (для стрелок/цвета можно инвертировать)
+#         d_cr = _delta(r.get("cr"), p.get("cr") if p else None)
+#         d_cr_pct = _delta_pct(r.get("cr"), p.get("cr") if p else None)
+
+#         store_rows.append({
+#             "store": r["store"],
+
+#             "amount": fmt_money(r.get("amount")),
+#             "dt": fmt_money(r.get("dt")),
+#             "cr": fmt_money(r.get("cr")),
+#             "quant": fmt_int(r.get("quant")),
+#             "orders": fmt_int(r.get("orders")),
+#             "ave_check": fmt_money(r.get("ave_check")),
+#             "rtr_ratio": fmt_pct(r.get("rtr_ratio")),
+
+#             # дельты для отображения (вторая строка в ячейке)
+#             "delta": {
+#                 "amount": {
+#                     "abs": fmt_delta_money(d_amount),
+#                     "pct": fmt_delta_pct(d_amount_pct),
+#                     "dir": _dir(d_amount),
+#                     "has": p is not None,
+#                 },
+#                 "dt": {
+#                     "abs": fmt_delta_money(d_dt),
+#                     "pct": fmt_delta_pct(d_dt_pct),
+#                     "dir": _dir(d_dt),
+#                     "has": p is not None,
+#                 },
+#                 "orders": {
+#                     "abs": fmt_int(d_orders) if d_orders is not None else "—",
+#                     "pct": fmt_delta_pct(d_orders_pct),
+#                     "dir": _dir(d_orders),
+#                     "has": p is not None,
+#                 },
+#                 "ave_check": {
+#                     "abs": fmt_delta_money(d_ave),
+#                     "pct": fmt_delta_pct(d_ave_pct),
+#                     "dir": _dir(d_ave),
+#                     "has": p is not None,
+#                 },
+#                 "cr": {
+#                     "abs": fmt_delta_money(d_cr),
+#                     "pct": fmt_delta_pct(d_cr_pct),
+#                     # рост возвратов визуально считаем "down" (т.е. плохо)
+#                     "dir": _dir(-d_cr) if d_cr is not None else "na",
+#                     "has": p is not None,
+#                 },
+#             },
+#         })
+
+#     # добавляем строку ИТОГО последней (без дельт, чтобы не перегружать)
+#     store_rows.append({
+#         "store": "ИТОГО",
+#         "amount": fmt_money(total_amount),
+#         "dt": fmt_money(total_dt),
+#         "cr": fmt_money(total_cr),
+#         "quant": fmt_int(total_quant),
+#         "orders": fmt_int(total_orders),
+#         "ave_check": fmt_money(total_ave_check),
+#         "rtr_ratio": fmt_pct(total_rtr_ratio),
+#         "delta": None,
+#     })
+#     store_rows = attach_store_logos(store_rows)
+
+
+#     # данные MTD/YTD (как и раньше, на дату d)
+#     df_mtd_raw = get_month_data(d)
+#     df_ytd_raw = get_ytd_data(d)
+
+#     table_mtd = build_mtd_table(df_mtd_raw)
+#     table_ytd = build_ytd_table(df_ytd_raw)
+
+#     charts = build_charts(d, df_mtd_raw=df_mtd_raw, df_ytd_raw=df_ytd_raw)
+#     insights = build_insights(obj)
+
+#     # summary — строим из KPI за период
+#     summary = build_summary(
+#         kpi=kpi,
+#         period_value=period["value"],
+#         report_type=rtype,
+#         report_date=d,
+#         period_start=period_start,
+#         period_end=period_end,
+#         generated_dt=None,
+#     )
+
+#     return {
+#         "obj": obj,
+#         "report_date": d,  # дата среза (конец периода)
+#         "generated_date": date.today(),
+#         "report_type": rtype,
+#         "period_label": period["label"],
+#         "period_value": period["value"],
+#         "period_start": period_start,
+#         "period_end": period_end,
+
+#         "store_sales": store_rows,
+#         "store_prev_start": prev_start,
+#         "store_prev_end": prev_end,
+
+#         # ✅ SVG-график по магазинам
+#         "store_chart_svg": store_chart_svg,
+
+#         "report_number": report_number(d, rtype),
+#         "summary": summary,
+#         "kpi": kpi,
+#         "trend": trend,
+#         "table_mtd_html": table_mtd.get("html", ""),
+#         "table_ytd_html": table_ytd.get("html", ""),
+#         "charts": charts,
+#         "insights": insights,
+#         "src": (request.GET.get("src", "list") if request else "list"),
+#     }
+
+
+
+def build_daily_sales_report_context(d: date, request=None) -> dict:
+    # объект дня (может быть нужен для insights/секций, но KPI теперь не из него)
+    obj = MV_Daily_Sales.objects.get(pk=d)
+
+    # тип отчёта + период (строки для обложки)
+    rtype = classify_report(d)
+    period = format_period(d, rtype)
+
+    # диапазон дат для KPI (итог за период)
+    period_start, period_end = period_range(d, rtype)
+    kpi = build_kpi_for_range(period_start, period_end)
+
+    # ---------------------------------------------------------------------
+    # ✅ TREND (пока без графика) — сразу форматируем для шаблона
+    # ---------------------------------------------------------------------
+    trend_points = 12
+
+    trend = []
+    for s, e, label, is_current in trend_ranges(rtype, d, points=trend_points):
+        k = build_kpi_for_range(s, e)
+
+        trend.append({
+            "label": label,
+            "start": s,
+            "end": e,
+            "is_current": is_current,
+
+            # RAW для графика
+            "amount_raw": k.get("amount") or 0,
+            "dt_raw": k.get("dt") or 0,
+            "orders_raw": k.get("orders") or 0,
+            "cr_raw": k.get("cr") or 0,
+            "ave_check_raw": k.get("ave_check") or 0,
+
+            # formatted для таблицы
+            "amount": fmt_money(k.get("amount")),
+            "dt": fmt_money(k.get("dt")),
+            "orders": fmt_int(k.get("orders")),
+            "cr": fmt_money(k.get("cr")),
+            "ave_check": fmt_money(k.get("ave_check")),
+            "rtr_ratio": fmt_pct(k.get("rtr_ratio")),
+        })
+
+    trend_meta_ctx = trend_meta(rtype, d, points=trend_points)
+
+    trend_chart_svg = build_trend_chart_svg(trend, metric="amount_raw")
+
+
+
+    # продажи по магазинам за период (RAW)
+    store_rows_raw = get_store_sales_for_range(period_start, period_end)
+
+    # предыдущий период для сравнения (RAW)
+    prev_start, prev_end = prev_period_range(period_start, period_end, rtype)
+    store_prev_raw = get_store_sales_for_range(prev_start, prev_end)
+
+    # индекс прошлого периода по store_id
+    prev_map = {r["store_id"]: r for r in store_prev_raw}
+
+    # ✅ данные для графика: current vs prev (amount)
+    store_rows_chart = []
+    for r in store_rows_raw:
+        p = prev_map.get(r["store_id"])
+        store_rows_chart.append({
+            "store": r["store"],
+            "amount": r.get("amount") or 0,
+            "prev_amount": (p.get("amount") if p else 0) or 0,
+        })
+        
+    
+    
+
+    # ✅ график (SVG) по магазинам (TOP-12 по чистой выручке)
+    store_chart_svg = build_store_amount_bar_svg(
+        store_rows_chart,
+        title="Чистая выручка по магазинам (было / стало)",
+    )
+    
+
+
+    def _delta(curr, prev):
+        if prev is None:
+            return None
+        return (curr or 0) - (prev or 0)
+
+    def _delta_pct(curr, prev):
+        if prev in (None, 0):
+            return None
+        return ((curr or 0) - prev) / prev * 100
+
+    def _dir(v):
+        if v is None:
+            return "na"
+        if v > 0:
+            return "up"
+        if v < 0:
+            return "down"
+        return "flat"
+
+    # ✅ ИТОГО (по текущему периоду)
+    total_dt = 0
+    total_cr = 0
+    total_amount = 0
+    total_quant = 0
+    total_orders = 0
+
+    for r in store_rows_raw:
+        total_dt += r.get("dt") or 0
+        total_cr += r.get("cr") or 0
+        total_amount += r.get("amount") or 0
+        total_quant += r.get("quant") or 0
+        total_orders += r.get("orders") or 0
+
+    total_ave_check = (total_amount / total_orders) if total_orders else None
+    total_rtr_ratio = (total_cr / total_dt) if total_dt else None
+
+    # форматируем строки магазинов + дельты к прошлому периоду
+    store_rows = []
+    for r in store_rows_raw:
+        p = prev_map.get(r["store_id"])
+
+        # дельты (RAW)
+        d_amount = _delta(r.get("amount"), p.get("amount") if p else None)
+        d_amount_pct = _delta_pct(r.get("amount"), p.get("amount") if p else None)
+
+        d_dt = _delta(r.get("dt"), p.get("dt") if p else None)
+        d_dt_pct = _delta_pct(r.get("dt"), p.get("dt") if p else None)
+
+        d_orders = _delta(r.get("orders"), p.get("orders") if p else None)
+        d_orders_pct = _delta_pct(r.get("orders"), p.get("orders") if p else None)
+
+        d_ave = _delta(r.get("ave_check"), p.get("ave_check") if p else None)
+        d_ave_pct = _delta_pct(r.get("ave_check"), p.get("ave_check") if p else None)
+
+        # ⚠ возвраты: рост — плохо (для стрелок/цвета можно инвертировать)
+        d_cr = _delta(r.get("cr"), p.get("cr") if p else None)
+        d_cr_pct = _delta_pct(r.get("cr"), p.get("cr") if p else None)
+
+        store_rows.append({
+            "store": r["store"],
+
+            "amount": fmt_money(r.get("amount")),
+            "dt": fmt_money(r.get("dt")),
+            "cr": fmt_money(r.get("cr")),
+            "quant": fmt_int(r.get("quant")),
+            "orders": fmt_int(r.get("orders")),
+            "ave_check": fmt_money(r.get("ave_check")),
+            "rtr_ratio": fmt_pct(r.get("rtr_ratio")),
+
+            # дельты для отображения (вторая строка в ячейке)
+            "delta": {
+                "amount": {
+                    "abs": fmt_delta_money(d_amount),
+                    "pct": fmt_delta_pct(d_amount_pct),
+                    "dir": _dir(d_amount),
+                    "has": p is not None,
+                },
+                "dt": {
+                    "abs": fmt_delta_money(d_dt),
+                    "pct": fmt_delta_pct(d_dt_pct),
+                    "dir": _dir(d_dt),
+                    "has": p is not None,
+                },
+                "orders": {
+                    "abs": fmt_int(d_orders) if d_orders is not None else "—",
+                    "pct": fmt_delta_pct(d_orders_pct),
+                    "dir": _dir(d_orders),
+                    "has": p is not None,
+                },
+                "ave_check": {
+                    "abs": fmt_delta_money(d_ave),
+                    "pct": fmt_delta_pct(d_ave_pct),
+                    "dir": _dir(d_ave),
+                    "has": p is not None,
+                },
+                "cr": {
+                    "abs": fmt_delta_money(d_cr),
+                    "pct": fmt_delta_pct(d_cr_pct),
+                    # рост возвратов визуально считаем "down" (т.е. плохо)
+                    "dir": _dir(-d_cr) if d_cr is not None else "na",
+                    "has": p is not None,
+                },
+            },
+        })
+
+    # добавляем строку ИТОГО последней (без дельт, чтобы не перегружать)
+    store_rows.append({
+        "store": "ИТОГО",
+        "amount": fmt_money(total_amount),
+        "dt": fmt_money(total_dt),
+        "cr": fmt_money(total_cr),
+        "quant": fmt_int(total_quant),
+        "orders": fmt_int(total_orders),
+        "ave_check": fmt_money(total_ave_check),
+        "rtr_ratio": fmt_pct(total_rtr_ratio),
+        "delta": None,
+    })
+    store_rows = attach_store_logos(store_rows)
+
+    # данные MTD/YTD (как и раньше, на дату d)
+    df_mtd_raw = get_month_data(d)
+    df_ytd_raw = get_ytd_data(d)
+
+    table_mtd = build_mtd_table(df_mtd_raw)
+    table_ytd = build_ytd_table(df_ytd_raw)
+
+    charts = build_charts(d, df_mtd_raw=df_mtd_raw, df_ytd_raw=df_ytd_raw)
+    insights = build_insights(obj)
+
+    # summary — строим из KPI за период
+    summary = build_summary(
+        kpi=kpi,
+        period_value=period["value"],
+        report_type=rtype,
+        report_date=d,
+        period_start=period_start,
+        period_end=period_end,
+        generated_dt=None,
+    )
+
+    return {
+        "obj": obj,
+        "report_date": d,  # дата среза (конец периода)
+        "generated_date": date.today(),
+        "report_type": rtype,
+        "period_label": period["label"],
+        "period_value": period["value"],
+        "period_start": period_start,
+        "period_end": period_end,
+
+        "store_sales": store_rows,
+        "store_prev_start": prev_start,
+        "store_prev_end": prev_end,
+
+        # ✅ SVG-график по магазинам
+        "store_chart_svg": store_chart_svg,
+
+        "report_number": report_number(d, rtype),
+        "summary": summary,
+        "kpi": kpi,
+
+        # ✅ тренды
+        "trend": trend,
+        "trend_chart_svg": trend_chart_svg,
+        "trend_meta": trend_meta_ctx,
+
+        "table_mtd_html": table_mtd.get("html", ""),
+        "table_ytd_html": table_ytd.get("html", ""),
+        "charts": charts,
+        "insights": insights,
+        "src": (request.GET.get("src", "list") if request else "list"),
+    }

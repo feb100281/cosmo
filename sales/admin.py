@@ -17,6 +17,8 @@ from .print_utils import (
     build_ytd_table,     # -> str (готовый HTML таблицы)
 
 )
+from sales.reports.sales_report.builder import build_daily_sales_report_context
+
 
 
 
@@ -125,14 +127,9 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
 
 
 
-        context = {
-            "obj": obj,
-            "report_date": d,
-            "table_mtd_html": table_mtd["html"],
-            "table_ytd_html": table_ytd["html"],
-            "src": request.GET.get("src", "list"),
-        }
-        return render(request, "admin/daily_sales_print.html", context)
+        context = build_daily_sales_report_context(d, request=request)
+        return render(request, "reports/sales_report/full_report.html", context)
+
     
     
     

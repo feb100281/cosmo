@@ -1,0 +1,42 @@
+{% comment %} templates/reports/sales_report/sections/totals.html {% endcomment %}
+<section id="totals">
+  <div class="section">
+
+    <!-- ГЛАВНЫЙ РАЗДЕЛ -->
+    <h2 class="section-title section-main">II. Накопленные итоги</h2>
+
+    {% if report_type != "monthly" %}
+      <div class="subsection">
+
+        <!-- ПОДРАЗДЕЛ MTD -->
+        <div class="section-title section-sub">
+          II.1 MTD (месяц, к прошлому году)
+        </div>
+
+        <p class="section-note">
+          MTD (Month-to-date): накопленный итог с 1-го числа текущего месяца по {{ report_date|date:"d.m.Y" }}.
+          Сравнение — к аналогичному периоду прошлого года.
+        </p>
+
+        {{ table_mtd_html|safe }}
+      </div>
+    {% endif %}
+
+    <div class="subsection">
+
+      <!-- ПОДРАЗДЕЛ YTD -->
+      <div class="section-title section-sub">
+        II.2 YTD (год, к прошлому году)
+      </div>
+
+      <p class="section-note">
+        
+        YTD (Year-to-date): накопленный итог с 1 января по {{ report_date|date:"d.m.Y" }}.
+        Сравнение — к аналогичному периоду прошлого года.
+      </p>
+
+      {{ table_ytd_html|safe }}
+    </div>
+
+  </div>
+</section>

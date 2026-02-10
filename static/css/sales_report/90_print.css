@@ -1,0 +1,66 @@
+/* =========================
+   PRINT / PDF
+   ========================= */
+
+/* разрывы страниц */
+@media print{
+  .page-break{
+    display: block !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+
+    page-break-before: always !important;
+    page-break-after: always !important;   /* wkhtmltopdf иногда лучше after */
+    break-before: page !important;
+    break-after: page !important;
+  }
+
+  /* чтобы разрыв не ломался из-за flex/grid */
+  .page-break *{
+    float: none !important;
+  }
+
+  /* таблицы и паспортные блоки — не рвать */
+  .compare-table{
+    page-break-inside: avoid;
+  }
+
+  /* totals таблицу тоже не рвать */
+  #totals table{
+    page-break-inside: avoid;
+  }
+
+  /* на печати фиксируем заголовки таблиц */
+  .compare-table th{
+    background: var(--brand-soft) !important;
+    border-color: var(--brand-border) !important;
+  }
+
+  #totals table th{
+    background: var(--brand-soft) !important;
+    border-color: var(--brand-border) !important;
+  }
+}
+
+
+@page{
+  size: A4;
+  margin: 12mm 10mm;
+}
+
+/* на всякий: wkhtmltopdf любит распирать блоки */
+.section, .store-chart-card, .store-chart-wrap{
+  max-width: 100% !important;
+}
+
+.store-chart-wrap{
+  overflow: hidden !important;
+}
+
+/* ещё раз фиксируем svg именно для печати */
+.store-chart-wrap svg{
+  width: 100% !important;
+  height: auto !important;
+}
+

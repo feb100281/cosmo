@@ -1,3 +1,5 @@
+# sales/dash_apps/dailysales/data.py
+
 # Данные для дневного отчета
 
 from django.db import connection

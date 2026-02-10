@@ -1,0 +1,33 @@
+{% extends "reports/sales_report/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/sales_report/00_tokens.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/01_typography.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/03_tables.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/04_components.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/05_stores.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/90_print.css' %}">
+{% endblock %}
+
+
+{% block title %}
+Отчёт по продажам — {{ report_date|date:"d.m.Y" }}
+{% endblock %}
+
+{% block content %}
+  {% include "reports/sales_report/cover.html" %}
+  <div class="page-break"></div>
+
+  {% include "reports/sales_report/toc.html" %}
+  <div class="page-break"></div>
+
+  {% include "reports/sales_report/sections/kpi.html" %}
+  <div class="page-break"></div>
+
+  {% include "reports/sales_report/sections/totals.html" %}
+  <div class="page-break"></div>
+
+  {% include "reports/sales_report/sections/stores.html" %}
+  <div class="page-break"></div>
+{% endblock %}
