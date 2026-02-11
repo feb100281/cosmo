@@ -1,3 +1,4 @@
+# sales/reports/sales_report/kpi.py
 from datetime import date
 from django.db.models import Sum
 from sales.models import MV_Daily_Sales

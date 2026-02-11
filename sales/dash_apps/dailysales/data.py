@@ -83,4 +83,3 @@ def get_ytd_data(date):
     return pd.DataFrame(rows, columns=cols)
 
 
-

@@ -21,6 +21,12 @@ from .store_logos import attach_store_logos
 from .trend_chart import build_trend_chart_svg
 from .commulative_chart import build_mtd_waterfall_svg, build_ytd_cumulative_svg
 from .ltm_chart import build_revenue_13m_svg
+from .categories_block import build_categories_context, build_categories_context_ytd
+from .print_utils_categories import build_categories_table
+from .categories_chart import build_mtd_categories_bar_svg, build_ytd_categories_bar_svg
+
+
+
 
 
 
@@ -324,6 +330,53 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
     df_mtd_raw = get_month_data(d)
     df_ytd_raw = get_ytd_data(d)
     
+    categories = build_categories_context(d, top_n=12)
+    
+    categories_chart_svg = build_mtd_categories_bar_svg(
+    categories.get("raw"),
+    top_n=12,
+    title="MTD: ТОП категорий (текущий год vs прошлый)",
+)
+    
+    categories_ytd = build_categories_context_ytd(d, top_n=12)
+
+    categories_ytd_chart_svg = build_ytd_categories_bar_svg(
+    categories_ytd.get("raw"),
+    top_n=12,
+    title="YTD: ТОП категорий (текущий год vs прошлый)",
+)
+
+
+    categories_table_html = build_categories_table(
+    categories.get("cats", []),
+    title="ТОП категорий (MTD, к прошлому году)",
+    mode="cat"
+).get("html", "")
+
+    subcategories_table_html = build_categories_table(
+        categories.get("subcats", []),
+        title="ТОП подкатегорий (MTD, к прошлому году)",
+        mode="sub"
+    ).get("html", "")
+    
+    
+    categories_ytd = build_categories_context_ytd(d, top_n=12)
+
+    categories_ytd_table_html = build_categories_table(
+        categories_ytd.get("cats", []),
+        title="ТОП категорий (YTD, к прошлому году)",
+        mode="cat"
+    ).get("html", "")
+
+    subcategories_ytd_table_html = build_categories_table(
+        categories_ytd.get("subcats", []),
+        title="ТОП подкатегорий (YTD, к прошлому году)",
+        mode="sub"
+    ).get("html", "")
+
+
+
+    
     # --- 13 месяцев (с 1-го числа) ---
     ltm_start, ltm_end = last_13m_range(d)
 
@@ -400,6 +453,18 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         "mtd_method": mtd_method,
         "ytd_cum_svg": ytd_cum_svg,
         "revenue_13m_svg": revenue_13m_svg,
+        
+        "categories": categories,
+        "categories_table_html": categories_table_html,
+        "subcategories_table_html": subcategories_table_html,
+        "categories_chart_svg": categories_chart_svg,
+        
+        "categories_ytd": categories_ytd,
+        "categories_ytd_table_html": categories_ytd_table_html,
+        "subcategories_ytd_table_html": subcategories_ytd_table_html,
+        "categories_ytd": categories_ytd,
+        "categories_ytd_chart_svg": categories_ytd_chart_svg,
+
         
         "charts": charts,
         "insights": insights,

@@ -125,3 +125,29 @@ def fmt_delta_short_chart(v: float) -> str:
     if av >= 1_000:
         return f"{sign}{av/1_000:,.0f} тыс".replace(",", " ").replace(".", ",")
     return f"{sign}{av:,.0f}".replace(",", " ").replace(".", ",")
+
+
+
+def fmt_delta_money_signed(v):
+    if v is None:
+        return "—"
+    try:
+        v = float(v)
+    except Exception:
+        return "—"
+
+    sign = "+" if v > 0 else "−" if v < 0 else ""
+    # fmt_money уже умеет форматировать число с ₽ и неразрывными пробелами
+    return f"{sign}{fmt_money(abs(v))}" if sign else fmt_money(0)
+
+
+def fmt_delta_int_signed(v):
+    if v is None:
+        return "—"
+    try:
+        v = float(v)
+    except Exception:
+        return "—"
+
+    sign = "+" if v > 0 else "−" if v < 0 else ""
+    return f"{sign}{fmt_int(abs(v))}" if sign else fmt_int(0)
