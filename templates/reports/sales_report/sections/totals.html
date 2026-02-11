@@ -5,127 +5,134 @@
     <!-- ГЛАВНЫЙ РАЗДЕЛ -->
     <h2 class="section-title section-main">II. Накопленные итоги</h2>
 
-    {% if report_type != "monthly" %}
-      <div class="subsection">
+    <!-- ПОДРАЗДЕЛ MTD / Итог за месяц -->
+    <div class="subsection" id="totals-mtd">
 
-        <!-- ПОДРАЗДЕЛ MTD -->
-        <div class="section-title section-sub">
+      <div class="section-title section-sub">
+        {% if report_type == "monthly" %}
+          II.1 Итог за месяц (к прошлому году)
+        {% else %}
           II.1 MTD (месяц, к прошлому году)
-        </div>
+        {% endif %}
+      </div>
 
-        <p class="section-note">
+      <p class="section-note">
+        {% if report_type == "monthly" %}
+          Итог за месяц: накопленный итог с 1-го числа месяца по {{ report_date|date:"d.m.Y" }} (последний день месяца).
+          Сравнение — к аналогичному месяцу прошлого года.
+        {% else %}
           MTD (Month-to-date): накопленный итог с 1-го числа текущего месяца по {{ report_date|date:"d.m.Y" }}.
           Сравнение — к аналогичному периоду прошлого года.
-        </p>
+        {% endif %}
+      </p>
 
-        {# ✅ ВЕСЬ MTD-блок (таблица + график + методика) — в один пакет для печати #}
-        <div class="mtd-pack">
+      {# ✅ ВЕСЬ MTD-блок (таблица + график + методика) — в один пакет для печати #}
+      <div class="mtd-pack">
 
-          {{ table_mtd_html|safe }}
+        {{ table_mtd_html|safe }}
 
-          {% if mtd_waterfall_svg %}
-            <div class="chart-block chart-block--mtd">
-              {{ mtd_waterfall_svg|safe }}
+        {% if mtd_waterfall_svg %}
+          <div class="chart-block chart-block--mtd">
+            {{ mtd_waterfall_svg|safe }}
+          </div>
+        {% endif %}
+
+        {% if mtd_method %}
+          <div class="method-mini">
+            <div class="method-mini__head">
+              <div class="method-mini__title">Методика расчёта</div>
             </div>
-          {% endif %}
 
-          {% if mtd_method %}
-            <div class="method-mini">
-              <div class="method-mini__head">
-                <div class="method-mini__title">Методика расчёта</div>
-              </div>
+            <!-- 1) Входные данные -->
+            <div class="method-mini__block">
+              <div class="method-mini__block-title">Входные данные</div>
 
-              <!-- 1) Входные данные -->
-              <div class="method-mini__block">
-                <div class="method-mini__block-title">Входные данные</div>
-
-                <div class="method-mini__kv">
-                  <div class="kv-row">
-                    <span class="kv-k">MTD {{ mtd_method.y_prev }}</span>
-                    <span class="kv-v">
-                      Чистая выручка <b>{{ mtd_method.revenue_prev }}</b>
-                      <span class="dot">•</span>
-                      Кол-во заказов <b>{{ mtd_method.orders_prev }}</b>
-                      <span class="dot">•</span>
-                      Ср. чек <b>{{ mtd_method.ave_prev }}</b>
-                    </span>
-                  </div>
-
-                  <div class="kv-row">
-                    <span class="kv-k">MTD {{ mtd_method.y_curr }}</span>
-                    <span class="kv-v">
-                      Чистая выручка <b>{{ mtd_method.revenue_curr }}</b>
-                      <span class="dot">•</span>
-                      Кол-во заказов <b>{{ mtd_method.orders_curr }}</b>
-                      <span class="dot">•</span>
-                      Ср. чек <b>{{ mtd_method.ave_curr }}</b>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="method-mini__sep"></div>
-
-              <!-- 2) Эффекты с подстановкой -->
-              <div class="method-mini__block">
-                <div class="eq-row">
-                  <div class="eq-left">
-                    <div class="eq-name">Эффект заказов</div>
-                    <div class="eq-formula mono">
-                      (Кол-во заказов{{ mtd_method.y_curr }} − Кол-во заказов{{ mtd_method.y_prev }}) × Ср. чек{{ mtd_method.y_prev }}
-                    </div>
-                    <div class="eq-sub mono">
-                      = ({{ mtd_method.orders_curr }} − {{ mtd_method.orders_prev }}) × {{ mtd_method.ave_prev }}
-                    </div>
-                  </div>
-                  <div class="eq-right">
-                    <div class="eq-result neg">{{ mtd_method.eff_orders }}</div>
-                  </div>
-                </div>
-
-                <div class="eq-row">
-                  <div class="eq-left">
-                    <div class="eq-name">Эффект среднего чека</div>
-                    <div class="eq-formula mono">
-                      (Ср.чек{{ mtd_method.y_curr }} − Ср.чек{{ mtd_method.y_prev }}) × Кол-во заказов{{ mtd_method.y_curr }}
-                    </div>
-                    <div class="eq-sub mono">
-                      = ({{ mtd_method.ave_curr }} − {{ mtd_method.ave_prev }}) × {{ mtd_method.orders_curr }}
-                    </div>
-                  </div>
-                  <div class="eq-right">
-                    <div class="eq-result pos">{{ mtd_method.eff_ave }}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="method-mini__sep"></div>
-
-              <!-- 3) Возвраты компактно -->
-              <div class="method-mini__block">
-                <div class="method-mini__block-title">Возвраты (справочно)</div>
+              <div class="method-mini__kv">
                 <div class="kv-row">
+                  <span class="kv-k">MTD {{ mtd_method.y_prev }}</span>
                   <span class="kv-v">
-                    <b>{{ mtd_method.cr_prev }}</b> → <b>{{ mtd_method.cr_curr }}</b>,
-                    ΔCR = <b>{{ mtd_method.d_cr }}</b> (улучшение: <b>{{ mtd_method.cr_uplift }}</b>)
+                    Чистая выручка <b>{{ mtd_method.revenue_prev }}</b>
+                    <span class="dot">•</span>
+                    Кол-во заказов <b>{{ mtd_method.orders_prev }}</b>
+                    <span class="dot">•</span>
+                    Ср. чек <b>{{ mtd_method.ave_prev }}</b>
+                  </span>
+                </div>
+
+                <div class="kv-row">
+                  <span class="kv-k">MTD {{ mtd_method.y_curr }}</span>
+                  <span class="kv-v">
+                    Чистая выручка <b>{{ mtd_method.revenue_curr }}</b>
+                    <span class="dot">•</span>
+                    Кол-во заказов <b>{{ mtd_method.orders_curr }}</b>
+                    <span class="dot">•</span>
+                    Ср. чек <b>{{ mtd_method.ave_curr }}</b>
                   </span>
                 </div>
               </div>
-
             </div>
-          {% endif %}
 
-        </div>
-        {# ✅ конец пакета MTD #}
+            <div class="method-mini__sep"></div>
+
+            <!-- 2) Эффекты с подстановкой -->
+            <div class="method-mini__block">
+              <div class="eq-row">
+                <div class="eq-left">
+                  <div class="eq-name">Эффект заказов</div>
+                  <div class="eq-formula mono">
+                    (Кол-во заказов{{ mtd_method.y_curr }} − Кол-во заказов{{ mtd_method.y_prev }}) × Ср. чек{{ mtd_method.y_prev }}
+                  </div>
+                  <div class="eq-sub mono">
+                    = ({{ mtd_method.orders_curr }} − {{ mtd_method.orders_prev }}) × {{ mtd_method.ave_prev }}
+                  </div>
+                </div>
+                <div class="eq-right">
+                  <div class="eq-result neg">{{ mtd_method.eff_orders }}</div>
+                </div>
+              </div>
+
+              <div class="eq-row">
+                <div class="eq-left">
+                  <div class="eq-name">Эффект среднего чека</div>
+                  <div class="eq-formula mono">
+                    (Ср.чек{{ mtd_method.y_curr }} − Ср.чек{{ mtd_method.y_prev }}) × Кол-во заказов{{ mtd_method.y_curr }}
+                  </div>
+                  <div class="eq-sub mono">
+                    = ({{ mtd_method.ave_curr }} − {{ mtd_method.ave_prev }}) × {{ mtd_method.orders_curr }}
+                  </div>
+                </div>
+                <div class="eq-right">
+                  <div class="eq-result pos">{{ mtd_method.eff_ave }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="method-mini__sep"></div>
+
+            <!-- 3) Возвраты компактно -->
+            <div class="method-mini__block">
+              <div class="method-mini__block-title">Возвраты (справочно)</div>
+              <div class="kv-row">
+                <span class="kv-v">
+                  <b>{{ mtd_method.cr_prev }}</b> → <b>{{ mtd_method.cr_curr }}</b>,
+                  ΔCR = <b>{{ mtd_method.d_cr }}</b> (улучшение: <b>{{ mtd_method.cr_uplift }}</b>)
+                </span>
+              </div>
+            </div>
+
+          </div>
+        {% endif %}
 
       </div>
-    {% endif %}
+      {# ✅ конец пакета MTD #}
 
-      <div class="page-break"></div>
+    </div>
 
-    <div class="subsection">
+    <div class="page-break"></div>
 
-      <!-- ПОДРАЗДЕЛ YTD -->
+    <!-- ПОДРАЗДЕЛ YTD -->
+    <div class="subsection" id="totals-ytd">
+
       <div class="section-title section-sub">
         II.2 YTD (год, к прошлому году)
       </div>
@@ -139,7 +146,35 @@
 
       {% if ytd_cum_svg %}
         <div class="chart-block chart-block--ytd">
-          {% comment %} {{ ytd_cum_svg|safe }} {% endcomment %}
+          {{ ytd_cum_svg|safe }}
+        </div>
+      {% endif %}
+
+    </div>
+
+    <div class="page-break"></div>
+
+    {# --- II.3 Динамика чистой выручки за 13 месяцев --- #}
+    <div class="subsection" id="totals-ltm">
+
+      <div class="section-title section-sub">
+        II.3 Динамика чистой выручки за 13 месяцев
+      </div>
+
+      <p class="section-note">
+        Месячная динамика чистой выручки за период с 1-го числа месяца год назад до даты отчёта.
+        Помогает оценить сезонность и текущий уровень относительно последних месяцев.
+      </p>
+
+      {% if revenue_13m_svg %}
+        <div class="chart-block chart-block--ltm">
+          {{ revenue_13m_svg|safe }}
+        </div>
+
+        <div class="chart-footnote">
+          Линия <b>3M MA</b> (3-Month Moving Average) — скользящее среднее выручки за последние 3 месяца:
+          <span class="mono">(Rₜ + Rₜ₋₁ + Rₜ₋₂) / 3</span>.
+          Показывает базовый тренд без влияния разовых колебаний.
         </div>
       {% endif %}
 
@@ -147,6 +182,3 @@
 
   </div>
 </section>
-
-
-

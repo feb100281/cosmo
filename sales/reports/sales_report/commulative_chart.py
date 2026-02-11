@@ -6,6 +6,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+from sales.reports.sales_report.formatters import (
+    fmt_money_chart,
+    fmt_delta_short_chart,
+    fmt_pct,
+)
+
+
 
 def _df_prepare(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
@@ -22,69 +29,6 @@ def _to_svg(fig) -> str:
     fig.savefig(buf, format="svg", bbox_inches="tight")
     plt.close(fig)
     return buf.getvalue()
-
-
-def build_ytd_cumulative_svg(
-    df_ytd_raw: pd.DataFrame,
-    title: str = "YTD: накопленная выручка (текущий год vs прошлый)",
-) -> str:
-    """
-    df_ytd_raw: результат get_ytd_data(d)
-    В нём два года, агрегировано по LAST_DAY(date).
-    Рисуем кумулятив по месяцам: net_amount = amount (или можно заменить на dt-cr).
-    """
-    df = _df_prepare(df_ytd_raw)
-
-    if df.empty:
-        return ""
-
-    df["date"] = pd.to_datetime(df["date"])
-    df["year"] = df["date"].dt.year
-
-    # берем последние 2 года из набора (на случай, если отчёт когда-то будет шире)
-    years = sorted(df["year"].unique())[-2:]
-    if len(years) < 2:
-        return ""
-
-    y_prev, y_curr = years[0], years[1]
-
-    def _series(y: int) -> pd.DataFrame:
-        d = df[df["year"] == y].copy()
-        d = d.sort_values("date")
-        d["cum"] = d["amount"].cumsum()  # ключевой показатель для траектории
-        return d[["date", "cum"]]
-
-    prev = _series(y_prev)
-    curr = _series(y_curr)
-
-    fig = plt.figure(figsize=(10.8, 3.6))
-    ax = fig.add_subplot(111)
-
-    ax.plot(prev["date"], prev["cum"], marker="o", linewidth=2, label=str(y_prev))
-    ax.plot(curr["date"], curr["cum"], marker="o", linewidth=2, label=str(y_curr))
-
-    ax.set_title(title, pad=12)
-    ax.grid(True, alpha=0.25)
-
-    ax.xaxis.set_major_locator(mdates.MonthLocator())
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
-    for label in ax.get_xticklabels():
-        label.set_rotation(0)
-
-    ax.legend(loc="upper left", frameon=False)
-
-    # подпишем последнее значение на линии текущего года
-    if not curr.empty:
-        last_x = curr["date"].iloc[-1]
-        last_y = curr["cum"].iloc[-1]
-        ax.annotate(
-            f"{last_y:,.0f}".replace(",", " "),
-            (last_x, last_y),
-            textcoords="offset points",
-            xytext=(8, -10),
-        )
-
-    return _to_svg(fig)
 
 
 def build_mtd_waterfall_svg(
@@ -283,7 +227,7 @@ def build_mtd_waterfall_svg(
         return f"{v/1_000_000:,.0f}".replace(",", " ")
     ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
     ax.yaxis.set_major_formatter(FuncFormatter(_yfmt))
-    ax.set_ylabel("млн ₽", fontsize=11, color=text_muted)
+    ax.set_ylabel("млн руб.", fontsize=11, color=text_muted)
 
     # ---------------- value labels ----------------
     def _top_label(ix: int, val: float, color: str):
@@ -331,5 +275,239 @@ def build_mtd_waterfall_svg(
             )
 
     
+    fig.tight_layout()
+    return _to_svg(fig)
+
+
+
+def build_ytd_cumulative_svg(
+    df_ytd_raw: pd.DataFrame,
+    title: str = "YTD: накопленная выручка (текущий год vs прошлый)",
+) -> str:
+    import numpy as np
+    from matplotlib.ticker import FuncFormatter, MaxNLocator
+
+    RU_MONTHS_SHORT = {
+        1: "Янв", 2: "Фев", 3: "Мар", 4: "Апр", 5: "Май", 6: "Июн",
+        7: "Июл", 8: "Авг", 9: "Сен", 10: "Окт", 11: "Ноя", 12: "Дек",
+    }
+
+    df = _df_prepare(df_ytd_raw)
+    if df.empty:
+        return ""
+
+    df["date"] = pd.to_datetime(df["date"])
+    df["year"] = df["date"].dt.year
+    df["month"] = df["date"].dt.month
+
+    years = sorted(df["year"].unique())[-2:]
+    if len(years) < 2:
+        return ""
+
+    y_prev, y_curr = years[0], years[1]
+
+    def _build_monthly_cum(y: int) -> pd.DataFrame:
+        d = df[df["year"] == y].copy()
+        if d.empty:
+            return pd.DataFrame(columns=["month", "cum"])
+        g = (
+            d.groupby("month", as_index=False)["amount"]
+            .sum()
+            .sort_values("month")
+        )
+        g["cum"] = g["amount"].cumsum()
+        return g[["month", "cum"]]
+
+    prev = _build_monthly_cum(y_prev)
+    curr = _build_monthly_cum(y_curr)
+    if curr.empty or prev.empty:
+        return ""
+
+    last_m = int(curr["month"].max())
+    prev = prev[prev["month"] <= last_m].copy()
+
+    months = np.arange(1, last_m + 1)
+    prev_map = dict(zip(prev["month"], prev["cum"]))
+    curr_map = dict(zip(curr["month"], curr["cum"]))
+    y_prev_vals = np.array([float(prev_map.get(m, np.nan)) for m in months], dtype=float)
+    y_curr_vals = np.array([float(curr_map.get(m, np.nan)) for m in months], dtype=float)
+
+    def _ffill(a: np.ndarray) -> np.ndarray:
+        out = a.copy()
+        last = np.nan
+        for i in range(len(out)):
+            if np.isnan(out[i]):
+                out[i] = last
+            else:
+                last = out[i]
+        return out
+
+    y_prev_vals = _ffill(y_prev_vals)
+    y_curr_vals = _ffill(y_curr_vals)
+
+    # стиль
+    col_curr = "#002FA7"
+    col_prev = "#94A3B8"
+    col_pos = "#0b6b2f"
+    col_neg = "#b00000"
+    grid_col = "#E6E8EE"
+    text_muted = "#6b7280"
+
+    fig = plt.figure(figsize=(11.2, 4.2), dpi=150)
+    ax = fig.add_subplot(111)
+    ax.set_title(title, pad=12, fontsize=15, fontweight="bold")
+
+    ax.grid(True, axis="y", color=grid_col, linewidth=0.9, alpha=0.9)
+    ax.grid(False, axis="x")
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+    ax.spines["left"].set_alpha(0.35)
+    ax.spines["bottom"].set_alpha(0.35)
+
+    ax.plot(
+        months, y_prev_vals,
+        linestyle="--", linewidth=2.2, color=col_prev,
+        marker="o", markersize=4.5, markerfacecolor="white",
+        label=str(y_prev),
+        zorder=2
+    )
+    ax.plot(
+        months, y_curr_vals,
+        linestyle="-", linewidth=3.0, color=col_curr,
+        marker="o", markersize=5.2,
+        label=str(y_curr),
+        zorder=3
+    )
+
+    diff = y_curr_vals - y_prev_vals
+    
+    
+    # ---------- аналитика динамики YTD ----------
+
+    # вклад месяцев в разрыв
+    month_deltas = diff.copy()
+
+    # где максимум ухудшения
+    worst_idx = int(np.nanargmin(month_deltas))
+    best_idx = int(np.nanargmax(month_deltas))
+
+    worst_month = months[worst_idx]
+    best_month = months[best_idx]
+
+    # тренд разрыва: растёт или сокращается
+    if len(month_deltas) >= 2:
+        trend_delta = month_deltas[-1] - month_deltas[0]
+    else:
+        trend_delta = 0
+
+    if trend_delta < 0:
+        trend_label = "разрыв увеличивается"
+    elif trend_delta > 0:
+        trend_label = "разрыв сокращается"
+    else:
+        trend_label = "разрыв стабилен"
+
+    main_drop_month = RU_MONTHS_SHORT[worst_month]
+
+    ax.fill_between(months, y_prev_vals, y_curr_vals, where=(diff >= 0),
+                    interpolate=True, alpha=0.12, color=col_pos, zorder=1)
+    ax.fill_between(months, y_prev_vals, y_curr_vals, where=(diff < 0),
+                    interpolate=True, alpha=0.12, color=col_neg, zorder=1)
+
+    ax.set_xticks(months)
+    ax.set_xticklabels([RU_MONTHS_SHORT[m] for m in months], fontsize=11)
+
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _pos: f"{v/1_000_000:,.0f}".replace(",", " ")))
+    ax.set_ylabel("млн руб.", fontsize=11, color=text_muted)
+
+    ax.legend(loc="upper left", frameon=False)
+
+    last_x = months[-1]
+    last_curr = float(y_curr_vals[-1])
+    ax.scatter([last_x], [last_curr], s=55, color=col_curr, zorder=4)
+
+
+    ax.annotate(
+        fmt_money_chart(last_curr),
+        (last_x, last_curr),
+        textcoords="offset points",
+        xytext=(10, -10),
+        ha="left",
+        fontsize=11,
+        color=col_curr,
+        fontweight="bold",
+    )
+
+    # ---------- SUMMARY (нормальная рамка + без дублирования) ----------
+    last_prev = float(y_prev_vals[-1])
+    d_abs = last_curr - last_prev
+    d_pct = (d_abs / last_prev * 100) if last_prev else 0.0
+    sign = "+" if d_abs > 0 else ""
+    d_col = col_pos if d_abs >= 0 else col_neg
+
+    line1 = f"YTD {y_curr}:  {fmt_money_chart(last_curr)}"
+    line2 = f"YTD {y_prev}:  {fmt_money_chart(last_prev)}"
+    line3 = f"Δ: {fmt_delta_short_chart(d_abs)}"
+    line4 = f"Δ%: {fmt_pct(d_pct)}"
+
+
+    # 1) Основной текст в рамке:
+    #    Δ-строки заменяем пробелами той же длины => рамка по ширине будет как надо,
+    #    но чёрных дельт не будет видно.
+    spacer3 = " " * len(line3)
+    spacer4 = " " * len(line4)
+
+    boxed_text = f"{line1}\n{line2}\n{spacer3}\n{spacer4}"
+
+    x, y = 0.985, 0.06
+    ax.text(
+        x, y,
+        boxed_text,
+        transform=ax.transAxes,
+        ha="right", va="bottom",
+        fontsize=11,
+        color="#111827",
+        bbox=dict(
+            boxstyle="round,pad=0.45,rounding_size=0.12",
+            facecolor="white",
+            edgecolor=grid_col,
+            linewidth=1.0,
+            alpha=0.95,
+        ),
+        zorder=10,
+    )
+
+    # 2) Цветные дельты — строго поверх зарезервированных строк
+    #    (те же x,y, но через \n\n сработает стабильно, потому что 4 строки уже есть)
+    ax.text(
+        x, y,
+        f"\n\n{line3}\n{line4}",
+        transform=ax.transAxes,
+        ha="right", va="bottom",
+        fontsize=11,
+        color=d_col,
+        fontweight="bold",
+        zorder=11,
+    )
+    
+    ytd_comment = (
+    f"Основной вклад в отклонение формируется в {main_drop_month}. "
+    f"По мере накопления {trend_label}."
+)
+    
+    ax.text(
+    0.01, -0.28,
+    "Динамика YTD: " + ytd_comment,
+    transform=ax.transAxes,
+    ha="left",
+    va="top",
+    fontsize=11,
+    color="#111827",
+)
+
+
+    # -------------------------------------------------------------------
+
     fig.tight_layout()
     return _to_svg(fig)

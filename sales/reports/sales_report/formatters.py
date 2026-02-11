@@ -98,3 +98,30 @@ def fmt_delta_short(v: float) -> str:
     if av >= 1_000:
         return f"{sign}{av/1_000:,.0f} тыс ₽".replace(",", " ").replace(".", ",")
     return f"{sign}{av:,.0f} ₽".replace(",", " ").replace(".", ",")
+
+
+def fmt_money_chart(v) -> str:
+    if v is None:
+        return "—"
+    v = float(v)
+    av = abs(v)
+    nbsp = "\u00A0"
+
+    if av >= 1_000_000:
+        return f"{v/1_000_000:,.1f}".replace(",", nbsp).replace(".", ",") + f"{nbsp}млн"
+    if av >= 1_000:
+        return f"{v/1_000:,.0f}".replace(",", nbsp) + f"{nbsp}тыс"
+    return f"{v:,.0f}".replace(",", nbsp)
+
+
+def fmt_delta_short_chart(v: float) -> str:
+    if v is None or (isinstance(v, float) and np.isnan(v)):
+        return "—"
+    sign = "−" if v < 0 else "+"
+    av = abs(float(v))
+
+    if av >= 1_000_000:
+        return f"{sign}{av/1_000_000:,.1f} млн".replace(",", " ").replace(".", ",")
+    if av >= 1_000:
+        return f"{sign}{av/1_000:,.0f} тыс".replace(",", " ").replace(".", ",")
+    return f"{sign}{av:,.0f}".replace(",", " ").replace(".", ",")

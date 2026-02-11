@@ -1,5 +1,6 @@
 # sales/reports/sales_report/builder.py
 from datetime import date
+import pandas as pd
 
 from sales.models import MV_Daily_Sales
 from sales.dash_apps.dailysales.data import get_month_data, get_ytd_data
@@ -10,7 +11,7 @@ from .insights import build_insights
 from .period import classify_report, format_period, report_number
 from .summary import build_summary
 
-from .ranges import period_range, prev_period_range
+from .ranges import period_range, prev_period_range, last_13m_range
 from .trends import trend_ranges, trend_meta
 from .kpi import build_kpi_for_range
 
@@ -19,6 +20,7 @@ from .store_chart import build_store_amount_bar_svg
 from .store_logos import attach_store_logos
 from .trend_chart import build_trend_chart_svg
 from .commulative_chart import build_mtd_waterfall_svg, build_ytd_cumulative_svg
+from .ltm_chart import build_revenue_13m_svg
 
 
 
@@ -114,6 +116,9 @@ def build_mtd_method_context(df_mtd_raw):
         "d_cr": fmt_delta_money(d_cr),
         "cr_uplift": fmt_delta_money(cr_uplift),
     }
+
+
+
 
 
 def build_daily_sales_report_context(d: date, request=None) -> dict:
@@ -318,6 +323,20 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
     # данные MTD/YTD (как и раньше, на дату d)
     df_mtd_raw = get_month_data(d)
     df_ytd_raw = get_ytd_data(d)
+    
+    # --- 13 месяцев (с 1-го числа) ---
+    ltm_start, ltm_end = last_13m_range(d)
+
+    qs_13m = (
+        MV_Daily_Sales.objects
+        .filter(date__gte=ltm_start, date__lte=ltm_end)
+        .values("date", "amount")
+        .order_by("date")
+    )
+    df_13m_raw = pd.DataFrame(list(qs_13m))
+
+    revenue_13m_svg = build_revenue_13m_svg(df_13m_raw, report_date=d)
+
 
 
 
@@ -380,6 +399,7 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         "mtd_waterfall_svg": mtd_waterfall_svg,
         "mtd_method": mtd_method,
         "ytd_cum_svg": ytd_cum_svg,
+        "revenue_13m_svg": revenue_13m_svg,
         
         "charts": charts,
         "insights": insights,

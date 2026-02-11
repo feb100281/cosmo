@@ -24,7 +24,7 @@ def format_period(d: date, report_type: str) -> dict:
     if report_type == "weekly":
         week_start = d - timedelta(days=6)
         return {"label": "Отчётная неделя:", "value": f"{week_start:%d.%m.%Y} - {d:%d.%m.%Y}"}
-    return {"label": "Дата отчёта:", "value": d.strftime("%d.%m.%Y")}
+    return {"label": "Отчётный день:", "value": d.strftime("%d.%m.%Y")}
 
 def report_number(d: date, report_type: str) -> str:
     if report_type == "monthly":

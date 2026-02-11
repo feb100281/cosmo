@@ -1,6 +1,7 @@
 # sales/reports/sales_report/ranges.py
 from datetime import date, timedelta
 import calendar
+from dateutil.relativedelta import relativedelta
 
 def period_range(d: date, report_type: str) -> tuple[date, date]:
     """
@@ -25,8 +26,6 @@ def period_range(d: date, report_type: str) -> tuple[date, date]:
     return start, end
 
 
-
-
 def prev_period_range(period_start: date, period_end: date, report_type: str):
 
     # ✅ ДНЕВНОЙ ОТЧЁТ — аналогичный день прошлой недели
@@ -43,4 +42,11 @@ def prev_period_range(period_start: date, period_end: date, report_type: str):
     prev_end = period_start - timedelta(days=1)
     prev_start = prev_end.replace(day=1)
     return prev_start, prev_end
+
+
+
+def last_13m_range(d: date) -> tuple[date, date]:
+    start = d.replace(day=1) - relativedelta(months=12)
+    end = d
+    return start, end
 
