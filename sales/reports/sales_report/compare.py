@@ -10,7 +10,7 @@ from .formatters import pct_change, fmt_pp, fmt_money, fmt_int, fmt_pct
 
 def _prev_range(report_type: str, start: date, end: date) -> tuple[date, date, str]:
     if report_type == "daily":
-        return start - timedelta(days=7), end - timedelta(days=7), "аналогичный день недели прошлой недели"
+        return start - timedelta(days=7), end - timedelta(days=7), "аналогичный день прошлой недели"
     if report_type == "weekly":
         return start - timedelta(days=7), end - timedelta(days=7), "предыдущая неделя"
     # monthly

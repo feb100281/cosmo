@@ -83,3 +83,58 @@
   }
 }
 
+
+
+@media print{
+
+  /* ✅ 1) не рвать MTD-пакет */
+  .mtd-pack{
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* ✅ 2) максимально ужимаем вертикаль всего MTD-блока */
+  .mtd-pack .section-note{ margin: 6px 0 8px !important; }
+  .mtd-pack .chart-block{ margin-top: 8px !important; padding: 8px 10px !important; }
+  .mtd-pack .method-mini{ margin-top: 8px !important; padding: 8px 10px !important; }
+  .mtd-pack .method-mini__sep{ margin: 6px 0 !important; }
+
+  /* ✅ 3) Таблица MTD: уменьшаем шрифт и паддинги (часто именно она “съедает” страницу) */
+  .mtd-pack table{
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+  }
+  .mtd-pack th,
+  .mtd-pack td{
+    padding: 5px 8px !important;
+  }
+
+  /* ✅ 4) Методика: делаем компактнее */
+  .mtd-pack .method-mini__title{ font-size: 13px !important; }
+  .mtd-pack .method-mini__block-title{ font-size: 11.5px !important; margin-bottom: 6px !important; }
+
+  .mtd-pack .kv-row{ font-size: 11px !important; }
+  .mtd-pack .kv-k{ min-width: 85px !important; } /* было 110px — это тоже распирает */
+
+  .mtd-pack .eq-row{
+    padding: 6px 0 !important;
+    grid-template-columns: 1fr 130px !important; /* было 160px */
+    gap: 10px !important;
+  }
+  .mtd-pack .eq-name{ font-size: 11.5px !important; margin-bottom: 3px !important; }
+  .mtd-pack .eq-formula,
+  .mtd-pack .eq-sub{
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+  }
+  .mtd-pack .eq-result{ font-size: 13px !important; }
+
+  /* ✅ 5) ГЛАВНЫЙ РЫЧАГ: ограничиваем высоту графика, чтобы точно осталось место под методику */
+  .mtd-pack .chart-block--mtd svg{
+    width: 100% !important;
+    height: auto !important;
+    max-height: 78mm !important;  /* если не влезает — 72mm, если много воздуха — 82mm */
+  }
+}
+
+

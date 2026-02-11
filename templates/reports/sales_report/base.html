@@ -84,14 +84,34 @@
       .grid{grid-template-columns:1fr;}
     }
 
-    @media print{
-      @page{margin:12mm;}
-      body{background:#fff !important; padding:0 !important; display:block;}
-      .card{box-shadow:none !important; border:none !important; border-radius:0 !important; padding:0 !important;}
-      .toolbar{display:none !important;}
-      .page-break{break-before:page;}
-      table, tr, td, th{break-inside:avoid;}
-    }
+@media print{
+  body{background:#fff !important; padding:0 !important; display:block;}
+
+  /* ✅ фикс “съедает справа”: даём безопасный отступ и запрещаем распирание */
+  .page{
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-right: 2mm !important;   /* ключевой момент */
+    margin: 0 !important;
+  }
+
+  /* если где-то есть блоки с бордером/рамкой — не даём упираться в край */
+  .card, .section, .compare-table, .chart-block, .tbl{
+    max-width: 100% !important;
+  }
+
+  /* на всякий: если где-то используешь 100vw — в печати это зло */
+  [style*="vw"], .vw{
+    width: 100% !important;
+  }
+
+  .card{box-shadow:none !important; border:none !important; border-radius:0 !important; padding:0 !important;}
+  .toolbar{display:none !important;}
+  .page-break{break-before:page;}
+  table, tr, td, th{break-inside:avoid;}
+}
+
+
   </style>
     {% block extra_css %}{% endblock %}
 
@@ -102,7 +122,9 @@
     <div class="card">
 
       <div class="toolbar">
-        <a class="btn" href="{% url 'admin:sales_mv_daily_sales_change' obj.pk %}">← Назад</a>
+
+        <a class="btn" href="{% url 'admin:sales_mv_daily_sales_changelist' %}">← Назад</a>
+
         <button class="btn btn-primary" onclick="window.print()">🖨 Печать / PDF</button>
       </div>
 

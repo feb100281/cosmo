@@ -1,3 +1,5 @@
+import numpy as np
+
 def fmt_money(v) -> str:
     if v is None:
         return "—"
@@ -61,23 +63,11 @@ def fmt_pp(pct, digits: int = 1) -> str:
     return f"{s}%"
 
 
-# def fmt_delta_money(v):
-#     if v is None:
-#         return "—"
-#     sign = "+" if v > 0 else "−" if v < 0 else ""
-#     return f"{sign}{fmt_money(abs(v))}"
-
 def fmt_delta_money(v):
     if v is None:
         return "—"
     return fmt_money(abs(v))
 
-
-# def fmt_delta_int(v):
-#     if v is None:
-#         return "—"
-#     sign = "+" if v > 0 else "−" if v < 0 else ""
-#     return f"{sign}{fmt_int(abs(v))}"
 
 def fmt_delta_int(v):
     if v is None:
@@ -89,3 +79,22 @@ def fmt_delta_pct(v, digits=1):
         return "—"
     sign = "+" if v > 0 else "−" if v < 0 else ""
     return f"{sign}{abs(v):.{digits}f}%".replace(".", ",")
+
+
+def fmt_money_0(v):
+        if v is None or (isinstance(v, float) and np.isnan(v)):
+            return "—"
+        return f"{float(v):,.0f} ₽".replace(",", " ").replace(".", ",")
+
+
+def fmt_delta_short(v: float) -> str:
+    if v is None or (isinstance(v, float) and np.isnan(v)):
+        return "—"
+    sign = "−" if v < 0 else "+"
+    av = abs(float(v))
+
+    if av >= 1_000_000:
+        return f"{sign}{av/1_000_000:,.1f} млн ₽".replace(",", " ").replace(".", ",")
+    if av >= 1_000:
+        return f"{sign}{av/1_000:,.0f} тыс ₽".replace(",", " ").replace(".", ",")
+    return f"{sign}{av:,.0f} ₽".replace(",", " ").replace(".", ",")
