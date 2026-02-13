@@ -2,6 +2,7 @@
 from datetime import date
 import pandas as pd
 
+
 from sales.models import MV_Daily_Sales
 from sales.dash_apps.dailysales.data import get_month_data, get_ytd_data
 from sales.print_utils import build_mtd_table, build_ytd_table
@@ -24,6 +25,10 @@ from .ltm_chart import build_revenue_13m_svg
 from .categories_block import build_categories_context, build_categories_context_ytd
 from .print_utils_categories import build_categories_table
 from .categories_chart import build_mtd_categories_bar_svg, build_ytd_categories_bar_svg
+from .ltm_insights import build_ltm_insights
+
+from dateutil.relativedelta import relativedelta
+from .ltm_forecast_prophet import build_prophet_eom_projection
 
 
 
@@ -124,6 +129,87 @@ def build_mtd_method_context(df_mtd_raw):
     }
 
 
+def build_ytd_driver_context(df_ytd_raw):
+    """
+    YTD: драйверы изменения выручки (Orders / Ave) + контроль сходимости.
+    Revenue = Orders * Ave, Ave = Revenue / Orders
+    Эффект заказов       = (Orders_curr - Orders_prev) * Ave_prev
+    Эффект среднего чека = (Ave_curr - Ave_prev) * Orders_curr
+    Контроль:
+      Revenue_prev + эффекты ≈ Revenue_curr
+      residual = Revenue_curr - bridge_rev
+    """
+    import pandas as pd
+
+    if df_ytd_raw is None or df_ytd_raw.empty:
+        return None
+
+    df = df_ytd_raw.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    df["year"] = df["date"].dt.year
+
+    for c in ("amount", "orders"):
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+
+    years = sorted(df["year"].unique())[-2:]
+    if len(years) < 2:
+        return None
+    y_prev, y_curr = years[0], years[1]
+
+    def _totals(y: int):
+        d = df[df["year"] == y]
+        revenue = float(d["amount"].sum())
+        orders = float(d["orders"].sum()) if "orders" in d.columns else 0.0
+        ave = (revenue / orders) if orders else 0.0
+        return {"revenue": revenue, "orders": orders, "ave": ave}
+
+    p = _totals(y_prev)
+    c = _totals(y_curr)
+
+    if p["orders"] == 0 and c["orders"] == 0:
+        return None
+
+    eff_orders = (c["orders"] - p["orders"]) * p["ave"]
+    eff_ave = (c["ave"] - p["ave"]) * c["orders"]
+
+    bridge_rev = p["revenue"] + eff_orders + eff_ave
+    residual = c["revenue"] - bridge_rev  # то, что не “сошлось” из-за округлений/особенностей данных
+
+    d_rev = c["revenue"] - p["revenue"]
+    eff_sum = eff_orders + eff_ave
+
+    main_driver = (
+        "за счёт объёма (кол-ва заказов)"
+        if abs(eff_orders) >= abs(eff_ave)
+        else "за счёт среднего чека"
+    )
+    def _dir(v):
+        if v > 0:
+            return "pos"
+        if v < 0:
+            return "neg"
+        return "flat"
+
+    return {
+        "has": True,
+        "y_prev": y_prev,
+        "y_curr": y_curr,
+
+        # эффекты (коротко — для текста)
+        "eff_orders": fmt_delta_short(eff_orders),
+        "eff_ave": fmt_delta_short(eff_ave),
+        "eff_orders_dir": _dir(eff_orders),
+        "eff_ave_dir": _dir(eff_ave),
+
+
+        # контроль (точнее)
+        "d_rev": fmt_delta_money(d_rev),
+        "eff_sum": fmt_delta_money(eff_sum),
+        "residual": fmt_delta_money(residual),
+
+        "main_driver": main_driver,
+    }
 
 
 
@@ -329,6 +415,7 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
     # данные MTD/YTD (как и раньше, на дату d)
     df_mtd_raw = get_month_data(d)
     df_ytd_raw = get_ytd_data(d)
+    ytd_driver = build_ytd_driver_context(df_ytd_raw)
     
     categories = build_categories_context(d, top_n=12)
     
@@ -389,6 +476,38 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
     df_13m_raw = pd.DataFrame(list(qs_13m))
 
     revenue_13m_svg = build_revenue_13m_svg(df_13m_raw, report_date=d)
+    ltm_insights = build_ltm_insights(df_13m_raw, d)
+    
+    
+    # --- Prophet projection (EOM) ---
+    fc_start = date(2023, 1, 1)
+
+    qs_fc = (
+        MV_Daily_Sales.objects
+        .filter(date__gte=fc_start, date__lte=d)
+        .values("date", "amount")
+        .order_by("date")
+    )
+
+    df_fc_raw = pd.DataFrame(list(qs_fc))
+    
+    print("PROPHET df_fc_raw rows:", len(df_fc_raw))
+    if not df_fc_raw.empty:
+        print("PROPHET range:", df_fc_raw["date"].min(), "->", df_fc_raw["date"].max())
+
+    ltm_prophet = build_prophet_eom_projection(
+        df_fc_raw,
+        report_date=d,
+        historical_cut_off=None,   # можно поставить fc_start, если хочешь жестко
+        yearly_seasonality=True,
+        weekly_seasonality=True,
+        seasonality_mode="additive",
+        changepoint_prior_scale=0.05,
+        changepoint_range=1.0,
+        n_changepoints=25,
+)
+
+
 
 
 
@@ -452,7 +571,10 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         "mtd_waterfall_svg": mtd_waterfall_svg,
         "mtd_method": mtd_method,
         "ytd_cum_svg": ytd_cum_svg,
+        "ytd_driver": ytd_driver,
         "revenue_13m_svg": revenue_13m_svg,
+        "ltm_insights": ltm_insights,
+        "ltm_prophet": ltm_prophet,
         
         "categories": categories,
         "categories_table_html": categories_table_html,

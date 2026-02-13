@@ -83,6 +83,7 @@ def _to_print_table(df_pivot: pd.DataFrame, title_left: str, title_right: str) -
     ✅ Правило: если в предыдущем периоде нет значения (NaN или 0) — Δ = "—"
     """
     out = df_pivot.copy()
+    out = out.astype("object")
 
     base_cols = [c for c in [title_left, title_right] if c in out.columns]
 

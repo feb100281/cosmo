@@ -130,27 +130,75 @@
 
     <div class="page-break"></div>
 
-    <!-- ПОДРАЗДЕЛ YTD -->
-    <div class="subsection" id="totals-ytd">
+<!-- ПОДРАЗДЕЛ YTD -->
+<div class="subsection" id="totals-ytd">
 
-      <div class="section-title section-sub">
-        II.2 YTD (год, к прошлому году)
-      </div>
+  <div class="section-title section-sub">
+    II.2 YTD (год, к прошлому году)
+  </div>
 
-      <p class="section-note">
-        YTD (Year-to-date): накопленный итог с 1 января по {{ report_date|date:"d.m.Y" }}.
-        Сравнение — к аналогичному периоду прошлого года.
-      </p>
+  <p class="section-note">
+    YTD (Year-to-date): накопленный итог с 1 января по {{ report_date|date:"d.m.Y" }}.
+    Сравнение — к аналогичному периоду прошлого года.
+  </p>
 
-      {{ table_ytd_html|safe }}
+  {{ table_ytd_html|safe }}
 
-      {% if ytd_cum_svg %}
-        <div class="chart-block chart-block--ytd">
-          {{ ytd_cum_svg|safe }}
-        </div>
-      {% endif %}
-
+  {% if ytd_cum_svg %}
+    <div class="chart-block chart-block--ytd">
+      {{ ytd_cum_svg|safe }}
     </div>
+
+    {% if ytd_driver and ytd_driver.has %}
+      {# ✅ тот же визуальный язык, что и MTD-методика #}
+      <div class="method-mini method-mini--ytd">
+        <div class="method-mini__head">
+          <div class="method-mini__title">Драйверы изменения YTD</div>
+        </div>
+
+        <div class="method-mini__block">
+          <div class="method-mini__kv">
+            <div class="kv-row">
+              <span class="kv-k">Сравнение</span>
+              <span class="kv-v">
+                YTD {{ ytd_driver.y_curr }} к YTD {{ ytd_driver.y_prev }}
+              </span>
+            </div>
+
+            <div class="kv-row">
+              <span class="kv-k">Основной драйвер</span>
+              <span class="kv-v">
+                <b>{{ ytd_driver.main_driver }}</b>
+              </span>
+            </div>
+
+          <div class="kv-row">
+            <span class="kv-k">Эффекты</span>
+            <span class="kv-v">
+              Эффект заказов
+              <b class="{{ ytd_driver.eff_orders_dir }}">
+                {{ ytd_driver.eff_orders }}
+              </b>
+
+              <span class="dot">•</span>
+
+              Эффект среднего чека
+              <b class="{{ ytd_driver.eff_ave_dir }}">
+                {{ ytd_driver.eff_ave }}
+              </b>
+            </span>
+          </div>
+
+          </div>
+        </div>
+
+      </div>
+    {% endif %}
+
+  {% endif %}
+
+</div>
+
 
     <div class="page-break"></div>
 
@@ -176,6 +224,10 @@
           <span class="mono">(Rₜ + Rₜ₋₁ + Rₜ₋₂) / 3</span>.
           Показывает базовый тренд без влияния разовых колебаний.
         </div>
+
+        {% include "reports/sales_report/sections/_ltm_owner_tabs.html" %}
+
+
       {% endif %}
 
     </div>
