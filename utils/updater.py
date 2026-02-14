@@ -367,8 +367,164 @@ def set_data(d:dict):
     
     except Exception as e:
         sucsess_list.append(f'{e} Ошибка')
+    
+    
+    def update_mv_orders():
+        q = """
+        CREATE TABLE IF NOT EXISTS mv_orders
+    SELECT
+	x.orders_id,
+	ord.client_order_type,
+	ord.client_order,
+    ord.client_order_number,
+	ord.client_order_date,    
+	min(x.date) as order_min_date,
+	max(x.date) as order_max_date,
+	DATEDIFF(MAX(x.date), MIN(x.date)) + 1 AS realization_duration,
+	DATEDIFF(MAX(x.date),ord.client_order_date) + 1 AS order_duration,
+	sum(x.dt) as sales,
+	sum(x.cr) as returns,
+	sum(x.dt-x.cr) as amount,
+	sum(case when parent_id != 86 then x.dt-x.cr else 0 end) as items_amount,
+	sum(case when parent_id = 86 then x.dt-x.cr else 0 end) as service_amount,
+	sum(case when parent_id != 86 then x.quant_dt-x.quant_cr else 0 end) as items_quant,
+	count(distinct(case when parent_id != 86 then x.fullname  else NULL end)) as unique_items,
+	GROUP_CONCAT(DISTINCT manager_name ORDER BY manager_name SEPARATOR ', ') as manager_name
+	FROM (
+	SELECT  
+	d.orders_id,
+	d.date,
+	i.fullname,
+	cat.parent_id,
+	coalesce(i.article,'нет артикля') as article,
+	coalesce(b.barcode,'нет баркода') as barcode,
+	d.dt,
+	d.cr,
+	d.quant_dt,
+	d.quant_cr,
+	coalesce(mn.name, 'Менеджер не указан') as manager_name,
+	coalesce(a.name,'Нет агента') as agent_name,
+	coalesce(d.warehouse,'Склад не указан') as warehouse,
+	coalesce(sg.name,'') as store_group,
+	d.spec
+	FROM sales_salesdata d
+	LEFT JOIN corporate_items as i on d.item_id = i.id
+	LEFT JOIN corporate_cattree as cat on cat.id = i.cat_id
+	LEFT JOIN corporate_barcode as b on d.barcode_id = b.id
+	LEFT JOIN corporate_managers as mn on d.manager_id = mn.id
+	LEFT JOIN corporate_agents as a on a.id = d.agent_id
+	LEFT JOIN corporate_stores as store on store.id = d.store_id
+	LEFT JOIN corporate_storegroups as sg on sg.id = store.gr_id
+	) x
+	join sales_salesorders as ord on ord.id = x.orders_id
+	group by x.orders_id
+	order by ord.client_order_date desc;  
+        
+        """
+        with connection.cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS mv_orders")
+            cursor.execute(q)
+            cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_manager (manager_name(100));")
+            cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_date (client_order_date);")
+            cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_order_date (client_order, client_order_date);")
+            
+        return 'all good'
         
         
+        
+    def update_salesorders():
+        
+        q_update_salesorders = """
+        INSERT IGNORE INTO sales_salesorders
+        (client_order, client_order_date, client_order_number, client_order_type)
+        SELECT DISTINCT
+        client_order,
+        client_order_date,
+        client_order_number,
+
+        CASE
+            WHEN client_order_number RLIKE '^(Реализация товаров и услуг|Возврат товаров от клиента)'
+            THEN 'Продажи без заказа'
+            WHEN client_order_number RLIKE '^Отчет комиссионера \\(агента\\) о продажах'
+            THEN 'Комиссионные продажи'
+            WHEN client_order_number RLIKE '^(Отчет о розничных возвратах|Отчет о розничных продажах)'
+            THEN 'Розничные продажи'
+            ELSE 'Заказ клиента'
+        END AS client_order_type
+        FROM sales_salesdata
+        WHERE client_order IS NOT NULL
+        AND client_order_number IS NOT NULL;  
+        """
+        
+        q_update_relations = """
+        UPDATE sales_salesdata AS t
+            JOIN sales_salesorders AS s
+            ON t.client_order <=> s.client_order
+            AND t.client_order_date <=> s.client_order_date
+            AND t.client_order_number <=> s.client_order_number
+            SET t.orders_id = s.id;
+        
+        """
+        
+        with connection.cursor() as cursor:
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+            cursor.execute("TRUNCATE TABLE sales_salesorders;")
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+            cursor.execute(q_update_salesorders)
+            cursor.execute(q_update_relations)
+            
+        return 'all good'
+        
+        
+        
+        
+    def update_sales_with_client_orders():
+        q = """
+        UPDATE sales_salesdata
+            SET
+            client_order = CASE
+                WHEN (client_order IS NULL OR client_order = '<Продажи без заказа>')
+                    AND client_order_number RLIKE '^Реализация товаров и услуг'
+                THEN TRIM(REPLACE(client_order_number, 'Реализация товаров и услуг', ''))
+
+                WHEN (client_order IS NULL OR client_order = '<Продажи без заказа>')
+                    AND client_order_number RLIKE '^Возврат товаров от клиента'
+                THEN TRIM(REPLACE(client_order_number, 'Возврат товаров от клиента', ''))
+
+                WHEN (client_order IS NULL OR client_order = '<Продажи без заказа>')
+                    AND client_order_number RLIKE '^Отчет комиссионера \\(агента\\) о продажах'
+                THEN TRIM(REPLACE(client_order_number, 'Отчет комиссионера (агента) о продажах', ''))
+
+                WHEN (client_order IS NULL OR client_order = '<Продажи без заказа>')
+                    AND client_order_number RLIKE '^Отчет о розничных возвратах'
+                THEN TRIM(REPLACE(client_order_number, 'Отчет о розничных возвратах', ''))
+
+                WHEN (client_order IS NULL OR client_order = '<Продажи без заказа>')
+                    AND client_order_number RLIKE '^Отчет о розничных продажах'
+                THEN TRIM(REPLACE(client_order_number, 'Отчет о розничных продажах', ''))
+
+                ELSE client_order
+            END,
+
+            client_order_date = CASE
+                WHEN client_order_date IS NULL THEN
+                DATE(
+                    STR_TO_DATE(
+                    SUBSTRING_INDEX(client_order_number, 'от ', -1),
+                    '%d.%m.%Y %H:%i:%s'
+                    )
+                )
+                ELSE client_order_date
+            END
+            WHERE client_order_number IS NOT NULL
+            AND (
+                client_order IS NULL OR client_order = '<Продажи без заказа>'
+                OR client_order_date IS NULL
+            );        
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(q)
+            return 'all good'
     
     
     def refresh_mv_daily_sales():
@@ -384,6 +540,9 @@ def set_data(d:dict):
             """)
         
     refresh_mv_daily_sales()
+    update_sales_with_client_orders()
+    update_salesorders()
+    update_mv_orders()
     
     return sucsess_list
 

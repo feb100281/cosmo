@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SalesData,MV_Daily_Sales
+from .models import SalesData,MV_Daily_Sales,MVSalesOrder
 
 from django.utils.html import format_html
 from django import forms
@@ -73,7 +73,33 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
         )
         
     
-
+@admin.register(MVSalesOrder)
+class MVSalesOrderAdmin(admin.ModelAdmin):
+    
+    # ПОЛЯ ЧТО Б НЕ ЛАЗИТЬ `orders_id`, `client_order_type`, `client_order`, `client_order_number`, `client_order_date`, `order_min_date`, `order_max_date`, `realization_duration`, `order_duration`, `sales`, `returns`, `amount`, `items_amount`, `service_amount`, `items_quant`, `unique_items`, `manager_name`
+    
+    list_display = (
+        "client_order_type",
+        "client_order",
+        "client_order_date",
+        "order_min_date",
+        "order_max_date",
+        "order_duration",
+        "sales",
+        "returns",
+        "amount",
+        "items_amount",
+        "service_amount",
+        "items_quant",
+        "unique_items",
+        "manager_name"
+    )
+    search_fields = ("client_order_date","manager_name")
+    list_filter = ("client_order_date","manager_name" )
+    list_per_page = 25
+    
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
 
 
     
