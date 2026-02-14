@@ -29,6 +29,31 @@ def _month_label(d: date) -> str:
     return f"{RU_MONTHS[d.month]} {d.year}"
 
 
+def apply_bars(rows: list[dict], field_raw: str, out_field: str = "pct") -> list[dict]:
+    """
+    Добавляет в каждую строку rows[out_field] значение 0..100
+    по min/max среди rows[field_raw].
+
+    Ожидается, что rows — список dict, например:
+    {"label": "...", "amount_raw": 123, "amount": "123 ₽", ...}
+    """
+    vals = [r.get(field_raw) for r in rows if r.get(field_raw) is not None]
+    if not vals:
+        for r in rows:
+            r[out_field] = 0
+        return rows
+
+    vmin, vmax = min(vals), max(vals)
+    span = (vmax - vmin) or 1
+
+    for r in rows:
+        v = r.get(field_raw)
+        r[out_field] = round(((v - vmin) / span) * 100, 1) if v is not None else 0
+
+    return rows
+
+
+
 def trend_meta(report_type: str, d: date, points: int = 12) -> dict:
     """
     Метаданные для заголовка блока тренда (чтобы один раз показать день недели и т.п.)

@@ -153,7 +153,9 @@
               {% for t in trend %}
                 <tr {% if t.is_current %}style="font-weight:700;"{% endif %}>
                   <td>{{ t.label }}</td>
-                  <td>{{ t.amount }}</td>
+      <td class="td-bar" style="--pct: {{ t.amount_pct }};">
+  <span class="cell-text">{{ t.amount }}</span>
+</td>
                   <td>{{ t.dt }}</td>
                   <td>{{ t.orders }}</td>
                   <td>{{ t.cr }}</td>

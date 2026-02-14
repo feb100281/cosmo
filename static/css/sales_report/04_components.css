@@ -662,3 +662,33 @@
 
 
 
+
+
+
+/* ячейка "Выручка" с data-bar */
+.td-bar {
+  position: relative;
+  overflow: hidden;
+}
+
+.td-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: calc(var(--pct, 0) * 1%);
+  background: rgba(233, 30, 99, 0.18); /* можно заменить на более нейтральный */
+  border-radius: 2px;
+  z-index: 0;
+}
+
+.td-bar .cell-text {
+  position: relative;
+  z-index: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* чтобы полоса не прилипала к краям таблицы */
+.compare-table td.td-bar {
+  padding: 10px 14px;
+}
+

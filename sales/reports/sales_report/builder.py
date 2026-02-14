@@ -259,6 +259,20 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
     trend_meta_ctx = trend_meta(rtype, d, points=trend_points)
 
     trend_chart_svg = build_trend_chart_svg(trend, metric="amount_raw")
+    
+    
+    # --- data-bars для "Выручка" (amount_raw) ---
+    amount_vals = [t["amount_raw"] for t in trend if (t.get("amount_raw") is not None)]
+    if amount_vals:
+        vmin, vmax = min(amount_vals), max(amount_vals)
+        span = (vmax - vmin) or 1
+        for t in trend:
+            v = t.get("amount_raw") or 0
+            t["amount_pct"] = round((v - vmin) / span * 100, 1)
+    else:
+        for t in trend:
+            t["amount_pct"] = 0
+
 
 
 
