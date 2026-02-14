@@ -1,0 +1,136 @@
+{% comment %} templates/reports/sales_report/base.html {% endcomment %}
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Отчёт по продажам{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root{
+      --bg:#f3f4f6; --card:#fff; --border:#e5e7eb;
+      --text:#111827; --muted:#6b7280;
+      --accent:#111827;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; padding:24px 12px; background:var(--bg);
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      color:var(--text); display:flex; justify-content:center;
+    }
+    .page{width:100%; max-width:980px;}
+    .card{
+      background:var(--card); border:1px solid var(--border);
+      border-radius:16px; box-shadow:0 18px 45px rgba(15,23,42,.10);
+      padding:18px;
+    }
+    .toolbar{
+      display:flex; justify-content:space-between; align-items:center;
+      gap:10px; margin-bottom:12px;
+    }
+    .btn{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:7px 12px; border-radius:8px; font-size:13px;
+      border:1px solid #cbd5e1; background:#fff; color:#111827;
+      text-decoration:none; cursor:pointer; white-space:nowrap;
+    }
+    .btn:hover{background:#eef2f7}
+    .btn-primary{
+      background:var(--accent); border-color:var(--accent); color:#fff;
+    }
+    .btn-primary:hover{background:#020617}
+
+    .section{margin-top:18px}
+    .section-title{
+      font-size:11px; text-transform:uppercase; letter-spacing:.12em;
+      color:var(--muted); font-weight:800; margin:0 0 10px;
+    }
+
+    /* таблица */
+    .tbl{width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums;}
+    .tbl th,.tbl td{padding:7px 10px; border-bottom:1px solid #e5e7eb;}
+    .tbl thead th{background:#f9fafb; text-align:right;}
+    .tbl thead th:first-child{text-align:left;}
+    .tbl td.metric{font-weight:600; text-align:left;}
+    .tbl td.num{text-align:right;}
+    .tbl td.pos{color:#15803d; font-weight:700;}
+    .tbl td.neg{color:#b91c1c; font-weight:700;}
+
+    /* layout blocks */
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+    .kpi-grid{display:grid; grid-template-columns:repeat(4, 1fr); gap:10px;}
+    .kpi{
+      border:1px solid var(--border); border-radius:14px; padding:10px 12px;
+      background:#fff;
+    }
+    .kpi .label{font-size:11px; color:var(--muted); font-weight:700; letter-spacing:.08em; text-transform:uppercase;}
+    .kpi .value{margin-top:6px; font-size:18px; font-weight:900;}
+    .kpi .sub{margin-top:2px; font-size:12px; color:var(--muted);}
+
+    .toc a{display:block; padding:8px 10px; border:1px solid var(--border); border-radius:10px; margin:6px 0; text-decoration:none; color:var(--text); background:#fff;}
+    .toc a:hover{background:#f9fafb}
+
+    .insights{
+      border:1px solid var(--border); border-radius:12px; padding:10px 12px; background:#fafafa;
+      font-size:12px; color:#111827;
+    }
+    .insights ul{margin:6px 0 0 18px}
+
+    .page-break{height:1px; margin:18px 0; background:transparent;}
+
+    @media (max-width: 920px){
+      .kpi-grid{grid-template-columns:repeat(2, 1fr);}
+      .grid{grid-template-columns:1fr;}
+    }
+
+@media print{
+  body{background:#fff !important; padding:0 !important; display:block;}
+
+  /* ✅ фикс “съедает справа”: даём безопасный отступ и запрещаем распирание */
+  .page{
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-right: 2mm !important;   /* ключевой момент */
+    margin: 0 !important;
+  }
+
+  /* если где-то есть блоки с бордером/рамкой — не даём упираться в край */
+  .card, .section, .compare-table, .chart-block, .tbl{
+    max-width: 100% !important;
+  }
+
+  /* на всякий: если где-то используешь 100vw — в печати это зло */
+  [style*="vw"], .vw{
+    width: 100% !important;
+  }
+
+  .card{box-shadow:none !important; border:none !important; border-radius:0 !important; padding:0 !important;}
+  .toolbar{display:none !important;}
+  .page-break{break-before:page;}
+  table, tr, td, th{break-inside:avoid;}
+}
+
+
+  </style>
+    {% block extra_css %}{% endblock %}
+
+</head>
+
+<body>
+  <div class="page">
+    <div class="card">
+
+      <div class="toolbar">
+
+        <a class="btn" href="{% url 'admin:sales_mv_daily_sales_changelist' %}">← Назад</a>
+
+        <button class="btn btn-primary" onclick="window.print()">🖨 Печать / PDF</button>
+      </div>
+
+      {% block content %}{% endblock %}
+
+    </div>
+  </div>
+</body>
+</html>

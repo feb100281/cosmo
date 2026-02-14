@@ -1,11 +1,28 @@
 from django.contrib import admin
 from .models import SalesData,MV_Daily_Sales,MVSalesOrder
+from django.urls import path, reverse
+
+from .models import SalesData,MV_Daily_Sales
+from django.shortcuts import render, get_object_or_404
+from django.http import Http404
+from datetime import date
+from sales.dash_apps.dailysales.data import get_month_data, get_ytd_data
+
 
 from django.utils.html import format_html
 from django import forms
 from django.utils.safestring import mark_safe
 
-# Register your models here.
+from .print_utils import (
+    build_mtd_table,     # -> str (готовый HTML таблицы)
+    build_ytd_table,     # -> str (готовый HTML таблицы)
+
+)
+from sales.reports.sales_report.builder import build_daily_sales_report_context
+
+
+
+
 
 class SalesDataAdmin(admin.ModelAdmin):
     list_display = ('date','operation','store','icon_preview','amount_tot','quant_tot')
@@ -39,6 +56,9 @@ class SalesDataAdmin(admin.ModelAdmin):
         return obj.item
     icon_preview.short_description = 'Наименование'
     
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
+    
 
 @admin.register(MV_Daily_Sales)
 class MVSalesDailyAdmin(admin.ModelAdmin):
@@ -50,14 +70,69 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
         "ave_check",
         "dt",
         "cr",
-        "rtr_ratio"
+        "rtr_ratio", 
+        "print_link",
     )
     search_fields = ("date",)
-    list_filter = ("date", )
+    # list_filter = ("date", )
     list_per_page = 25
+    date_hierarchy = "date"
+
     
     class Media:
         css = {"all": ("css/admin_overrides.css",)}
+    
+    
+        # --- Кнопка печати в списке ---
+    @admin.display(description="Печать")
+    def print_link(self, obj):
+        url = reverse(
+            f"admin:{MV_Daily_Sales._meta.app_label}_{MV_Daily_Sales._meta.model_name}_print",
+            args=[obj.pk.isoformat()],  # pk у тебя date => безопасно делаем строку
+        )
+        return format_html(
+            '<a href="{}" title="Печать отчёта" style="text-decoration:none;font-size:14px;">🖨</a>',
+            url,
+        )
+
+    # --- Добавляем кастомный url /print/ ---
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path(
+                "<slug:pk>/print/",
+                self.admin_site.admin_view(self.print_daily_sales),
+                name=f"{MV_Daily_Sales._meta.app_label}_{MV_Daily_Sales._meta.model_name}_print",
+            ),
+        ]
+        return my_urls + urls
+
+    # --- View печати ---
+    def print_daily_sales(self, request, pk: str):
+        # pk приходит как 'YYYY-MM-DD'
+        try:
+            d = date.fromisoformat(pk)
+        except ValueError:
+            raise Http404("Invalid date format. Expected YYYY-MM-DD")
+
+        obj = get_object_or_404(MV_Daily_Sales, pk=d)
+
+        # сырые данные (как в dash)
+        df_mtd_raw = get_month_data(d)
+        df_ytd_raw = get_ytd_data(d)
+
+        # таблицы (в print_utils делай красивый HTML и стили)
+        table_mtd = build_mtd_table(df_mtd_raw)
+        table_ytd = build_ytd_table(df_ytd_raw)
+
+
+
+
+        context = build_daily_sales_report_context(d, request=request)
+        return render(request, "reports/sales_report/full_report.html", context)
+
+    
+    
     
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
         extra_context = extra_context or {}

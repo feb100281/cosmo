@@ -277,13 +277,13 @@
 
     /* Цвета групп (основная дифференциация по приложениям) */
     --color-realestate:      #3B82F6;  /* синий: объекты, площади */
-    --color-deals:           #22C55E;  /* зелёный: договоры / сделки */
+    --color-deals:           #22C55E;  /* СПРАВОЧНИКИ */
     --color-counterparties:  #8B5CF6;  /* фиолетовый: арендаторы / контрагенты */
-    --color-owners:          #F97316;  /* тёплый оранжевый: собственники */
-    --color-macro:           #F59E0B;  /* amber: макро / ставки / курсы */
+    --color-owners:          #F97316;  /* БЮДЖЕТИРОВАНИЕ */
+    --color-macro:           #F59E0B;  /* ПРОДАЖИ ДЭШБОАРД */
     --color-system:          #9CA3AF;  /* серый: служебные / системные */
     --color-bot:             #0EA5E9;  /* cyan: Телеграм-бот и околоботовое */
-    --color-treasury:        #1f9c95;
+    --color-treasury:        #1f9c95;  /* ПРОДАЖИ ЕЖЕДНЕВНЫЕ *
 
 
     /* Фон для active / hover */
@@ -373,21 +373,33 @@
     color: var(--color-realestate) !important;
 }
 
-/* 2. Договоры аренды / сделки */
-.fa-handshake,
-.fa-list-ul,
-.fa-file-signature {
+/* 2. СПРАВОЧНИКИ*/
+.fa-book,
+.fa-building,
+.fa-diagram-project,
+.fa-layer-group,
+.fa-industry,
+.fa-copyright,
+.fa-sliders,
+.fa-palette,
+.fa-ruler-combined,
+.fa-tags,
+.fa-cubes,
+.fa-folder-tree,
+.fa-folder-open,
+.fa-barcode,
+.fa-box-open,
+.fa-object-group,
+.fa-store,
+.fa-user-tie,
+.fa-user-gear {
     color: var(--color-deals) !important;
 }
 
-/* Все пункты меню, ведущие в /admin/la/... — договорный блок (зелёный) */
-.main-sidebar .nav-sidebar a[href^="/admin/la/"] i {
-    color: var(--color-deals) !important;
-}
+
 
 /* 3. Контрагенты / арендаторы (фиолетовый) */
 .fa-address-book,
-.fa-user-tie,
 .fa-handshake-simple,
 .fa-handshake,
 .fa-icons,
@@ -396,36 +408,28 @@
     color: var(--color-counterparties) !important;
 }
 
-/* 4. Собственники (отдельный тёплый цвет) */
-.fa-building-user,
-
-.fa-building-circle-check {
+/* 4. БЮДЖЕТИРОВАНИЕ */
+.fa-coins,
+.fa-code-branch,
+.fa-sitemap,
+.fa-file-invoice-dollar,
+.fa-table-cells{
     color: var(--color-owners) !important;
 }
 
-/* 5. Макро / финансы / банки / налоги */
-.fa-sitemap, 
-.fa-money-bill-transfer,
-.fa-landmark,
-.fa-credit-card,
-.fa-chart-line,
-.fa-percent,
-.fa-arrow-trend-up,
-.fa-calendar-days,
-.fa-money-bill-trend-up,
-.fa-coins,
-.fa-magnifying-glass-chart,
-.fa-file-invoice-dollar {
+/* 5. ПРОДАЖИ ДЭШБОАРД */
+.fa-gauge-high, 
+.fa-chart-line
+{
     color: var(--color-macro) !important;
 }
 
 
-/* Казначейство */
+/* ПРОДАЖИ ЕЖЕДНЕВНЫЕ */
 
-.fa-wallet,
-.fa-arrows-rotate,
-.fa-robot,
-.fa-receipt {
+.fa-chart-column,
+.fa-calendar-day
+{
     color: var(--color-treasury) !important;
 }
 
@@ -437,9 +441,7 @@
 .fa-user,
 .fa-users-gear,
 .fa-gear,
-.fa-code-branch,
-.fa-gauge,
-.fa-folder-tree,
+.fa-gauge
 .fa-file-lines {
     color: var(--color-system) !important;
 }
@@ -729,11 +731,16 @@
     color: #111827;
 }
 
-/* ==== Вернуть нормальный шрифт в таблицах админки ==== */
-table td, 
-table th {
-    font-size: 0.75rem !important;
-}
+/* ===== Фон заголовков таблицы ===== */
+/* .change-list #result_list thead th {
+  background: #ecfdf5;  
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid rgba(16,185,129,.18);
+  font-weight: 700;
+  color: #065f46;
+
+} */
+
 
 
 
@@ -864,16 +871,49 @@ table th {
   color: rgba(255, 255, 255, 0.85) !important;
 }
 
-
-/* чуть больше воздуха под фиксированной верхней панелью */
+/* Fix: content should not hide under fixed navbar */
 .layout-navbar-fixed .wrapper .content-wrapper {
-  padding-top: 14px;
+  padding-top: 64px !important;  /* 56–72 обычно ок, начни с 64 */
 }
 
-/* и отдельно — заголовок страницы */
+/* optional: чуть нормальный отступ у шапки */
 .content-header {
-  padding-top: 18px !important;
+  padding-top: 12px !important;
 }
+
+/* === Compact Navbar (Jazzmin / AdminLTE) === */
+/* .main-header.navbar {
+  min-height: 48px !important;
+  padding-top: 0.15rem !important;
+  padding-bottom: 0.15rem !important;
+}
+
+.main-header.navbar .nav-link {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  line-height: 1.1 !important;
+} */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

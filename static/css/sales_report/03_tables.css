@@ -1,0 +1,134 @@
+/* =========================
+   ТАБЛИЦЫ: KPI compare + общие правила
+   ========================= */
+
+.compare-table{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 0;
+
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.compare-table th,
+.compare-table td{
+  padding: 6px 8px;
+  border: 1px solid var(--brand-border);
+  text-align: left;
+
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.compare-table th{
+  background: var(--brand-soft) !important;
+  color: #0f255f;
+  font-weight: 700;
+  border-bottom: 2px solid var(--brand);
+}
+
+.compare-table th small{
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #51608a;
+  font-weight: 500;
+}
+
+.compare-table tr:hover{
+  background: #f7f9ff;
+}
+
+/* показатели роста/падения */
+.positive{ color: var(--pos); font-weight: 650; }
+.negative{ color: var(--neg); font-weight: 650; }
+
+/* =========================
+   TOTALS: таблицы без правок HTML/Python
+   ========================= */
+
+#totals table{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 0;
+
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+#totals table th,
+#totals table td{
+  padding: 6px 8px;
+  border: 1px solid var(--brand-border);
+  text-align: left;
+
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+#totals table th{
+  background: var(--brand-soft) !important;
+  color: #0f255f;
+  font-weight: 700;
+  border-bottom: 2px solid var(--brand);
+}
+
+#totals table th small{
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #51608a;
+  font-weight: 500;
+}
+
+#totals table tr:hover{
+  background: #f7f9ff;
+}
+
+/* =========================
+   СТРОКА ИТОГО
+   ========================= */
+
+.total-row{
+  font-weight: 700;
+  border-top: 2px solid #1f3cff;
+  background: rgba(31, 60, 255, 0.05);
+}
+
+/* =========================
+   ДЕЛЬТЫ В ТАБЛИЦЕ ПО МАГАЗИНАМ
+   ========================= */
+
+.cell-main{
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cell-sub{
+  font-size: 11px;
+  margin-top: 2px;
+  line-height: 1.2;
+  opacity: 0.9;
+}
+
+.cell-sub .muted{
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.cell-sub.pos{ color: var(--pos); }
+.cell-sub.neg{ color: var(--neg); }
+
+/* стрелки чуть аккуратнее */
+.cell-sub::first-letter{
+  font-size: 10px;
+  margin-right: 2px;
+}
+
+/* чтобы строка ИТОГО была чистой (без вторых строк) */
+.total-row .cell-sub{
+  display: none;
+}

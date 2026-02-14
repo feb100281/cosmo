@@ -556,18 +556,22 @@ class SalesReportMonthly:
         date = pd.to_datetime(date)        
         date_minus_one_year = date - pd.DateOffset(years=1)
         start_prev_year_month = pd.Timestamp(year=date_minus_one_year.year, month=date_minus_one_year.month, day=1)
-        end_prev_year_date = date_minus_one_year + pd.offsets.MonthEnd(0) 
+        end_prev_year_date = date_minus_one_year + pd.offsets.MonthEnd(0)
         df = self.df.copy()
         df['date'] = pd.to_datetime(df['date'])
         df['year'] = df['date'].dt.year
         df['month'] = df['date'].dt.month 
-        df_mom = df[(df['date'] >= start_prev_year_month) & (df['date'] <= end_prev_year_date)]     
+        df_mom = df[(df['date'] >= start_prev_year_month) & (df['date'] <= end_prev_year_date)]   
+
+  
         pyear_revenue = (df_mom.dt.sum() - df_mom.cr.sum()) #/1_000_000 
         
         
         year = date.year           
         month = date.month        
         df_year = df[(df['date'].dt.year == year) & (df['date'].dt.month == month)]
+ 
+
         
         sales =  df_year['dt'].sum() #/ 1_000_000
         ret = df_year['cr'].sum() #/ 1_000_000

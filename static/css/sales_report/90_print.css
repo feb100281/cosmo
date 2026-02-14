@@ -1,0 +1,140 @@
+/* =========================
+   PRINT / PDF
+   ========================= */
+
+/* разрывы страниц */
+@media print{
+  .page-break{
+    display: block !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+
+    page-break-before: always !important;
+    page-break-after: always !important;   /* wkhtmltopdf иногда лучше after */
+    break-before: page !important;
+    break-after: page !important;
+  }
+
+  /* чтобы разрыв не ломался из-за flex/grid */
+  .page-break *{
+    float: none !important;
+  }
+
+  /* таблицы и паспортные блоки — не рвать */
+  .compare-table{
+    page-break-inside: avoid;
+  }
+
+  /* totals таблицу тоже не рвать */
+  #totals table{
+    page-break-inside: avoid;
+  }
+
+  /* на печати фиксируем заголовки таблиц */
+  .compare-table th{
+    background: var(--brand-soft) !important;
+    border-color: var(--brand-border) !important;
+  }
+
+  #totals table th{
+    background: var(--brand-soft) !important;
+    border-color: var(--brand-border) !important;
+  }
+}
+
+
+@page{
+  size: A4;
+  margin: 12mm 10mm;
+}
+
+/* на всякий: wkhtmltopdf любит распирать блоки */
+.section, .store-chart-card, .store-chart-wrap{
+  max-width: 100% !important;
+}
+
+.store-chart-wrap{
+  overflow: hidden !important;
+}
+
+/* ещё раз фиксируем svg именно для печати */
+.store-chart-wrap svg{
+  width: 100% !important;
+  height: auto !important;
+}
+
+
+
+
+
+
+@media print {
+  /* если это SVG area (часто: path с fill) */
+  svg .area,
+  svg path[fill]:not([fill="none"]) {
+    fill: none !important;
+    opacity: 1 !important;
+  }
+
+  /* линия */
+  svg path[stroke] {
+    opacity: 1 !important;
+  }
+}
+
+
+
+@media print{
+
+  /* ✅ 1) не рвать MTD-пакет */
+  .mtd-pack{
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* ✅ 2) максимально ужимаем вертикаль всего MTD-блока */
+  .mtd-pack .section-note{ margin: 6px 0 8px !important; }
+  .mtd-pack .chart-block{ margin-top: 8px !important; padding: 8px 10px !important; }
+  .mtd-pack .method-mini{ margin-top: 8px !important; padding: 8px 10px !important; }
+  .mtd-pack .method-mini__sep{ margin: 6px 0 !important; }
+
+  /* ✅ 3) Таблица MTD: уменьшаем шрифт и паддинги (часто именно она “съедает” страницу) */
+  .mtd-pack table{
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+  }
+  .mtd-pack th,
+  .mtd-pack td{
+    padding: 5px 8px !important;
+  }
+
+  /* ✅ 4) Методика: делаем компактнее */
+  .mtd-pack .method-mini__title{ font-size: 13px !important; }
+  .mtd-pack .method-mini__block-title{ font-size: 11.5px !important; margin-bottom: 6px !important; }
+
+  .mtd-pack .kv-row{ font-size: 11px !important; }
+  .mtd-pack .kv-k{ min-width: 85px !important; } /* было 110px — это тоже распирает */
+
+  .mtd-pack .eq-row{
+    padding: 6px 0 !important;
+    grid-template-columns: 1fr 130px !important; /* было 160px */
+    gap: 10px !important;
+  }
+  .mtd-pack .eq-name{ font-size: 11.5px !important; margin-bottom: 3px !important; }
+  .mtd-pack .eq-formula,
+  .mtd-pack .eq-sub{
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+  }
+  .mtd-pack .eq-result{ font-size: 13px !important; }
+
+  /* ✅ 5) ГЛАВНЫЙ РЫЧАГ: ограничиваем высоту графика, чтобы точно осталось место под методику */
+  .mtd-pack .chart-block--mtd svg{
+    width: 100% !important;
+    height: auto !important;
+    max-height: 78mm !important;  /* если не влезает — 72mm, если много воздуха — 82mm */
+  }
+}
+
+
