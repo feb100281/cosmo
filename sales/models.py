@@ -262,7 +262,7 @@ class MVSalesOrder(models.Model):
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        verbose_name="Сумма заказа",
+        verbose_name="Стоимость заказа",
         null=True,
         blank=True,
     )
@@ -302,7 +302,7 @@ class MVSalesOrder(models.Model):
         managed = False
         db_table = "mv_orders"
         verbose_name = "Заказ"
-        verbose_name_plural = "Заказы"
+        verbose_name_plural = "Заказы (в реализации)"
 
     def __str__(self):
         return f"{self.client_order}"
