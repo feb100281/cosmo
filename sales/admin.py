@@ -175,6 +175,19 @@ class MVSalesOrderAdmin(admin.ModelAdmin):
     
     class Media:
         css = {"all": ("css/admin_overrides.css",)}
+    
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+
+        # если тебе не нужен object_id, можно оставить статикой:
+        extra_context["iframe_url"] = f"/apps/app/orders_app/?object_id={object_id}"
+
+        # если нужно фильтровать даш по конкретной записи/дате:
+        # extra_context["iframe_url"] = f"/apps/app/dailysales_app/?object_id={object_id}"
+
+        return super().changeform_view(
+            request, object_id, form_url, extra_context=extra_context
+        )
 
 
     
