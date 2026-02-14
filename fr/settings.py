@@ -95,19 +95,24 @@ JAZZMIN_SETTINGS = {
     "welcome_sign": "Добро пожаловать в панель управления",
     "show_ui_builder": True,
     "navigation_expanded": False,
-    "search_model": "auth.User",
+    # "search_model": "auth.User",
     "user_avatar": False,
     "custom_css": "css/custom.css",
     #"hide_apps": ['scr'],
     #"hide_models": ['rr.cart'],
+    
     "topmenu_links": [
         # стандартные ссылки
-        {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
-
+        {"name": "Home", },
+        {"model": "auth.User"},
+        {"model": "sales.MV_Daily_Sales"},
         # ссылка на Dash Upload Form
         {"name": "Upload Form", "url": "/upload-form", "new_window": True},
-         {"name": "Redis update", "url": "/redis-form", "new_window": True},
+        {"name": "Redis update", "url": "/redis-form", "new_window": True},
     ],
+    
+
+
 
         # App with dropdown menu to all its models pages (Permissions checked against models)
         #{"app": "rr"},
@@ -118,7 +123,8 @@ JAZZMIN_SETTINGS = {
 
     #],
 
-    #"custom_js": None,
+
+    "custom_js": "js/custom.js",
     "show_collapse": True,
     "related_modal_active": True,
     "icons": {
@@ -127,55 +133,112 @@ JAZZMIN_SETTINGS = {
          "auth.Group": "fa fa-users",
          "corporate": "fa fa-book",
          "budgets":"fa-piggy-bank",
-    #     "rr": "fa fa-building",
-    #     "rr.Properties": "fa fa-landmark",
-    #     "rr.Premisses": "fa fa-door-open",
-    #     "rr.PremissesTypes": "fa fa-tags",
-    #     "rr.Floors": "fa fa-bars",
-    #     "rr.PremissStructure": "fa fa-project-diagram",
-    #     "rr.SupportDocuments":"fa fa-map",
-    #     "rr.Acts":"fa fa-hammer",
-    #     "contragents": "fa fa-address-book",
-    #     "scr": "fa fa-bug",
-    #     "la": "fa fa-handshake-simple",
-    #     "treasury": "fa fa-money-bill",
-    #     "dashboard":"fa fa-tachometer-alt",
-    #     "dashboard.ReportAR":"fa fa-hand-holding-usd",
-    #     #"corporate.owners": "fa fa-building",
-    #     #"corporate.bankaccount": "fa fa-money",
+         
+        ### --- ДЭШБОАРД --- 
+        "dashboard": "fa-solid fa-gauge-high",
+        "dashboard.SalesReport": "fa-solid fa-chart-line",
+        
+         
+        ### --- ПРОДАЖИ --- 
+        "sales": "fa-solid fa-chart-column",
+        "sales.MV_Daily_Sales": "fa-solid fa-calendar-day",
+        
+        ### --- СПРАВОЧНИКИ --- 
+        "corporate": "fa-solid fa-book",
+          
+        "corporate.Companies": "fa-solid fa-building",
+        "corporate.Projects": "fa-solid fa-diagram-project",
+
+        "corporate.ItemMaterial": "fa-solid fa-layer-group",
+        "corporate.ItemManufacturer": "fa-solid fa-industry",
+        "corporate.ItemBrend": "fa-solid fa-copyright",
+
+        "corporate.ItemProperty": "fa-solid fa-sliders",
+        "corporate.ItemColors": "fa-solid fa-palette",
+        "corporate.ItemSizes": "fa-solid fa-ruler-combined",
+        "corporate.ItemZones": "fa-solid fa-tags",
+        "corporate.ItemCollections": "fa-solid fa-cubes",
+
+        "corporate.CatTree": "fa-solid fa-folder-tree",
+        "corporate.SubCategory": "fa-solid fa-folder-open",
+
+        "corporate.Barcode": "fa-solid fa-barcode",
+        "corporate.Items": "fa-solid fa-box-open",
+
+        "corporate.StoreGroups": "fa-solid fa-object-group",
+        "corporate.Stores": "fa-solid fa-store",
+
+        "corporate.Managers": "fa-solid fa-user-tie",
+        "corporate.Agents": "fa-solid fa-user-gear",
+        
+        
+         ### --- БЮДЖЕТИРОВАНИЕ --- 
+         "budgets": "fa-solid fa-coins",
+        "budgets.ForecastTypes": "fa-solid fa-code-branch",
+        "budgets.ForecastSubjects": "fa-solid fa-sitemap",
+
+        "budgets.Forecasts": "fa-solid fa-file-invoice-dollar",
+        "budgets.ForecastData": "fa-solid fa-table-cells",
+
+
      },
     "default_icon_parents": "fa fa-fw fa-folder",
     "default_icon_children": "fa fa-fw fa-file",
     "changeform_format": "collapsed",
-    # "order_with_respect_to": ["rr.Properties", "rr.Premisses", "rr.PremissesTypes", "rr.Floors", "rr.PremissesStatus", "rr.PremissesUsage", "rr.SupportDocuments"],
+    "order_with_respect_to": [
+        'dashboard',       # Дэшбоард 
+        'sales',           # Продажи 
+        'corporate',       # Справочники 
+        "budgets",         # Бюджетирование
+        "auth",            # Пользователи и группы
+        "services",        # Служебные — всегда в конце
+    ],
 
     # "changeform_format_overrides": {"auth.user": "vertical_tabs",},
 
 }
 
+
+
+
 JAZZMIN_UI_TWEAKS = {
     "navbar_small_text": True,
     "footer_small_text": True,
-    "body_small_text": True,
+
+    # текст в контенте лучше обычный размер,
+    # так легче читать списки и таблицы
+    "body_small_text": False,
+
+    # логотип можно оставить мелким
     "brand_small_text": True,
-    #"brand_colour": "navbar-lightblue",
-    #"accent": "accent-primary",
-    #"navbar": "navbar-lightblue navbar-dark",
+    "brand_colour": "navbar-secondary",
+    "accent": "accent-info",
+    "navbar": "navbar-secondary navbar-dark",
     "no_navbar_border": False,
-    "navbar_fixed": False,
+
+    # удобно, когда верхнее меню фиксировано
+    "navbar_fixed": True,
+
     "layout_boxed": False,
     "footer_fixed": False,
-    "sidebar_fixed": False,
-    #"sidebar": "sidebar-light-success",
-    "sidebar_nav_small_text": True,
+
+    # фиксируем сайдбар, чтобы меню не уезжало
+    "sidebar_fixed": True,
+    "sidebar": "sidebar-dark-primary",
+
+    # меню слева чуть крупнее
+    "sidebar_nav_small_text": False,
+
     "sidebar_disable_expand": False,
     "sidebar_nav_child_indent": True,
+
     "sidebar_nav_compact_style": True,
-    "sidebar_nav_legacy_style": True,
-    "sidebar_nav_flat_style": False,
-    "theme": "pulse",
-    #"dark_mode": True,
-    #"dark_mode_theme": True,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": True,
+
+    "theme": "yeti", 
+    "dark_mode_theme": None,
+
     "button_classes": {
         "primary": "btn-outline-primary",
         "secondary": "btn-outline-secondary",
@@ -184,8 +247,7 @@ JAZZMIN_UI_TWEAKS = {
         "danger": "btn-danger",
         "success": "btn-success",
     },
-    "actions_sticky_top": True,
-
+    "actions_sticky_top": False,
 }
 
 
@@ -204,6 +266,10 @@ DATABASES = {
         "PORT": os.getenv('DB_PORT', '3306'),  # Порт для MySQL
         'OPTIONS': {
             'charset': 'utf8mb4',
+            # ⏱ таймауты соединения и выполнения запросов
+            "connect_timeout": 60,     # соединиться с БД
+            "read_timeout": 300,       # ждать результат SELECT
+            "write_timeout": 300,      # ждать INSERT/UPDATE
         },
     }
 }

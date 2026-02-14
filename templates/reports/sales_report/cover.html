@@ -1,0 +1,123 @@
+{% load static %}
+<!-- Подключаем стили для обложки -->
+<link rel="stylesheet" href="{% static 'css/sales_report/cover.css' %}">
+
+<section id="cover" class="cover">
+  <div class="cover-card">
+
+    <!-- Top: logo with subtle branding -->
+    <div class="cover-brand">
+      <div class="cover-brand-container">
+        <img class="cover-logo" src="{% static 'img/sales_report/logo.svg' %}" alt="COSMORELAX logo">
+        <span class="cover-brand-subtitle">Sales & Performance Analysis</span>
+      </div>
+    </div>
+
+    <!-- Main content area -->
+    <div class="cover-content">
+      <!-- Center: titles with hierarchy -->
+      <div class="cover-center">
+
+        <!-- Тип отчёта (уже рассчитан в builder.py) -->
+        {% if report_type == "monthly" %}
+          <div class="cover-subtitle">Ежемесячный аналитический обзор</div>
+        {% elif report_type == "weekly" %}
+          <div class="cover-subtitle">Еженедельный аналитический отчёт</div>
+        {% else %}
+          <div class="cover-subtitle">Ежедневный оперативный отчёт</div>
+        {% endif %}
+
+        <h1 class="cover-title">Отчёт по продажам</h1>
+
+        <!-- Разделитель с SVG для корректной печати -->
+        <div class="cover-divider">
+          <svg class="cover-divider-svg" width="320" height="6" viewBox="0 0 320 6" fill="none">
+            <line x1="0" y1="3" x2="120" y2="3" stroke="#E5E7EB" stroke-width="1" stroke-dasharray="2 2"/>
+            <circle cx="160" cy="3" r="3" fill="#002FA7"/>
+            <line x1="200" y1="3" x2="320" y2="3" stroke="#E5E7EB" stroke-width="1" stroke-dasharray="2 2"/>
+          </svg>
+        </div>
+
+        <!-- Период (уже рассчитан в builder.py) -->
+        <div class="cover-period">
+          <span class="cover-period-label">{{ period_label }}</span>
+          <span class="cover-period-value">{{ period_value }}</span>
+        </div>
+
+        <!-- Бейдж -->
+        {% if report_type == "monthly" %}
+          <div class="cover-badge">
+            <span class="badge-content">🏆 Итоги месяца</span>
+          </div>
+        {% elif report_type == "weekly" %}
+          <div class="cover-badge">
+            <span class="badge-content">📊 Итоги недели</span>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Illustration/visual element -->
+      <div class="cover-art-wrap">
+        {% if report_type == "monthly" %}
+          <img class="cover-art" src="{% static 'img/sales_report/title_report_monthly.svg' %}" alt="Sales report illustration">
+        {% elif report_type == "weekly" %}
+          <img class="cover-art" src="{% static 'img/sales_report/title_report_weekly.svg' %}" alt="Sales report illustration">
+        {% else %}
+          <img class="cover-art" src="{% static 'img/sales_report/title_report_daily.svg' %}" alt="Sales report illustration">
+        {% endif %}
+
+        <div class="cover-art-caption">
+          {% if report_type == "monthly" %}
+            Консолидированные метрики и ключевые показатели эффективности
+          {% elif report_type == "weekly" %}
+            Анализ недельных трендов и ключевые показатели
+          {% else %}
+            Оперативные данные и дневные тренды
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer: clean metadata section -->
+    <footer class="cover-footer">
+      <div class="cover-footer-container">
+        <div class="cover-footer-section">
+          <div class="cover-meta-label">Дата отчёта</div>
+          <div class="cover-meta-value">{{ generated_date|date:"d.m.Y" }}</div>
+
+          <!-- Номер отчёта (уже рассчитан в builder.py) -->
+          <div class="cover-meta-note">Отчёт № {{ report_number }}</div>
+        </div>
+
+        <div class="cover-footer-divider"></div>
+
+        <div class="cover-footer-section">
+          <div class="cover-meta-label">Исполнитель</div>
+          <div class="cover-meta-value">Войтенко Дарья</div>
+        </div>
+
+        <div class="cover-footer-divider"></div>
+
+        <div class="cover-footer-section">
+          <div class="cover-meta-label">Тип отчёта</div>
+
+          {% if report_type == "monthly" %}
+            <div class="cover-meta-value type-monthly">Ежемесячный</div>
+          {% elif report_type == "weekly" %}
+            <div class="cover-meta-value type-weekly">Еженедельный</div>
+            <div class="cover-meta-note">Анализ недели</div>
+          {% else %}
+            <div class="cover-meta-value type-daily">Ежедневный</div>
+            <div class="cover-meta-note">Оперативные данные</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="cover-footer-bottom">
+        <div class="cover-copyright">© 2026 COSMORELAX. Все права защищены.</div>
+        <div class="cover-confidential">🔒 Конфиденциально</div>
+      </div>
+    </footer>
+
+  </div>
+</section>

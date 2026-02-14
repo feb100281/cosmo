@@ -1,3 +1,4 @@
+/* static/css/dash/fancy_tables.css */
 /* Fancy modern table (Dash Mantine / dmc.Table) */
 .fancy-table {
   width: 100%;
@@ -59,9 +60,17 @@
 
 /* negative highlight */
 .fancy-table td.num.neg {
-  background: #fff0f0 !important;
-  color: #b00020 !important;
+  background: rgba(139, 0, 0, 0.06) !important;
+  color: #8b0000 !important;
+  font-weight: 700;
 }
+
+.fancy-table td.num.pos {
+  background: rgba(11, 79, 63, 0.06) !important;
+  color: #0b4f3f !important;
+  font-weight: 700;
+}
+
 
 /* subtle column borders (optional) */
 .fancy-table th + th,
@@ -72,6 +81,35 @@
 /* compact mode: add class "compact" too */
 .fancy-table.compact thead th { padding: 7px 10px; }
 .fancy-table.compact tbody td { padding: 6px 10px; font-size: 12px; }
+
+/* === delta coloring via span (because df_dmc_table uses strings) === */
+.fancy-table td span.pos,
+.classic-table td span.pos {
+  color: #0b4f3f;
+  font-weight: 700;
+}
+
+.fancy-table td span.neg,
+.classic-table td span.neg {
+  color: #8b0000;
+  font-weight: 700;
+}
+
+
+/* coloring delta values (SPAN inside TD) */
+.fancy-table td span.pos,
+.classic-table td span.pos {
+  color: #0b4f3f;
+  font-weight: 700;
+}
+
+.fancy-table td span.neg,
+.classic-table td span.neg {
+  color: #8b0000;
+  font-weight: 700;
+}
+
+
 
 /* print-friendly */
 @media print {

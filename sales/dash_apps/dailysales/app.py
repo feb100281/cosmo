@@ -4,6 +4,7 @@ from utils.dash_components.common import THEME
 from dash_mantine_components import MantineProvider, Container
 from dash import html, dcc, Input, Output
 import urllib.parse
+from dash.exceptions import PreventUpdate
 
 scripts = [
     "https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.10.8/dayjs.min.js",
@@ -30,9 +31,14 @@ app.layout = MantineProvider(
     withGlobalClasses=True,
     children=[
         dcc.Location(id="url"),           # триггер на загрузку
+        dcc.Store(id="dummy-store"),
         Container(id="page",fluid=True),              # сюда отрисуем окно
     ],
 )
+
+
+
+
 
 @app.callback(
     Output("page", "children"),
@@ -51,4 +57,11 @@ def update_from_url(search):
     content = MainWindow(object_id)
 
     return content.layout()
+
+
+
+
+
+
+
 

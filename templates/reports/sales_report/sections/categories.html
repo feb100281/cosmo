@@ -1,0 +1,84 @@
+{% comment %} templates/reports/sales_report/sections/categories.html {% endcomment %}
+<section id="categories">
+  <div class="section">
+
+    <!-- ГЛАВНЫЙ РАЗДЕЛ -->
+    <h2 class="section-title section-main">III. Анализ продаж по категориям</h2>
+
+    <!-- ========================================================= -->
+    <!-- IV.1 MTD -->
+    <!-- ========================================================= -->
+    <div class="subsection" id="categories-mtd">
+
+      <div class="section-title section-sub">
+        III.1 Категории и подкатегории (MTD, к прошлому году)
+      </div>
+
+      <p class="section-note">
+        Срез MTD (с 1-го числа месяца по {{ report_date|date:"d.m.Y" }}) в разрезе категорий и подкатегорий.
+        Сравнение — к аналогичному периоду прошлого года.
+      </p>
+
+      {# ✅ График ТОП категорий (MTD) #}
+      {% if categories_chart_svg %}
+        <div class="chart-block chart-block--categories">
+          {{ categories_chart_svg|safe }}
+        </div>
+      {% endif %}
+
+      {# ✅ Таблица ТОП категорий (MTD) #}
+      {% if categories_table_html %}
+        {{ categories_table_html|safe }}
+      {% else %}
+        <div class="section-note">Данных для анализа категорий (MTD) нет.</div>
+      {% endif %}
+
+      {# ✅ Таблица ТОП подкатегорий (MTD) #}
+      {% if subcategories_table_html %}
+        <div class="mt-12"></div>
+        {{ subcategories_table_html|safe }}
+      {% endif %}
+
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- ========================================================= -->
+    <!-- IV.2 YTD -->
+    <!-- ========================================================= -->
+    <div class="subsection" id="categories-ytd">
+
+      <div class="section-title section-sub">
+       III.1 Категории и подкатегории (YTD, к прошлому году)
+      </div>
+
+      <p class="section-note">
+        Срез YTD (с 1 января по {{ report_date|date:"d.m.Y" }}) в разрезе категорий и подкатегорий.
+        Сравнение — к аналогичному периоду прошлого года.
+      </p>
+
+      {# ✅ График ТОП категорий (YTD) #}
+      {% if categories_ytd_chart_svg %}
+        <div class="chart-block chart-block--categories">
+          {{ categories_ytd_chart_svg|safe }}
+        </div>
+      {% endif %}
+
+      {# ✅ Таблица ТОП категорий (YTD) #}
+      {% if categories_ytd_table_html %}
+        {{ categories_ytd_table_html|safe }}
+      {% else %}
+        <div class="section-note">Данных для анализа категорий (YTD) нет.</div>
+      {% endif %}
+
+      {# ✅ Таблица ТОП подкатегорий (YTD) #}
+      {% if subcategories_ytd_table_html %}
+        <div class="mt-12"></div>
+        {{ subcategories_ytd_table_html|safe }}
+      {% endif %}
+
+    </div>
+
+  </div>
+</section>
+

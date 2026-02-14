@@ -1,0 +1,101 @@
+{# templates/reports/sales_report/sections/_ltm_owner_tabs.html #}
+{% load static %}
+{% if ltm_insights %}
+
+<div class="owner-block">
+
+  <div class="owner-block__head">
+    <div class="owner-block__title">Прогноз (Prophet)</div>
+
+    {% if ltm_prophet and ltm_prophet.has_data %}
+      <div class="owner-badge owner-badge--soft">
+        MAPE*: <span class="owner-badge__value">{{ ltm_prophet.mape_total }}</span>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if ltm_prophet and ltm_prophet.has_data %}
+
+    <div class="owner-grid owner-grid--forecast">
+
+      <div class="owner-metric owner-metric--hero">
+        <div class="m-k">Прогноз закрытия месяца (EOM)</div>
+        <div class="m-v">{{ ltm_prophet.eom_forecast }}</div>
+        <div class="m-s">закрытие {{ ltm_prophet.eom|date:"d.m.Y" }}</div>
+
+        <div class="m-subnote">
+          Осталось добрать:
+          <b>{{ ltm_prophet.gap }}</b>
+          <span class="m-subnote__pct">{{ ltm_prophet.gap_pct }}</span>
+        </div>
+      </div>
+
+      <div class="owner-metric owner-metric--plans">
+        <div class="m-k">Прогнозы на 2 месяца</div>
+
+        <div class="plans">
+          <div class="plans__row">
+            <div class="plans__label">{{ ltm_prophet.m1_label }}</div>
+            <div class="plans__value">{{ ltm_prophet.m1_forecast }}</div>
+          </div>
+
+          <div class="plans__row">
+            <div class="plans__label">{{ ltm_prophet.m2_label }}</div>
+            <div class="plans__value">{{ ltm_prophet.m2_forecast }}</div>
+          </div>
+        </div>
+
+        <div class="m-s">Прогноз построен по дневной выручке</div>
+      </div>
+
+    </div>
+
+    {# === Методология MAPE (сноска *) === #}
+    <div class="owner-methodology">
+      <div class="owner-methodology__text">
+        <strong>* MAPE</strong> (Mean Absolute Percentage Error) — средняя абсолютная процентная ошибка прогноза.
+        В расчёте используется агрегация по месяцам. Чем ниже значение MAPE, тем выше точность прогноза.
+      </div>
+
+      <div class="owner-methodology__scale">
+        <span><b>&lt; 10%</b> — высокая точность</span>
+        <span><b>10–20%</b> — хорошая</span>
+        <span><b>20–30%</b> — допустимая</span>
+        <span><b>&gt; 30%</b> — низкая</span>
+      </div>
+
+      <div class="owner-methodology__formula">
+        MAPE = (1 / n) × Σ |(Fact − Forecast) / Fact| × 100%
+      </div>
+    </div>
+
+    {# === Справка о модели Prophet (сноска **) — в конце секции === #}
+    <div class="owner-prophet-note">
+      <div class="owner-prophet-note__head">
+        <img
+          class="owner-prophet-note__logo"
+          src="{% static 'img/sales_report/prophet_logo.svg' %}"
+          alt="Prophet"
+        />
+        <div class="owner-prophet-note__title">** О модели Prophet</div>
+      </div>
+
+      <div class="owner-prophet-note__text">
+        Prophet — библиотека прогнозирования временных рядов. Модель описывает динамику как сумму
+        <b>тренда</b> и <b>сезонностей</b> (годовой/недельной), с возможными точками изменения тренда.
+        В отчёте прогноз строится на ежедневном уровне и агрегируется до EOM, M+1 и M+2.
+        <span class="owner-prophet-note__muted">
+          Подходит для бизнес-метрик с выраженной сезонностью и изменениями тренда.
+        </span>
+      </div>
+    </div>
+
+  {% else %}
+    <div class="owner-empty">
+      Нет достаточных данных для прогноза Prophet.
+    </div>
+  {% endif %}
+
+</div>
+
+{% endif %}
