@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 
-from .kpi import build_kpi_for_range
+from .kpi_data import build_kpi_for_range
 from .formatters import pct_change, fmt_pp, fmt_money, fmt_int, fmt_pct
 
 

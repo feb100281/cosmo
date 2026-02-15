@@ -103,9 +103,10 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
             args=[obj.pk.isoformat()],  # pk у тебя date => безопасно делаем строку
         )
         return format_html(
-            '<a href="{}" title="Печать отчёта" style="text-decoration:none;font-size:14px;">🖨</a>',
-            url,
-        )
+        '<a href="{}" target="_blank" title="Печать отчёта" '
+        'style="text-decoration:none;font-size:14px;">🖨</a>',
+        url,
+    )
 
     # --- Добавляем кастомный url /print/ ---
     def get_urls(self):
@@ -183,7 +184,7 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
 #     )
 
 #     search_fields = ("client_order_date","manager_name")
-#     list_filter = ("client_order_date","manager_name" )
+#     list_filter = ("client_order_date","manager_name" ,  "client_order_type",)
 #     list_per_page = 25
     
 #     class Media:
@@ -262,12 +263,14 @@ class OrderDurationFilter(admin.SimpleListFilter):
 class MVSalesOrderAdmin(admin.ModelAdmin):
     list_display = (
         "order_created_pretty",
-        "store_group_pretty",
-        "order_type_pretty",
+        # "store_group_pretty",
+        # "client_order_type",
+        'order_type_pretty',
         "manager_pretty",
         "order_pretty",
         "unique_items_pretty",
         "amount_pretty",
+        "service_amount",
         "duration_badge",
         "order_min_pretty",
         "order_max_pretty",
@@ -379,17 +382,21 @@ class MVSalesOrderAdmin(admin.ModelAdmin):
         t = (obj.client_order_type or "").strip()
         tl = t.lower()
 
-        if "рознич" in tl:
+        if "розничные продажи" in tl:
             icon = "🛒"
-            short = "Розница"
-        elif "клиент" in tl:
+            short = "Розничные продажи"
+        elif "заказ клиента" in tl:
             icon = "📦"
-            short = "Клиент"
-        else:
+            short = "Заказ клиента"
+        elif "продажи без заказа" in tl:
             icon = "🧾"
+            short = "Без заказа"
+        else:
+            icon = ""
             short = t or "—"
 
         return format_html('<span class="type-pill">{} {}</span>', icon, short)
+
 
 
     @admin.display(description="Срок", ordering="order_duration")
@@ -452,32 +459,32 @@ class MVSalesOrderAdmin(admin.ModelAdmin):
     def unique_items_pretty(self, obj):
         return obj.unique_items
 
-    @admin.display(description="Магазин")
-    def store_group_pretty(self, obj):
-        s = (getattr(obj, "store_group_agg", None) or "").strip()
-        if not s or s == "—":
-            return format_html('<span class="muted">—</span>')
+    # @admin.display(description="Магазин")
+    # def store_group_pretty(self, obj):
+    #     s = (getattr(obj, "store_group_agg", None) or "").strip()
+    #     if not s or s == "—":
+    #         return format_html('<span class="muted">—</span>')
 
-        # если вдруг несколько магазинов — берём первый (как основной)
-        main_store = s.split(",")[0].strip()
+    #     # если вдруг несколько магазинов — берём первый (как основной)
+    #     main_store = s.split(",")[0].strip()
 
-        logo_path = STORE_LOGOS.get(main_store)
+    #     logo_path = STORE_LOGOS.get(main_store)
 
-        if logo_path:
-            logo_url = static(logo_path)
-            return format_html(
-                '''
-                <span class="store-cell">
-                    <img src="{}" class="store-logo">
-                    <span class="store-name">{}</span>
-                </span>
-                ''',
-                logo_url,
-                main_store,
-            )
+    #     if logo_path:
+    #         logo_url = static(logo_path)
+    #         return format_html(
+    #             '''
+    #             <span class="store-cell">
+    #                 <img src="{}" class="store-logo">
+    #                 <span class="store-name">{}</span>
+    #             </span>
+    #             ''',
+    #             logo_url,
+    #             main_store,
+    #         )
 
-        # если логотипа нет — просто текст красиво
-        return format_html('<span class="store-name">{}</span>', main_store)
+    #     # если логотипа нет — просто текст красиво
+    #     return format_html('<span class="store-name">{}</span>', main_store)
 
 
 

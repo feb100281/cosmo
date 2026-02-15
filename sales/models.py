@@ -65,7 +65,7 @@ class SalesData(models.Model):
         Items, on_delete=models.CASCADE, verbose_name="Наименование"
     )
 
-    client_order_number = models.CharField(
+    client_order_feature = models.CharField(
         max_length=600, verbose_name="Характеристика", null=True, blank=True
     )
 

@@ -14,7 +14,9 @@ from .summary import build_summary
 
 from .ranges import period_range, prev_period_range, last_13m_range
 from .trends import trend_ranges, trend_meta
-from .kpi import build_kpi_for_range
+from .kpi_data import build_kpi_for_range
+
+
 
 from .stores import get_store_sales_for_range
 from .store_chart import build_store_amount_bar_svg
@@ -246,9 +248,10 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
             # RAW для графика
             "amount_raw": k.get("amount") or 0,
             "dt_raw": k.get("dt") or 0,
-            "orders_raw": k.get("orders") or 0,
+            "orders": fmt_int(k.get("orders")),
             "cr_raw": k.get("cr") or 0,
-            "ave_check_raw": k.get("ave_check") or 0,
+            # "ave_check_raw": k.get("ave_check") or 0,
+            "ave_check": fmt_money(k.get("ave_check")),
 
             # formatted для таблицы
             "amount": fmt_money(k.get("amount")),

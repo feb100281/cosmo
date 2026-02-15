@@ -1,4 +1,5 @@
 import numpy as np
+from decimal import Decimal, ROUND_HALF_UP
 
 
 NBSP = "\u00A0"
@@ -168,16 +169,27 @@ def fmt_int(v) -> str:
         return "—"
 
 
-def fmt_pct(v, digits=1) -> str:
-    if v is None:
-        return "—"
-    try:
-        v = float(v)
-    except Exception:
-        return "—"
 
-    s = f"{v:.{digits}f}".replace(".", ",")
+
+def fmt_pct(x, digits: int = 1):
+    if x is None:
+        return None
+    try:
+        d = Decimal(str(x))
+    except Exception:
+        return None
+
+    # если передали долю 0..1 — переводим в проценты
+    if abs(d) <= 1:
+        d *= Decimal("100")
+
+    q = Decimal("1") if digits == 0 else Decimal("1").scaleb(-digits)  # 0.1 при digits=1
+    d = d.quantize(q, rounding=ROUND_HALF_UP)
+
+    # чтобы было "0,0%" по-русски, если нужно:
+    s = f"{d}".replace(".", ",")
     return f"{s}%"
+
 
 
 

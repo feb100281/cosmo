@@ -1,0 +1,244 @@
+/* ===== KPI SECTION - ДЕЛОВОЙ СТИЛЬ ===== */
+#kpi {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  color: #1e293b;
+}
+
+
+
+/* Метка периода */
+.kpi-period-summary {
+  font-size: 14px;
+  color: #5b6877;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  padding: 10px 16px;
+  border-radius: 40px;
+  width: fit-content;
+  border: 1px solid #e6edf4;
+}
+
+.kpi-period-summary strong {
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.muted {
+  color: #8a99aa;
+}
+
+/* ===== ОСНОВНЫЕ ПОКАЗАТЕЛИ ===== */
+.kpi-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.kpi-metric-item {
+  background: #ffffff;
+  border: 1px solid #e9edf4;
+  border-radius: 16px;
+  padding: 18px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all 0.1s ease;
+}
+
+.kpi-metric-item:hover {
+  border-color: #cbd5e1;
+  background: #fcfdff;
+}
+
+.kpi-metric-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #f0f5ff;
+  border: 1px solid #d9e3f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 500;
+  color: #1e3a8a;
+  flex-shrink: 0;
+}
+
+.kpi-metric-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-metric-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #5f6c80;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.kpi-metric-value {
+  font-size: 26px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.2;
+  font-feature-settings: 'tnum';
+}
+
+.kpi-metric-badge {
+  font-size: 12px;
+  font-weight: 500;
+  color: #1e3a8a;
+  background: #eef2ff;
+  padding: 2px 10px;
+  border-radius: 30px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+
+
+/* Типы заказов */
+.kpi-types-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.kpi-type-item {
+  background: #ffffff;
+  border: 1px solid #edf2f7;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kpi-type-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-type-name {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.kpi-type-orders {
+  font-size: 13px;
+  color: #6f7d95;
+}
+
+.kpi-type-amount {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 18px;
+  font-feature-settings: 'tnum';
+}
+
+/* Контрольные точки */
+.kpi-control-points {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin: 24px 0;
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #e9edf4;
+}
+
+.kpi-control-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.kpi-control-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #d9e3f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #1e3a8a;
+}
+
+.kpi-control-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kpi-control-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #5f6c80;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kpi-control-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.kpi-control-meta {
+  font-size: 12px;
+  color: #8a99aa;
+  margin-left: 8px;
+}
+
+/* Подсказки */
+.hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 30px;
+  background: #e2e8f0;
+  color: #48566b;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: help;
+}
+
+/* Сноски */
+.kpi-footnote {
+  font-size: 12px;
+  color: #6f7d95;
+  background: #f8fafc;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #e9edf4;
+  margin: 20px 0;
+}
+
+
+/* ===== PRINT ===== */
+@media print {
+  .kpi-metric-item {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+  
+  .hint {
+    display: none;
+  }
+}
