@@ -3,14 +3,25 @@
 # значение — путь ОТНОСИТЕЛЬНО /static/
 STORE_LOGOS = {
     "РигаМолл": "img/sales_report/stores/riga_mall.jpg",
+    "Рига Молл": "img/sales_report/stores/riga_mall.jpg",
+    
+    "Гарден Сити": "img/sales_report/stores/garden_logo.png",
+        
     "Европарк": "img/sales_report/stores/europark.png",
     "Капитолий Вернадского": "img/sales_report/stores/capitol.jpg",
     "Фэшн Хаус": "img/sales_report/stores/fashion_house.png",
     "Ривер Хаус": "img/sales_report/stores/river_house.png",
+    
     "Интернет-продажи": "img/sales_report/stores/e-commerce-store.png",
+    "Интернет Магазин": "img/sales_report/stores/e-commerce-store.png",
+    
     "Дизайнеры и архитекторы": "img/sales_report/stores/design.png",
+    "Дизайнеры": "img/sales_report/stores/design.png",
+    
     "Основной склад": "img/sales_report/stores/store.png",
+    
     "Корпоративные продажи": "img/sales_report/stores/b2b.png",
+    "B2B: Прочее": "img/sales_report/stores/b2b.png",
 
 }
 

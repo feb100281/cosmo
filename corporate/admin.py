@@ -20,6 +20,12 @@ from django import forms
 from django.utils.safestring import mark_safe
 from django.shortcuts import render, redirect
 from django.urls import path
+from django.db.models import CharField
+from django.db.models.expressions import RawSQL
+from sales.reports.sales_report.store_logos import STORE_LOGOS
+from django.templatetags.static import static
+from django.db import connections
+from django.db.models import Subquery
 
 
 
@@ -188,6 +194,137 @@ class ItemsAdmin(admin.ModelAdmin):
         css = {"all": ("css/admin_overrides.css",)}
 
 
+
+
+class ManagerStoreGroupFilter(admin.SimpleListFilter):
+    title = "Магазин"
+    parameter_name = "store_group"
+
+    def lookups(self, request, model_admin):
+        # показываем список групп магазинов (как в твоей колонке)
+        return list(StoreGroups.objects.order_by("name").values_list("name", "name"))
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if not v:
+            return queryset
+
+        # managers, у которых есть хотя бы одна продажа/строка SalesData в выбранной группе
+        from sales.models import SalesData  # чтобы не ловить циклический импорт
+
+        manager_ids = (
+            SalesData.objects
+            .filter(store__gr__name=v)
+            .exclude(manager_id__isnull=True)
+            .values("manager_id")
+            .distinct()
+        )
+
+        return queryset.filter(id__in=Subquery(manager_ids))
+
+
+
+class ManagersAdmin(admin.ModelAdmin):
+    list_display = (
+        "report_name_main",
+        "stores_pretty",
+    )
+    list_display_links = ("report_name_main",)
+    list_filter = (ManagerStoreGroupFilter, 'report_name')
+    search_fields = ("name", "report_name",)
+    ordering = ("report_name",)
+    list_per_page = 50
+    empty_value_display = "—"
+
+    fields = ("name", "report_name", )
+
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
+
+    # -------- подтягиваем магазины по заказам --------
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+
+        from django.db import connections
+        engine = connections[qs.db].vendor  # postgresql / sqlite / mysql
+
+        if engine == "postgresql":
+            sql = """
+                SELECT COALESCE(string_agg(DISTINCT sg.name, ', ' ORDER BY sg.name), '')
+                FROM sales_salesdata d
+                LEFT JOIN corporate_stores st ON st.id = d.store_id
+                LEFT JOIN corporate_storegroups sg ON sg.id = st.gr_id
+                WHERE d.manager_id = corporate_managers.id
+            """
+        else:
+            sql = """
+                SELECT COALESCE(group_concat(DISTINCT sg.name), '')
+                FROM sales_salesdata d
+                LEFT JOIN corporate_stores st ON st.id = d.store_id
+                LEFT JOIN corporate_storegroups sg ON sg.id = st.gr_id
+                WHERE d.manager_id = corporate_managers.id
+            """
+
+        return qs.annotate(
+            stores_agg=RawSQL(sql, params=[], output_field=CharField())
+        )
+
+    # -------- имя в отчёте — главное --------
+    @admin.display(description="Менеджер", ordering="report_name")
+    def report_name_main(self, obj):
+        v = (obj.report_name or obj.name or "").strip()
+        if not v:
+            return format_html('<span class="muted">—</span>')
+        return format_html('<span class="mgr-last">{}</span>', v)
+
+    # -------- магазины менеджера --------
+    @admin.display(description="Магазины")
+    def stores_pretty(self, obj):
+        s = (getattr(obj, "stores_agg", None) or "").strip()
+        if not s:
+            return format_html('<span class="muted">—</span>')
+
+        stores = [x.strip() for x in s.split(",") if x.strip()]
+        cells = []
+
+        for store in stores:
+            logo_path = STORE_LOGOS.get(store)
+            if logo_path:
+                logo_url = static(logo_path)
+                cells.append(
+                    format_html(
+                        '''
+                        <span class="store-chip">
+                            <img src="{}" class="store-chip-logo">
+                            <span>{}</span>
+                        </span>
+                        ''',
+                        logo_url,
+                        store
+                    )
+                )
+            else:
+                cells.append(
+                    format_html(
+                        '<span class="store-chip store-text-only">{}</span>',
+                        store
+                    )
+                )
+
+        return format_html(" ".join(cells))
+
+
+
+
+
+
+
+
+
+
+
+
+
 admin.site.register(Companies)
 admin.site.register(Projects)
 admin.site.register(CatTree, CatTreeAdmin)
@@ -203,7 +340,7 @@ admin.site.register(ItemManufacturer)
 admin.site.register(ItemBrend)
 admin.site.register(ItemZones)
 admin.site.register(SubCategory,SubCatAdmin)
-admin.site.register(Managers)
+admin.site.register(Managers, ManagersAdmin) 
 admin.site.register(Agents)
 
 

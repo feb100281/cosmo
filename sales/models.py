@@ -240,7 +240,7 @@ class MVSalesOrder(models.Model):
     order_min_date = models.DateField("Первая отгрузка", null=True, blank=True)
     order_max_date = models.DateField("Последняя отгрузка", null=True, blank=True)
     order_duration = models.BigIntegerField(
-        verbose_name="Срок заказа", blank=True, null=True
+        verbose_name="Срок", blank=True, null=True
     )
     realization_duration = models.BigIntegerField(
         verbose_name="Срок реализации", blank=True, null=True
