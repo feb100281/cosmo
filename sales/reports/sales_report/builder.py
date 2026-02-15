@@ -29,6 +29,9 @@ from .ltm_insights import build_ltm_insights
 
 from dateutil.relativedelta import relativedelta
 from .ltm_forecast_prophet import build_prophet_eom_projection
+from .managers_block import build_managers_context
+
+
 
 
 
@@ -262,16 +265,17 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
     
     
     # --- data-bars для "Выручка" (amount_raw) ---
-    amount_vals = [t["amount_raw"] for t in trend if (t.get("amount_raw") is not None)]
+    # --- data-bars для "Выручка" (amount_raw) ---
+    amount_vals = [t["amount_raw"] for t in trend if t.get("amount_raw") is not None]
     if amount_vals:
-        vmin, vmax = min(amount_vals), max(amount_vals)
-        span = (vmax - vmin) or 1
+        vmax = max(amount_vals) or 1
         for t in trend:
             v = t.get("amount_raw") or 0
-            t["amount_pct"] = round((v - vmin) / span * 100, 1)
+            t["amount_pct"] = round((v / vmax) * 100, 1)
     else:
         for t in trend:
             t["amount_pct"] = 0
+
 
 
 
@@ -474,6 +478,16 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         title="ТОП подкатегорий (YTD, к прошлому году)",
         mode="sub"
     ).get("html", "")
+    
+    
+    managers = build_managers_context(
+    d,
+    big_order_threshold=100_000,
+    return_warn_pct=5.5,
+    return_crit_pct=8.0,
+)
+
+
 
 
 
@@ -578,6 +592,8 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         "trend_chart_svg": trend_chart_svg,
         "trend_meta": trend_meta_ctx,
         
+         # ✅ менеджеры
+        "managers": managers,
 
 
         "table_mtd_html": table_mtd.get("html", ""),

@@ -28,7 +28,8 @@ def build_summary(
 
     # Сравнение период-к-периоду (prev: вчера/пред.неделя/пред.месяц, ly: прошлый год)
     compare = build_compare(report_type, period_start, period_end)
-    compare_chart_svg = build_compare_delta_bar_svg(compare)
+    compare_chart_svg_pct = build_compare_delta_bar_svg(compare)
+
 
     # Короткий вывод
     note = "Сводка сформирована по данным периода."
@@ -59,6 +60,7 @@ def build_summary(
             "rtr_ratio": fmt_pct(kpi.get("rtr_ratio")),
         },
         "compare": compare,  # compare.prev / compare.ly / compare.rows
-        "compare_chart_svg": compare_chart_svg,
+        "compare_chart_svg_pct": compare_chart_svg_pct,
+
         "note": note,
     }

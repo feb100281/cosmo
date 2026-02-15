@@ -38,19 +38,23 @@ def build_trend_chart_svg(
     width: int = 1100,          # более дружелюбно к A4
     height: int = 340,
     padding: int = 28,
-    axis_gutter: int = 42,     # место слева под подписи оси Y
+    axis_gutter: int = 42,      # место слева под подписи оси Y
     grid_lines: int = 4,
 ) -> str:
     """
     SVG-график тренда (report-friendly):
     - сетка
     - avg линия
-    - мягкая заливка под линией
+    - мягкая заливка под линией (градиент)
     - выделение текущей точки
     - компактные KPI-бейджи сверху
     - сноска снизу
     - подписи Y-оси НЕ режутся (axis_gutter)
     - SVG адаптивный по ширине (width="100%")
+
+    FIX для печати в PDF:
+    - уникальные id
+    - градиент реализован через MASK (намного стабильнее в print-to-pdf, чем fill=url(#grad) со stop-opacity)
     """
 
     # --- собираем значения (RAW) ---
@@ -159,34 +163,19 @@ def build_trend_chart_svg(
             stroke = "#e2e8f0"
 
         w = 230
-        h = 22          # ⬅️ ниже
-        r = 8           # ⬅️ не pill
+        h = 22
+        r = 8
 
         return f"""
         <g class="trend-pill">
-        <rect
-            x="{x:.1f}" y="{y:.1f}"
-            rx="{r}" ry="{r}"
-            width="{w}" height="{h}"
-            fill="{bg}" stroke="{stroke}"
-        />
-        <circle
-            cx="{x + 12:.1f}"
-            cy="{y + h / 2:.1f}"
-            r="4"
-            fill="{dot}"
-        />
-        <text
-            x="{x + 22:.1f}"
-            y="{y + h / 2 + 4:.1f}"
-            font-size="12"
-            fill="{fg}"
-        >
+          <rect x="{x:.1f}" y="{y:.1f}" rx="{r}" ry="{r}"
+                width="{w}" height="{h}" fill="{bg}" stroke="{stroke}"/>
+          <circle cx="{x + 12:.1f}" cy="{y + h / 2:.1f}" r="4" fill="{dot}"/>
+          <text x="{x + 22:.1f}" y="{y + h / 2 + 4:.1f}" font-size="12" fill="{fg}">
             {title}: <tspan font-weight="600">{value}</tspan>
-        </text>
+          </text>
         </g>
         """
-
 
     # --- grid + Y labels ---
     grid = []
@@ -195,12 +184,14 @@ def build_trend_chart_svg(
     for k in range(grid_lines + 1):
         y = plot_y + (plot_h * k / grid_lines)
         grid.append(
-            f'<line x1="{plot_x}" y1="{y:.1f}" x2="{plot_x+plot_w}" y2="{y:.1f}" stroke="#e9eef6" stroke-width="1"/>'
+            f'<line x1="{plot_x}" y1="{y:.1f}" x2="{plot_x+plot_w}" y2="{y:.1f}" '
+            f'stroke="#e9eef6" stroke-width="1"/>'
         )
 
         val = vmax - (vmax - vmin) * (k / grid_lines)
         ylabels.append(
-            f'<text x="{plot_x-12}" y="{y+4:.1f}" text-anchor="end" font-size="12" fill="#7a8699">{fmt_axis(val)}</text>'
+            f'<text x="{plot_x-12}" y="{y+4:.1f}" text-anchor="end" '
+            f'font-size="12" fill="#7a8699">{fmt_axis(val)}</text>'
         )
 
     # --- avg line ---
@@ -208,7 +199,8 @@ def build_trend_chart_svg(
     avg_line = (
         f'<line x1="{plot_x}" y1="{yavg:.1f}" x2="{plot_x+plot_w}" y2="{yavg:.1f}" '
         f'stroke="#c7d2e5" stroke-width="1" stroke-dasharray="4 4"/>'
-        f'<text x="{plot_x+plot_w}" y="{yavg-8:.1f}" text-anchor="end" font-size="12" fill="#7a8699">среднее</text>'
+        f'<text x="{plot_x+plot_w}" y="{yavg-8:.1f}" text-anchor="end" '
+        f'font-size="12" fill="#7a8699">среднее</text>'
     )
 
     # --- paths ---
@@ -226,26 +218,27 @@ def build_trend_chart_svg(
         r = 8 if is_curr else 4.5
         fill = "#e91e63" if is_curr else "#4da3ff"
         dots.append(
-            f'<circle cx="{sx(i):.1f}" cy="{sy(v):.1f}" r="{r}" fill="{fill}" stroke="#ffffff" stroke-width="2"/>'
+            f'<circle cx="{sx(i):.1f}" cy="{sy(v):.1f}" r="{r}" '
+            f'fill="{fill}" stroke="#ffffff" stroke-width="2"/>'
         )
 
-    # --- current label bubble (справа снизу аккуратно) ---
+    # --- current label bubble ---
     period_txt = labels[current_idx]
     if len(period_txt) > 28:
         period_txt = period_txt[:28] + "…"
     curr_val_txt = fmt_axis(values[current_idx])
 
-    # bubble разместим внизу справа внутри plot
     bub_w = 320
     bub_h = 34
     bx = plot_x + plot_w - bub_w
     by = plot_y + plot_h - bub_h - 8
 
     bubble = f"""
-    <rect x="{bx:.1f}" y="{by:.1f}" rx="14" ry="14" width="{bub_w}" height="{bub_h}" fill="#ffffff" stroke="#e9eef6"/>
-    <text x="{bx+16:.1f}" y="{by+22:.1f}" font-size="14" fill="#0f172a">
-      {period_txt}: <tspan font-weight="700">{curr_val_txt}</tspan>
-    </text>
+      <rect x="{bx:.1f}" y="{by:.1f}" rx="14" ry="14"
+            width="{bub_w}" height="{bub_h}" fill="#ffffff" stroke="#e9eef6"/>
+      <text x="{bx+16:.1f}" y="{by+22:.1f}" font-size="14" fill="#0f172a">
+        {period_txt}: <tspan font-weight="700">{curr_val_txt}</tspan>
+      </text>
     """
 
     # --- badges top ---
@@ -255,7 +248,10 @@ def build_trend_chart_svg(
     )
 
     # --- frame ---
-    frame = f'<rect x="{plot_x}" y="{plot_y}" width="{plot_w}" height="{plot_h}" rx="16" ry="16" fill="#ffffff" stroke="#eef2f8"/>'
+    frame = (
+        f'<rect x="{plot_x}" y="{plot_y}" width="{plot_w}" height="{plot_h}" '
+        f'rx="16" ry="16" fill="#ffffff" stroke="#eef2f8"/>'
+    )
 
     # --- footnote ---
     footnote = (
@@ -265,14 +261,25 @@ def build_trend_chart_svg(
         f'</text>'
     )
 
+    # --- UNIQUE ids (critical for print-to-pdf reliability) ---
+    sig = "_".join(str(int(round(x))) for x in values[:6])  # короткая сигнатура (первые 6 точек)
+    base_id = f"trend_{metric}_{n}_{abs(hash(sig)) % 10**9}"
+    mask_grad_id = f"{base_id}_g"
+    mask_id = f"{base_id}_m"
+
     svg = f"""
-<svg width="100%" height="{height}" viewBox="0 0 {width} {height}" preserveAspectRatio="xMidYMid meet"
-     xmlns="http://www.w3.org/2000/svg">
+<svg width="100%" height="{height}" viewBox="0 0 {width} {height}"
+     preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0%" stop-color="#4da3ff" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#4da3ff" stop-opacity="0.00"/>
+    <!-- Градиент прозрачности для маски (так печатается стабильнее, чем fill=url(#grad) со stop-opacity) -->
+    <linearGradient id="{mask_grad_id}" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="white" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0.00"/>
     </linearGradient>
+
+    <mask id="{mask_id}">
+      <rect x="0" y="0" width="{width}" height="{height}" fill="url(#{mask_grad_id})"/>
+    </mask>
   </defs>
 
   {badges}
@@ -282,8 +289,10 @@ def build_trend_chart_svg(
   {''.join(ylabels)}
   {avg_line}
 
-  <path d="{area_path}" fill="url(#trendFill)"/>
-  <path d="{line_path}" fill="none" stroke="#4da3ff" stroke-width="3"
+  <!-- area: сплошной цвет + mask даёт градиентную прозрачность (и в HTML, и в PDF) -->
+  <path class="trend-area" d="{area_path}" fill="#4da3ff" mask="url(#{mask_id})"/>
+
+  <path class="trend-line" d="{line_path}" fill="none" stroke="#4da3ff" stroke-width="3"
         stroke-linecap="round" stroke-linejoin="round"/>
 
   {''.join(dots)}

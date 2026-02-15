@@ -116,11 +116,14 @@
             </tbody>
           </table>
 
-{% if summary.compare_chart_svg %}
+{% if summary.compare_chart_svg_pct %}
   <div style="margin-top: 12px;">
-    {{ summary.compare_chart_svg|safe }}
+    {{ summary.compare_chart_svg_pct|safe }}
   </div>
 {% endif %}
+
+
+
 
 
         </div>
@@ -173,6 +176,10 @@
     {{ trend_chart_svg|safe }}
   </div>
 {% endif %}
+
+
+
+
 
 
 

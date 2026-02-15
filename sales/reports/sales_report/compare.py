@@ -121,10 +121,20 @@ def build_compare(report_type: str, period_start: date, period_end: date) -> dic
         chart.append({
             "key": key,
             "title": title,
+            # проценты
             "prev_pct": pct_change(curr_v, prev_v),  # float or None
             "ly_pct": pct_change(curr_v, ly_v),      # float or None
+            
+            # абсолюты (RAW) — НУЖНО для abs-графика
+            "prev_abs_raw": prev_abs,  # float|None
+            "ly_abs_raw": ly_abs,      # float|None
+            
+            # абсолюты (строки) — НУЖНО для подписей
             "prev_abs": _fmt_delta_abs(key, prev_abs) if prev_abs is not None else "—",
             "ly_abs": _fmt_delta_abs(key, ly_abs) if ly_abs is not None else "—",
+            
+            # инверсия метрики (для возвратов меньше = лучше)
+            "invert": (key == "cr"),
         })
 
 

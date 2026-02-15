@@ -1,50 +1,8 @@
 import numpy as np
 
-def fmt_money(v) -> str:
-    if v is None:
-        return "—"
-    try:
-        v = float(v)
-    except Exception:
-        return "—"
 
-    abs_v = abs(v)
+NBSP = "\u00A0"
 
-    nbsp = "\u00A0"   # неразрывный пробел
-
-    if abs_v >= 1_000_000:
-        s = f"{v / 1_000_000:,.1f}".replace(",", nbsp).replace(".", ",")
-        return f"{s}{nbsp}млн{nbsp}₽"
-
-    if abs_v >= 1_000:
-        s = f"{v / 1_000:,.0f}".replace(",", nbsp)
-        return f"{s}{nbsp}тыс{nbsp}₽"
-
-    s = f"{v:,.0f}".replace(",", nbsp)
-    return f"{s}{nbsp}₽"
-
-
-def fmt_int(v) -> str:
-    if v is None:
-        return "—"
-    try:
-        nbsp = "\u00A0"   # неразрывный пробел
-        return f"{int(v):,}".replace(",", nbsp)
-    except Exception:
-        return "—"
-
-
-def fmt_pct(v, digits: int = 1) -> str:
-    if v is None:
-        return "—"
-    try:
-        v = float(v)
-    except Exception:
-        return "—"
-    if -1.0 <= v <= 1.0:
-        v *= 100
-    s = f"{v:.{digits}f}".replace(".", ",")
-    return f"{s}%"
 
 def pct_change(curr, prev):
     try:
@@ -64,21 +22,39 @@ def fmt_pp(pct, digits: int = 1) -> str:
 
 
 def fmt_delta_money(v):
+    """
+    Δ деньги со знаком. Минус НЕ теряем.
+    """
     if v is None:
         return "—"
-    return fmt_money(abs(v))
+    try:
+        v = float(v)
+    except Exception:
+        return "—"
+
+    sign = "+" if v > 0 else "−" if v < 0 else ""
+    # если ровно 0 — показываем 0 ₽ (без плюса/минуса)
+    if sign == "":
+        return fmt_money(0)
+    return f"{sign}{fmt_money(abs(v))}"
 
 
 def fmt_delta_int(v):
+    """
+    Δ int со знаком.
+    """
     if v is None:
         return "—"
-    return fmt_int(abs(v))
+    try:
+        v = float(v)
+    except Exception:
+        return "—"
 
-def fmt_delta_pct(v, digits=1):
-    if v is None:
-        return "—"
     sign = "+" if v > 0 else "−" if v < 0 else ""
-    return f"{sign}{abs(v):.{digits}f}%".replace(".", ",")
+    if sign == "":
+        return fmt_int(0)
+    return f"{sign}{fmt_int(abs(v))}"
+
 
 
 def fmt_money_0(v):
@@ -151,3 +127,109 @@ def fmt_delta_int_signed(v):
 
     sign = "+" if v > 0 else "−" if v < 0 else ""
     return f"{sign}{fmt_int(abs(v))}" if sign else fmt_int(0)
+
+
+
+
+
+
+def fmt_money(v, mln_digits: int = 1) -> str:
+    """
+    Денежный формат с сокращениями (тыс/млн) и НЕРАЗРЫВНЫМИ пробелами,
+    чтобы "₽" и единицы не уезжали на новую строку.
+    """
+    if v is None:
+        return "—"
+    try:
+        v = float(v)
+    except Exception:
+        return "—"
+
+    av = abs(v)
+
+    if av >= 1_000_000:
+        s = f"{v / 1_000_000:,.{mln_digits}f}".replace(",", NBSP).replace(".", ",")
+        return f"{s}{NBSP}млн{NBSP}₽"
+
+    if av >= 1_000:
+        s = f"{v / 1_000:,.0f}".replace(",", NBSP)
+        return f"{s}{NBSP}тыс{NBSP}₽"
+
+    s = f"{v:,.0f}".replace(",", NBSP)
+    return f"{s}{NBSP}₽"
+
+
+def fmt_int(v) -> str:
+    if v is None:
+        return "—"
+    try:
+        return f"{int(v):,}".replace(",", NBSP)
+    except Exception:
+        return "—"
+
+
+def fmt_pct(v, digits=1) -> str:
+    if v is None:
+        return "—"
+    try:
+        v = float(v)
+    except Exception:
+        return "—"
+
+    s = f"{v:.{digits}f}".replace(".", ",")
+    return f"{s}%"
+
+
+
+def fmt_rub(v, digits: int = 0) -> str:
+    """
+    Рубли БЕЗ сокращений (всегда полная сумма), с NBSP и неразрывным "₽".
+    Пример: 95 235 ₽
+    """
+    if v is None or (isinstance(v, float) and np.isnan(v)):
+        return "—"
+    try:
+        v = float(v)
+    except Exception:
+        return "—"
+    s = f"{v:,.{digits}f}".replace(",", NBSP).replace(".", ",")
+    return f"{s}{NBSP}₽"
+
+
+def fmt_delta_rub(v, digits: int = 0) -> str:
+    """
+    Δ рубли со знаком, БЕЗ сокращений.
+    """
+    if v is None or (isinstance(v, float) and np.isnan(v)):
+        return "—"
+    try:
+        v = float(v)
+    except Exception:
+        return "—"
+
+    sign = "+" if v > 0 else "−" if v < 0 else ""
+    if sign == "":
+        return fmt_rub(0, digits=digits)
+    return f"{sign}{fmt_rub(abs(v), digits=digits)}"
+
+
+def fmt_money_0(v):
+    """
+    Оставляю для совместимости, но делаю NBSP и неразрывный ₽.
+    (Если где-то используется как "точная сумма" — лучше заменить на fmt_rub)
+    """
+    if v is None or (isinstance(v, float) and np.isnan(v)):
+        return "—"
+    try:
+        v = float(v)
+    except Exception:
+        return "—"
+    s = f"{v:,.0f}".replace(",", NBSP).replace(".", ",")
+    return f"{s}{NBSP}₽"
+
+
+def fmt_delta_pct(v, digits=1):
+    if v is None:
+        return "—"
+    sign = "+" if v > 0 else "−" if v < 0 else ""
+    return f"{sign}{abs(v):.{digits}f}%".replace(".", ",")

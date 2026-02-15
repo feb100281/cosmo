@@ -1,0 +1,143 @@
+{% if managers.mtd.rows %}
+  <h3 class="section-title">Продажи по менеджерам (MTD)</h3>
+
+  {% if managers.mtd.insights %}
+    <div class="mgr-insights">
+      {% for block in managers.mtd.insights %}
+        <div class="mgr-insight-card">
+          <div class="mgr-insight-title">{{ block.title }}</div>
+          <ul class="mgr-insight-list">
+            {% for t in block.items %}
+              <li>{{ t|safe }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+
+      <div class="mgr-insight-footnote">
+        Возвраты: зона внимания ≥ {{ managers.meta.return_warn_pct|floatformat:1 }}%, критично ≥ {{ managers.meta.return_crit_pct|floatformat:1 }}%.
+        Крупный заказ: оборот заказа ≥ {{ managers.meta.big_order_threshold|floatformat:0 }}&nbsp;₽.
+        Ср. чек MoM: сравнение MTD с MTD прошлого месяца (по тем же дням).
+      </div>
+    </div>
+  {% endif %}
+
+
+  {% if managers.mtd.order_conflicts %}
+    <div class="mgr-insights" style="margin-top: 12px;">
+      <div class="mgr-insight-card">
+        <div class="mgr-insight-title">
+          Почему разнится количество заказов (пересечения по менеджерам / магазинам)
+        </div>
+
+        <div class="mgr-insight-footnote" style="margin: 6px 0 12px 0;">
+          Ниже — заказы, которые в периоде встречаются у разных менеджеров и/или в разных магазинах.
+        </div>
+
+        <table class="compare-table" style="margin-top: 0;">
+          <thead>
+            <tr>
+              <th>№ заказа</th>
+              <th>Менеджер</th>
+              <th>Магазин</th>
+              <th>Даты</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in managers.mtd.order_conflicts %}
+              <tr>
+                <td class="cell-num"><b>{{ r.client_order_number }}</b></td>
+                <td>{{ r.manager_name }}</td>
+                <td>
+                  {{ r.store_name }}
+                  <span class="muted">(#{{ r.store_id }})</span>
+                </td>
+                <td class="cell-num">
+                  {{ r.date_first }}{% if r.date_last and r.date_last != r.date_first %} — {{ r.date_last }}{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="mgr-insight-footnote" style="margin-top: 10px;">
+          Логика: COUNT(DISTINCT manager_id) &gt; 1 или COUNT(DISTINCT store_id) &gt; 1 в пределах периода.
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+
+
+  <table class="compare-table managers-table">
+    <thead>
+      <tr>
+        <th>Менеджер</th>
+        <th>Чистая выручка</th>
+        <th>Заказы</th>
+        <th>Возвраты</th>
+        <th>Ср.&nbsp;чек</th>
+        <th>Δ&nbsp;ср.&nbsp;чека&nbsp;MoM</th>
+        <th>Заказы&nbsp;≥100k</th>
+        <th>Доля&nbsp;≥100k</th>
+        <th>Доля</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for r in managers.mtd.rows %}
+        <tr class="{% if r.row_flag == 'crit' %}row-crit{% elif r.row_flag == 'warn' %}row-warn{% endif %}">
+          <td class="cell-name">
+            <div class="mgr">
+              <div class="mgr-l1">{{ r.manager_l1 }}</div>
+              {% if r.manager_l2 %}<div class="mgr-l2">{{ r.manager_l2 }}</div>{% endif %}
+            </div>
+          </td>
+
+          <td class="cell-num">{{ r.amount }}</td>
+          <td class="cell-num">{{ r.orders }}</td>
+
+          <td class="cell-num">
+            <div class="val">{{ r.cr }}</div>
+            <div class="sub muted">
+              <span class="badge-rr {{ r.rr_class }}">{{ r.return_rate }}</span>
+            </div>
+          </td>
+
+          <td class="cell-num">{{ r.aov }}</td>
+
+          <td class="cell-num">
+            <div class="val">
+              <span class="mom {{ r.mom_dir }}">{{ r.delta_aov_abs }}</span>
+            </div>
+            <div class="sub muted">было {{ r.aov_prev }}</div>
+          </td>
+
+          <td class="cell-num">{{ r.orders_100k }}</td>
+          <td class="cell-num"><span class="badge-big">{{ r.orders_100k_share }}</span></td>
+
+          <td class="cell-num">{{ r.share|floatformat:1 }}%</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+
+    <tfoot>
+      <tr class="total-row">
+        <td><b>Итого</b></td>
+        <td class="cell-num"><b>{{ managers.mtd.total.amount }}</b></td>
+        <td class="cell-num"><b>{{ managers.mtd.total.orders }}</b></td>
+
+        <td class="cell-num">
+          <div class="val"><b>{{ managers.mtd.total.cr }}</b></div>
+          <div class="sub muted"><b>{{ managers.mtd.total.return_rate }}</b></div>
+        </td>
+
+        <td class="cell-num"><b>{{ managers.mtd.total.aov }}</b></td>
+        <td class="cell-num">—</td>
+        <td class="cell-num">—</td>
+        <td class="cell-num">—</td>
+        <td class="cell-num"><b>100,0%</b></td>
+      </tr>
+    </tfoot>
+  </table>
+{% endif %}
