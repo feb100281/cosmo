@@ -1,37 +1,6 @@
 from typing import List, Dict, Optional
 import math
 
-
-
-
-def _parse_number(v):
-    if v in (None, "", "—"):
-        return None
-    s = str(v)
-    s = s.replace("\u00A0", "").replace(" ", "")
-    s = s.replace("₽", "").replace("%", "")
-    s = s.replace(",", ".")
-    try:
-        return float(s)
-    except Exception:
-        return None
-
-
-def _fmt(v):
-    if abs(v) >= 1_000_000:
-        return f"{v/1_000_000:.1f}M"
-    if abs(v) >= 1_000:
-        return f"{v/1_000:.0f}K"
-    return f"{v:.0f}"
-
-
-
-
-
-from typing import List, Dict, Optional
-import math
-
-
 def build_trend_chart_svg(
     trend: List[Dict],
     metric: str = "amount_raw",

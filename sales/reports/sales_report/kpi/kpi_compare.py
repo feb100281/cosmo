@@ -1,11 +1,10 @@
-# sales/reports/sales_report/compare.py
 from __future__ import annotations
 
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 
 from .kpi_data import build_kpi_for_range
-from .formatters import pct_change, fmt_pp, fmt_money, fmt_int, fmt_pct
+from ..formatters import pct_change, fmt_pp, fmt_money, fmt_int, fmt_pct
 
 
 def _prev_range(report_type: str, start: date, end: date) -> tuple[date, date, str]:
@@ -84,7 +83,7 @@ def build_compare(report_type: str, period_start: date, period_end: date) -> dic
     metrics = [
         ("amount", "Выручка"),
         ("dt", "Оборот"),
-        ("orders", "Заказы"),
+        # ("orders", "Заказы"),
         ("cr", "Возвраты"),
     ]
 

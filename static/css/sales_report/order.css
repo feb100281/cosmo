@@ -1,0 +1,221 @@
+/* Orders summary panel (no .kpi conflicts) */
+
+.ordsum-panel{
+  display:grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap:12px;
+
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.18);
+  backdrop-filter: blur(6px);
+  overflow:hidden;
+  position:relative;
+}
+
+.ordsum-panel::before{
+  content:"";
+  position:absolute;
+  left:0; right:0; top:0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    rgba(37,99,235,0.0),
+    rgba(37,99,235,0.9),
+    rgba(233,30,99,0.9),
+    rgba(37,99,235,0.0)
+  );
+  opacity:0.9;
+}
+
+.ordsum-left, .ordsum-right{
+  min-width:0;
+}
+
+.ordsum-eyebrow{
+  font-size:12px;
+  letter-spacing:0.22em;
+  text-transform:uppercase;
+  opacity:0.65;
+  margin-bottom:10px;
+}
+
+.ordsum-net{
+  padding: 12px 12px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+}
+
+.ordsum-label{
+  font-size:13px;
+  font-weight:650;
+  opacity:0.9;
+}
+
+.ordsum-net-value{
+  margin-top:6px;
+  font-size:34px;
+  font-weight:900;
+  letter-spacing:0.2px;
+  line-height:1.05;
+}
+
+.ordsum-chips{
+  margin-top:10px;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.ordsum-chip{
+  font-size:12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  white-space: nowrap;
+}
+
+.ordsum-chip--muted{ opacity:0.78; }
+
+.ordsum-minirow{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+  margin-top:12px;
+}
+
+.ordsum-mini{
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+}
+
+.ordsum-mini-title{
+  font-size:12px;
+  font-weight:650;
+  opacity:0.86;
+}
+
+.ordsum-mini-sub{
+  margin-top:3px;
+  font-size:12px;
+  opacity:0.65;
+}
+
+.ordsum-mini-value{
+  margin-top:8px;
+  font-size:22px;
+  font-weight:850;
+  line-height:1.05;
+}
+
+.ordsum-right{
+  display:grid;
+  gap:10px;
+}
+
+.ordsum-metric{
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+}
+
+.ordsum-metric--accent{
+  border-color: rgba(233,30,99,0.22);
+  background: rgba(233,30,99,0.06);
+}
+
+.ordsum-metric-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.ordsum-metric-title{
+  font-size:12px;
+  font-weight:650;
+  opacity:0.86;
+}
+
+.ordsum-metric-value{
+  font-size:18px;
+  font-weight:850;
+}
+
+.ordsum-unit{
+  font-size:12px;
+  font-weight:800;
+  opacity:0.7;
+}
+
+.ordsum-metric-note{
+  margin-top:7px;
+  font-size:12px;
+  opacity:0.72;
+}
+
+.ordsum-bar{
+  margin-top:10px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.10);
+  overflow:hidden;
+}
+
+.ordsum-bar-fill{
+  height:100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(233,30,99,0.25), rgba(233,30,99,0.95));
+  box-shadow: 0 0 18px rgba(233,30,99,0.35);
+}
+
+
+/* Ghost tile to keep mini-grid stable when you remove some KPIs */
+.ordsum-mini--ghost{
+  background: transparent;
+  border-style: dashed;
+  border-color: rgba(255,255,255,0.10);
+  opacity: 0.35;
+}
+
+/* Responsive */
+@media (max-width: 1100px){
+  .ordsum-panel{ grid-template-columns: 1fr; }
+  .ordsum-minirow{ grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 720px){
+  .ordsum-minirow{ grid-template-columns: 1fr; }
+}
+
+
+
+
+
+
+
+
+
+.ords-badge{
+  display:inline-flex;
+  align-items:center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.04);
+  white-space: nowrap;
+}
+
+.ords-badge--neutral{ opacity:0.85; }
+.ords-badge--info{ border-color: rgba(37,99,235,0.25); background: rgba(37,99,235,0.08); }
+.ords-badge--warn{ border-color: rgba(245,158,11,0.30); background: rgba(245,158,11,0.10); }
+.ords-badge--danger{ border-color: rgba(239,68,68,0.30); background: rgba(239,68,68,0.10); }
+.ords-badge--accent{ border-color: rgba(233,30,99,0.35); background: rgba(233,30,99,0.10); }

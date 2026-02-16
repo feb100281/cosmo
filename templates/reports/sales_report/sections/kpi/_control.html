@@ -1,0 +1,35 @@
+{% if max_order or median_check %}
+  <div class="kpi-control-points">
+    {% if median_check %}
+      <div class="kpi-control-item">
+        <div class="kpi-control-icon">◑</div>
+        <div class="kpi-control-content">
+          <div class="kpi-control-label">Медианная отгрузка</div>
+          <div class="kpi-control-value">{{ median_check }}</div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if max_order %}
+      <div class="kpi-control-item">
+        <div class="kpi-control-icon">↑</div>
+        <div class="kpi-control-content">
+          <div class="kpi-control-label">Максимальная отгрузка заказа за период</div>
+          <div class="kpi-control-value">
+            {{ max_order.amount }}
+            {% if max_order.date %}
+              <span class="kpi-control-meta">{{ max_order.date|date:"d.m" }}</span>
+            {% endif %}
+            {% if max_order.client_order_number %}
+              <span class="kpi-control-meta">№{{ max_order.client_order_number }}</span>
+            {% else %}
+              <span class="kpi-control-meta">№—</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
+
+<div class="page-break"></div>

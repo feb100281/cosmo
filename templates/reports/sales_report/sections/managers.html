@@ -14,11 +14,7 @@
         </div>
       {% endfor %}
 
-      <div class="mgr-insight-footnote">
-        Возвраты: зона внимания ≥ {{ managers.meta.return_warn_pct|floatformat:1 }}%, критично ≥ {{ managers.meta.return_crit_pct|floatformat:1 }}%.
-        Крупный заказ: оборот заказа ≥ {{ managers.meta.big_order_threshold|floatformat:0 }}&nbsp;₽.
-        Ср. чек MoM: сравнение MTD с MTD прошлого месяца (по тем же дням).
-      </div>
+
     </div>
   {% endif %}
 

@@ -1,13 +1,13 @@
-# sales/reports/sales_report/summary.py
+# sales/reports/sales_report/kpi/summary.py
 
 from datetime import date
 from decimal import Decimal
 from django.utils import timezone
 
-from .formatters import fmt_money, fmt_int, fmt_pct
-from .compare import build_compare
-from .compare_chart import build_compare_delta_bar_svg
-from .store_logos import attach_store_logos
+from ..formatters import fmt_money, fmt_int, fmt_pct
+from .kpi_compare import build_compare
+from .kpi_compare_chart import build_compare_delta_bar_svg
+from ..store_logos import attach_store_logos
 
 
 def _to_decimal(x) -> Decimal:
@@ -63,16 +63,16 @@ def build_summary(
     note = "Показатели рассчитаны по отгрузкам в периоде."
 
     # --- Разрез по типам заказов (общий) ---
-    sales_by_type_raw = kpi.get("sales_by_type") or []
-    sales_by_type = []
-    for r in sales_by_type_raw:
-        if not isinstance(r, dict):
-            continue
-        sales_by_type.append({
-            "type": r.get("type") or "—",
-            "orders": fmt_int(r.get("orders")),
-            "amount": fmt_money(r.get("amount")),
-        })
+    # sales_by_type_raw = kpi.get("sales_by_type") or []
+    # sales_by_type = []
+    # for r in sales_by_type_raw:
+    #     if not isinstance(r, dict):
+    #         continue
+    #     sales_by_type.append({
+    #         "type": r.get("type") or "—",
+    #         "orders": fmt_int(r.get("orders")),
+    #         "amount": fmt_money(r.get("amount")),
+    #     })
 
     # --- Магазины: ТОЛЬКО деньги (без заказов/типов) ---
     total_amount = _to_decimal(kpi.get("amount"))
@@ -111,20 +111,20 @@ def build_summary(
     sales_by_shop = attach_store_logos(sales_by_shop)
 
     # --- max_order ---
-    max_order_raw = kpi.get("max_order")
-    max_order = None
-    if isinstance(max_order_raw, dict) and max_order_raw.get("amount") is not None:
-        o_date = max_order_raw.get("date")
-        max_order = {
-            "order_id": str(max_order_raw.get("order_id")),
-            "date": o_date.strftime("%d.%m.%Y") if hasattr(o_date, "strftime") else "—",
-            "amount": fmt_money(max_order_raw.get("amount")),
-        }
+    # max_order_raw = kpi.get("max_order")
+    # max_order = None
+    # if isinstance(max_order_raw, dict) and max_order_raw.get("amount") is not None:
+    #     o_date = max_order_raw.get("date")
+    #     max_order = {
+    #         "client_order_number": str(max_order_raw.get("client_order_number") or "—"),
+    #         "date": o_date.strftime("%d.%m.%Y") if hasattr(o_date, "strftime") else "—",
+    #         "amount": fmt_money(max_order_raw.get("amount")),
+    #     }
 
     # --- медианная отгрузка ---
-    orders_net = kpi.get("orders_net") or []
-    median_check_dec = _median_decimal(orders_net)
-    median_check = fmt_money(median_check_dec) if median_check_dec is not None else None
+    # orders_net = kpi.get("orders_net") or []
+    # median_check_dec = _median_decimal(orders_net)
+    # median_check = fmt_money(median_check_dec) if median_check_dec is not None else None
 
     return {
         "title": title,
@@ -141,11 +141,11 @@ def build_summary(
 
             "orders": fmt_int(kpi.get("orders")),
             "ave_check": fmt_money(kpi.get("ave_check")),
-            "median_check": median_check,
+            # "median_check": median_check,
 
-            "max_order": max_order,
+            # "max_order": max_order,
 
-            "sales_by_type": sales_by_type,
+            # "sales_by_type": sales_by_type,
             "sales_by_shop": sales_by_shop,
         },
 

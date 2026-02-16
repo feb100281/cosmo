@@ -1,0 +1,22 @@
+<section id="orders" class="section">
+  <h2 class="section-title">IV. Анализ заказов (сквозные, частичные отгрузки)</h2>
+
+  <div class="period-label">
+    Период: {{ orders.period_start|date:"d.m.Y" }} – {{ orders.period_end|date:"d.m.Y" }}
+  </div>
+
+  {% if not orders.has %}
+    <p class="muted">Нет данных по заказам за период.</p>
+  {% else %}
+
+    {% comment %} {% include "reports/sales_report/sections/orders/_summary.html" %} {% endcomment %}
+    {% include "reports/sales_report/sections/orders/_types.html" %}
+    {% include "reports/sales_report/sections/orders/_chart.html" %}
+     <div class="page-break"></div>
+    {% include "reports/sales_report/sections/orders/_top.html" %}
+      <div class="page-break"></div>
+    {% include "reports/sales_report/sections/orders/_flow.html" %}
+    {% comment %} {% include "reports/sales_report/sections/orders/_lifecycle.html" %} {% endcomment %}
+
+  {% endif %}
+</section>

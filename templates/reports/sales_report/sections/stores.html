@@ -2,7 +2,7 @@
 
 
 <section id="stores" class="section">
-  <h2 class="section-title">IV. Продажи по магазинам</h2>
+  <h2 class="section-title">VI. Продажи по магазинам</h2>
 
   <div class="period-label">
     Итоги за период {{ period_start|date:"d.m.Y" }} – {{ period_end|date:"d.m.Y" }}
@@ -20,8 +20,8 @@
         <th>Оборот</th>
         <th>Возвраты</th>
         <th>Кол-во</th>
-        <th>Заказы</th>
-        <th>Средний чек</th>
+        {% comment %} <th>Заказы</th>
+        <th>Средний чек</th> {% endcomment %}
         <th>Доля возвратов</th>
       </tr>
     </thead>
@@ -81,7 +81,7 @@
       <td>{{ r.quant }}</td>
 
       {# ===== Заказы ===== #}
-      <td>
+      {% comment %} <td>
         <div class="cell-main">{{ r.orders }}</div>
         {% if r.delta and r.delta.orders.has and r.store != 'ИТОГО' %}
           <div class="cell-sub {% if r.delta.orders.dir == 'up' %}pos{% elif r.delta.orders.dir == 'down' %}neg{% endif %}">
@@ -91,10 +91,10 @@
             <span class="muted">({{ r.delta.orders.pct }})</span>
           </div>
         {% endif %}
-      </td>
+      </td> {% endcomment %}
 
       {# ===== Средний чек ===== #}
-      <td>
+      {% comment %} <td>
         <div class="cell-main">{{ r.ave_check }}</div>
         {% if r.delta and r.delta.ave_check.has and r.store != 'ИТОГО' %}
           <div class="cell-sub {% if r.delta.ave_check.dir == 'up' %}pos{% elif r.delta.ave_check.dir == 'down' %}neg{% endif %}">
@@ -104,7 +104,7 @@
             <span class="muted">({{ r.delta.ave_check.pct }})</span>
           </div>
         {% endif %}
-      </td>
+      </td> {% endcomment %}
 
       <td>{{ r.rtr_ratio }}</td>
 

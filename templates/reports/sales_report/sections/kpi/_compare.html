@@ -1,0 +1,65 @@
+{% if compare.prev.has or compare.ly.has %}
+  <div class="kpi-compare-section">
+    <h3 class="compare-title">Сравнение с аналогичными периодами</h3>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Метрика</th>
+          {% if compare.prev.has %}
+            <th colspan="4">
+              {{ compare.prev.label }}
+              <small>({{ compare.prev.start|date:"d.m.Y" }} – {{ compare.prev.end|date:"d.m.Y" }})</small>
+            </th>
+          {% endif %}
+          {% if compare.ly.has %}
+            <th colspan="4">
+              {{ compare.ly.label }}
+              <small>({{ compare.ly.start|date:"d.m.Y" }} – {{ compare.ly.end|date:"d.m.Y" }})</small>
+            </th>
+          {% endif %}
+        </tr>
+        <tr>
+          <th></th>
+          {% if compare.prev.has %}
+            <th>Было</th><th>Стало</th><th>Δ</th><th>Δ%</th>
+          {% endif %}
+          {% if compare.ly.has %}
+            <th>Было</th><th>Стало</th><th>Δ</th><th>Δ%</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in compare.rows %}
+          <tr>
+            <td>{{ row.title }}</td>
+            {% if compare.prev.has %}
+              <td>{{ row.prev.base }}</td>
+              <td>{{ row.prev.curr }}</td>
+              <td>{{ row.prev.delta }}</td>
+              <td class="{% if row.prev.delta_pct.0 == '+' %}positive{% elif row.prev.delta_pct.0 == '-' %}negative{% endif %}">
+                {{ row.prev.delta_pct }}
+              </td>
+            {% endif %}
+            {% if compare.ly.has %}
+              <td>{{ row.ly.base }}</td>
+              <td>{{ row.ly.curr }}</td>
+              <td>{{ row.ly.delta }}</td>
+              <td class="{% if row.ly.delta_pct.0 == '+' %}positive{% elif row.ly.delta_pct.0 == '-' %}negative{% endif %}">
+                {{ row.ly.delta_pct }}
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if compare_chart_svg_pct %}
+      <div style="margin-top: 12px;">
+        {{ compare_chart_svg_pct|safe }}
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
+
+<div class="page-break"></div>

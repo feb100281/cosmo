@@ -5,7 +5,7 @@ from datetime import timedelta
 from .managers_data import (
     get_mtd_managers_bundle,
     get_ytd_managers_bundle,
-    _fetch_orders_conflicts_period, 
+
 )
 
 from .formatters import (
@@ -159,9 +159,7 @@ def _build_rows(
             elif rr >= return_warn_pct:
                 row_flag = "warn"
 
-        # крупные заказы
-        big_orders = int(r.get("orders_100k") or 0)
-        big_share = (big_orders / curr_orders * 100) if curr_orders else None
+
 
         nm = _split_manager_name(name)
         share = (curr_amount / total_amount * 100) if total_amount else 0.0
@@ -184,10 +182,7 @@ def _build_rows(
             "delta_aov_abs": fmt_delta_rub(d_aov_abs) if d_aov_abs is not None else "—",
             "mom_dir": ("pos" if (d_aov_abs or 0) > 0 else "neg" if (d_aov_abs or 0) < 0 else "flat") if d_aov_abs is not None else "na",
 
-            "orders_100k": fmt_int(big_orders),
-            "orders_100k_share": fmt_pct(big_share),
-            "big_share_val": big_share,  # для инсайтов
-            "orders_100k_val": big_orders,
+
 
             "share": share,
         })
@@ -195,10 +190,7 @@ def _build_rows(
         # списки для аналитики
         if rr is not None:
             rr_list.append((name, rr, curr_dt, curr_cr))
-        if big_orders is not None:
-            big_orders_list.append((name, big_orders))
-        if big_share is not None:
-            big_share_list.append((name, big_share))
+
         if aov is not None:
             aov_list.append((name, aov))
         if d_aov_abs is not None and aov_prev is not None and aov is not None:
@@ -245,8 +237,7 @@ def _build_rows(
 
         quality_items = [
             f"Средний возвратный процент: <b>{fmt_pct(total_rr)}</b> (возвраты / оборот).",
-            f"Зона внимания: <b>{warn_cnt}</b> менеджер(ов) ≥ {fmt_pct(return_warn_pct)}.",
-            f"Критично: <b>{crit_cnt}</b> менеджер(ов) ≥ {fmt_pct(return_crit_pct)}.",
+
         ]
 
         # топ-3 по возвратам
@@ -260,56 +251,6 @@ def _build_rows(
         insights.append({
             "title": "Качество продаж (возвраты)",
             "items": quality_items
-        })
-
-    # структура крупных заказов
-    if big_orders_list:
-        top_big_cnt = sorted(big_orders_list, key=lambda x: x[1], reverse=True)[0]
-        insights.append({
-            "title": "Крупные заказы (≥ порога)",
-            "items": [
-                f"Максимум по количеству крупных заказов: <b>{top_big_cnt[0]}</b> — <b>{fmt_int(top_big_cnt[1])}</b>.",
-            ]
-        })
-
-    if big_share_list:
-        top_big_share = sorted(big_share_list, key=lambda x: x[1], reverse=True)[0]
-        insights[-1]["items"].append(
-            f"Максимальная доля крупных заказов: <b>{top_big_share[0]}</b> — <b>{fmt_pct(top_big_share[1])}</b>."
-        )
-
-    # средний чек
-    if aov_list:
-        top_aov = sorted(aov_list, key=lambda x: x[1], reverse=True)[0]
-        insights.append({
-            "title": "Средний чек",
-            "items": [
-                f"Максимальный средний чек: <b>{top_aov[0]}</b> — <b>{fmt_rub(top_aov[1])}</b>.",
-            ]
-        })
-
-    # MoM ср. чека
-    if mom_list:
-        best = sorted(mom_list, key=lambda x: x[1], reverse=True)[0]
-        worst = sorted(mom_list, key=lambda x: x[1])[0]
-        insights.append({
-            "title": "Изменение среднего чека MoM",
-            "items": [
-                f"Максимальный рост: <b>{best[0]}</b> — <b>{fmt_delta_rub(best[1])}</b> "
-                f"<span class='muted'>было {fmt_rub(best[2])}, стало {fmt_rub(best[3])}</span>.",
-                f"Максимальное снижение: <b>{worst[0]}</b> — <b>{fmt_delta_rub(worst[1])}</b> "
-                f"<span class='muted'>было {fmt_rub(worst[2])}, стало {fmt_rub(worst[3])}</span>.",
-            ]
-        })
-
-    # максимум заказов (полезно для нагрузки/операционки)
-    if orders_list:
-        top_orders = sorted(orders_list, key=lambda x: x[1], reverse=True)[0]
-        insights.append({
-            "title": "Объём операций",
-            "items": [
-                f"Максимальное количество заказов: <b>{top_orders[0]}</b> — <b>{fmt_int(top_orders[1])}</b>.",
-            ]
         })
 
     return {
@@ -343,9 +284,7 @@ def build_managers_context(
     ys = d.replace(month=1, day=1)
     ye_excl = d + timedelta(days=1)
 
-    # диагностические заказы (почему не сходится)
-    mtd_conflicts = _fetch_orders_conflicts_period(ms, me_excl, limit=300)
-    ytd_conflicts = _fetch_orders_conflicts_period(ys, ye_excl, limit=300)
+
 
     mtd_block = _build_rows(
         mtd["cur"], mtd["ly"], mtd["pm"],
@@ -356,9 +295,7 @@ def build_managers_context(
         return_warn_pct=return_warn_pct, return_crit_pct=return_crit_pct
     )
 
-    # добавляем список конфликтов прямо в блоки (чтобы в шаблоне было managers.mtd.order_conflicts)
-    mtd_block["order_conflicts"] = mtd_conflicts.to_dict("records") if not mtd_conflicts.empty else []
-    ytd_block["order_conflicts"] = ytd_conflicts.to_dict("records") if not ytd_conflicts.empty else []
+
 
     return {
         "mtd": mtd_block,

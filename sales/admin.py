@@ -548,34 +548,34 @@ class MVSalesOrderAdmin(admin.ModelAdmin):
             return "—"
         return format_html(" ".join([str(p) for p in parts]))
 
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
+    # def get_queryset(self, request):
+    #     qs = super().get_queryset(request)
 
-        vendor = qs.db  # алиас БД
-        from django.db import connections
-        engine = connections[vendor].vendor  # 'postgresql' / 'sqlite' / 'mysql' ...
+    #     vendor = qs.db  # алиас БД
+    #     from django.db import connections
+    #     engine = connections[vendor].vendor  # 'postgresql' / 'sqlite' / 'mysql' ...
 
-        if engine == "postgresql":
-            sql = """
-                SELECT COALESCE(string_agg(DISTINCT sg.name, ', ' ORDER BY sg.name), '—')
-                FROM sales_salesdata d
-                LEFT JOIN corporate_stores store ON store.id = d.store_id
-                LEFT JOIN corporate_storegroups sg ON sg.id = store.gr_id
-                WHERE d.orders_id = mv_orders.orders_id
-            """
-        else:
-            # sqlite / mysql — group_concat
-            sql = """
-                SELECT COALESCE(group_concat(DISTINCT sg.name), '—')
-                FROM sales_salesdata d
-                LEFT JOIN corporate_stores store ON store.id = d.store_id
-                LEFT JOIN corporate_storegroups sg ON sg.id = store.gr_id
-                WHERE d.orders_id = mv_orders.orders_id
-            """
+    #     if engine == "postgresql":
+    #         sql = """
+    #             SELECT COALESCE(string_agg(DISTINCT sg.name, ', ' ORDER BY sg.name), '—')
+    #             FROM sales_salesdata d
+    #             LEFT JOIN corporate_stores store ON store.id = d.store_id
+    #             LEFT JOIN corporate_storegroups sg ON sg.id = store.gr_id
+    #             WHERE d.orders_id = mv_orders.orders_id
+    #         """
+    #     else:
+    #         # sqlite / mysql — group_concat
+    #         sql = """
+    #             SELECT COALESCE(group_concat(DISTINCT sg.name), '—')
+    #             FROM sales_salesdata d
+    #             LEFT JOIN corporate_stores store ON store.id = d.store_id
+    #             LEFT JOIN corporate_storegroups sg ON sg.id = store.gr_id
+    #             WHERE d.orders_id = mv_orders.orders_id
+    #         """
 
-        return qs.annotate(
-            store_group_agg=RawSQL(sql, params=[], output_field=CharField())
-        )
+    #     return qs.annotate(
+    #         store_group_agg=RawSQL(sql, params=[], output_field=CharField())
+    #     )
 
 
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):

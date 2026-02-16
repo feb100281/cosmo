@@ -1,0 +1,43 @@
+{% load static %}
+
+
+<h3 class="compare-title" style="margin-top:32px;">
+  Выручка по магазинам (чистая выручка за период)
+</h3>
+
+{% if rows %}
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Магазин</th>
+        <th>Выручка</th>
+        <th>Возвраты</th>
+        <th>Доля выручки</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows|slice:":8" %}
+        <tr>
+          <td class="shop-cell">
+            {% if r.logo %}
+              <img src="{% static r.logo %}" class="shop-logo">
+            {% endif %}
+            <span class="shop-name">{{ r.shop }}</span>
+          </td>
+          <td>{{ r.amount }}</td>
+          <td>{{ r.cr }}</td>
+          <td>{% if r.share %}{{ r.share }}{% else %}—{% endif %}</td>
+        </tr>
+      {% endfor %}
+
+      <tr class="total-row">
+        <td class="shop-cell"><span class="shop-name">Итого</span></td>
+        <td>{{ total_amount }}</td>
+        <td>{{ total_cr }}</td>
+        <td>100%</td>
+      </tr>
+    </tbody>
+  </table>
+{% else %}
+  <div class="kpi-footnote">Нет данных по магазинам за период</div>
+{% endif %}

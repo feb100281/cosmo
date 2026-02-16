@@ -1,0 +1,21 @@
+<section id="orders-lifecycle" class="section">
+
+  {% if not orders_lifecycle.has %}
+    <p class="muted">Нет данных для построения жизненного цикла заказов.</p>
+  {% else %}
+
+    <p class="section-note">
+      График показывает, как накапливается чистая выручка (dt − cr) по мере исполнения заказов
+      с момента создания. Сквозные заказы могут «оживать» при новых отгрузках.
+    </p>
+
+    {% if orders_lifecycle.lifecycle_svg %}
+      <div class="store-chart-card">
+        <div class="store-chart-wrap">
+          {{ orders_lifecycle.lifecycle_svg|safe }}
+        </div>
+      </div>
+    {% endif %}
+
+  {% endif %}
+</section>
