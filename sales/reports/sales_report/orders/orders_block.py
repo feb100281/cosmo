@@ -239,7 +239,16 @@ def build_orders_context(
         "Дата заказа": top["client_order_date"].dt.strftime("%d.%m.%Y").fillna("—"),
         "Последняя отгрузка": top["last_ship_date"].dt.strftime("%d.%m.%Y").fillna("—"),
         "Отгружено за период": top["amount_period"].map(fmt_money),
-        "Всего отгружено по заказу": top["total_amount_upto_end"].map(fmt_money),
+        "Всего отгружено по заказу": top.apply(
+            lambda r: (
+                f'{fmt_money(r["total_amount_upto_end"])}'
+                f'<div class="ord-cell-subline">в т.ч. услуги: {fmt_money(r.get("services_upto_end", 0))}</div>'
+                if float(r.get("services_upto_end", 0) or 0) > 0
+                else f'{fmt_money(r["total_amount_upto_end"])}'
+            ),
+            axis=1
+        ),
+
         # "Оборот": top["sales_period"].map(fmt_money),
         "Возвраты": top["returns_period"].map(fmt_money),
     })

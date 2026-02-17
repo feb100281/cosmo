@@ -11,6 +11,8 @@ from ..store_logos import attach_store_logos
 from ..formatters import fmt_money, fmt_int, fmt_pct
 
 from ..trends.trend_block import build_trends_context
+from .categories_period_data import get_categories_for_period
+from .categories_period_chart import build_categories_pareto_svg
 
 
 def _to_decimal(x) -> Decimal:
@@ -29,12 +31,36 @@ def build_kpi_context(
 ) -> Dict[str, Any]:
 
     kpi_raw = build_kpi_for_range(period_start, period_end)
+    # --- категории за период (Pareto + таблица) ---
+    cat_df = get_categories_for_period(period_start, period_end)
+
+    categories_pareto_svg = build_categories_pareto_svg(
+        cat_df,
+        title=f"Категории: чистая выручка за период ({period_start:%d.%m.%Y}–{period_end:%d.%m.%Y})",
+        top_n=10,
+    )
+
+    categories_table = []
+    if cat_df is not None and not cat_df.empty:
+        tmp = cat_df.sort_values("amount", ascending=False).copy()
+        total_amount = float(tmp["amount"].sum()) or 0.0
+        top = tmp.head(10).copy()
+
+        for _, r in top.iterrows():
+            share = (float(r["amount"]) / total_amount) if total_amount else 0.0
+            categories_table.append({
+                "cat": str(r["cat_name"]),
+                "amount": fmt_money(r["amount"]),
+                "share": fmt_pct(share * 100),
+            })
+
 
     # --- карточки ---
     cards = {
         "dt": fmt_money(kpi_raw.get("dt")),
         "cr": fmt_money(kpi_raw.get("cr")),
         "amount": fmt_money(kpi_raw.get("amount")),
+        "amount_services": fmt_money(kpi_raw.get("amount_services")),
         "rtr_ratio": fmt_pct(kpi_raw.get("rtr_ratio")),
     }
 
@@ -118,6 +144,9 @@ def build_kpi_context(
 
         # "max_order": max_order,
         # "median_check": median_check,
+        
+        "categories_pareto_svg": categories_pareto_svg,
+        "categories_table": categories_table,
 
         "compare": compare,
         **trends_ctx,

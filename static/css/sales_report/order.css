@@ -219,3 +219,13 @@
 .ords-badge--warn{ border-color: rgba(245,158,11,0.30); background: rgba(245,158,11,0.10); }
 .ords-badge--danger{ border-color: rgba(239,68,68,0.30); background: rgba(239,68,68,0.10); }
 .ords-badge--accent{ border-color: rgba(233,30,99,0.35); background: rgba(233,30,99,0.10); }
+
+
+
+.ord-cell-subline{
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6f7d95;
+  line-height: 1.2;
+  font-style: italic;
+}

@@ -16,22 +16,10 @@ def _to_decimal(x) -> Decimal:
 
 
 def build_kpi_for_range(start: date, end: date) -> Dict[str, Any]:
-    """
-    KPI за период [start, end] включительно.
-    Реализация СТРОГО через SQLAlchemy (engine берём из utils.db_engine.get_engine()).
-
-    Логика:
-    - Деньги: SUM(dt), SUM(cr) по d.date (дата реализации).
-    - Заказы: COUNT(DISTINCT orders_id) по факту отгрузки в периоде (dt > 0).
-    - Разрез по типам: безопасно через агрегацию sales_salesdata по orders_id,
-      затем JOIN на mv_orders (так не будет "раздувания" сумм при потенциальных дублях витрины).
-    - Магазины: только деньги (dt/cr) + учитываем "чистые возвраты" (dt=0, cr>0).
-    - Max order: по net = dt-cr за период (dt>0), тоже через агрегацию по orders_id.
-    - orders_net: список net по каждому заказу (для медианы/статистик).
-    """
 
     engine = get_engine()
-    params = {"start": start, "end": end}
+    params = {"start": start, "end": end, "root_id": 86}
+
 
     # 1) Деньги — по дате реализации
     q_sales_total = text("""
@@ -126,14 +114,29 @@ def build_kpi_for_range(start: date, end: date) -> Dict[str, Any]:
     #       AND d.dt > 0
     #     GROUP BY d.orders_id
     # """)
+    
+    # 7) Чистая выручка по категории "Услуги" (net = dt - cr)
+    q_services_amount = text("""
+        SELECT COALESCE(SUM(d.dt - d.cr), 0) AS amount
+        FROM sales_salesdata d
+        JOIN corporate_items i ON i.id = d.item_id
+        JOIN corporate_cattree cat ON cat.id = i.cat_id
+        JOIN corporate_cattree root ON root.id = :root_id
+        WHERE d.date BETWEEN :start AND :end
+        AND cat.tree_id = root.tree_id
+        AND cat.lft BETWEEN root.lft AND root.rght
+    """)
+
+
 
     with engine.connect() as conn:
         dt, cr = conn.execute(q_sales_total, params).one()
         (orders,) = conn.execute(q_orders_total, params).one()
-
+        
         # rows_type = conn.execute(q_by_type, params).all()
         rows_shop_total = conn.execute(q_by_shop_total, params).all()
-
+        (services_amount_raw,) = conn.execute(q_services_amount, params).one()
+        
         # max_row = conn.execute(q_max_order, params).first()
         # net_rows = conn.execute(q_orders_net, params).all()
 
@@ -141,6 +144,9 @@ def build_kpi_for_range(start: date, end: date) -> Dict[str, Any]:
     dt_d = _to_decimal(dt)
     cr_d = _to_decimal(cr)
     amount = dt_d - cr_d
+    
+    services_amount = _to_decimal(services_amount_raw)
+
 
     orders_i = int(orders or 0)
     rtr_ratio = (cr_d / dt_d) if dt_d else None
@@ -161,15 +167,16 @@ def build_kpi_for_range(start: date, end: date) -> Dict[str, Any]:
 
     # by shop (money only)
     sales_by_shop: List[Dict[str, Any]] = []
-    for shop_name, s_dt, s_cr in (rows_shop_total or []):
-        s_dt_d = _to_decimal(s_dt)
-        s_cr_d = _to_decimal(s_cr)
+    for shop_name, shop_dt, shop_cr in (rows_shop_total or []):
+        shop_dt_d = _to_decimal(shop_dt)
+        shop_cr_d = _to_decimal(shop_cr)
         sales_by_shop.append({
             "shop": (shop_name or "—").strip() or "—",
-            "dt": s_dt_d,
-            "cr": s_cr_d,
-            "amount": s_dt_d - s_cr_d,
+            "dt": shop_dt_d,
+            "cr": shop_cr_d,
+            "amount": shop_dt_d - shop_cr_d,
         })
+
 
     # max order
     # max_order: Optional[Dict[str, Any]] = None
@@ -193,6 +200,7 @@ def build_kpi_for_range(start: date, end: date) -> Dict[str, Any]:
         "dt": dt_d,
         "cr": cr_d,
         "amount": amount,
+        "amount_services": services_amount, 
         "rtr_ratio": rtr_ratio,
         "orders": orders_i,
         "ave_check": ave_check,

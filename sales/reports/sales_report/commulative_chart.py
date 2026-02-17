@@ -175,6 +175,7 @@ def build_mtd_waterfall_svg(
 
     fig = plt.figure(figsize=(11.2, 4.2), dpi=150)
     ax = fig.add_subplot(111)
+    
     ax.set_title(title, pad=12, fontsize=15, fontweight="bold")
 
     # сетка/оси

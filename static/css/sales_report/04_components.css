@@ -188,7 +188,7 @@
 .chart-block{
   margin-top: 14px;
   padding: 12px 14px;
-  background: var(--bg-soft);
+  /* background: var(--bg-soft); */
 }
 
 .chart-block svg{

@@ -44,6 +44,8 @@ def get_orders_by_period(
             t.dt_upto_end as total_sales_upto_end,
             t.cr_upto_end as total_returns_upto_end,
             t.dt_upto_end - t.cr_upto_end as total_amount_upto_end,
+            
+            COALESCE(ts.services_upto_end, 0) as services_upto_end,
 
             -- period (строго за период)
             x.dt as sales_period,
@@ -85,6 +87,23 @@ def get_orders_by_period(
               AND orders_id IS NOT NULL
             GROUP BY orders_id
         ) t ON t.orders_id = x.orders_id
+        
+        LEFT JOIN (
+            -- ✅ услуги, накоплено по заказу ДО конца периода (<= end), по ветке "Услуги" (root_id=86)
+            SELECT
+                s.orders_id,
+                SUM(s.dt - s.cr) AS services_upto_end
+            FROM sales_salesdata s
+            JOIN corporate_items i ON i.id = s.item_id
+            JOIN corporate_cattree cat ON cat.id = i.cat_id
+            JOIN corporate_cattree root ON root.id = :root_id
+            WHERE s.`date` <= :end
+            AND s.orders_id IS NOT NULL
+            AND cat.tree_id = root.tree_id
+            AND cat.lft BETWEEN root.lft AND root.rght
+            GROUP BY s.orders_id
+        ) ts ON ts.orders_id = x.orders_id
+
 
         JOIN mv_orders as ord ON ord.orders_id = x.orders_id
         {where_sql}
@@ -93,7 +112,7 @@ def get_orders_by_period(
 
     engine = get_engine()
     with engine.connect() as conn:
-        res = conn.execute(sql, {"start": start, "end": end})
+        res = conn.execute(sql, {"start": start, "end": end, "root_id": 86})
         rows = res.fetchall()
         cols = list(res.keys())
 
@@ -112,6 +131,7 @@ def get_orders_by_period(
         "sales_period", "returns_period", "amount_period",
         "items_amount", "service_amount",
         "items_quant", "unique_items",
+        "services_upto_end",
         "order_duration", "current_order_duration"
     ]
     for c in num_cols:

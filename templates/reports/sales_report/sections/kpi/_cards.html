@@ -23,6 +23,13 @@
     <div class="kpi-metric-content">
       <div class="kpi-metric-label">Чистая выручка</div>
       <div class="kpi-metric-value">{{ cards.amount }}</div>
+
+      {% if cards.amount_services and cards.amount_services != "—" %}
+        <div class="kpi-subtext">
+          в т.ч. услуги: {{ cards.amount_services }}
+        </div>
+      {% endif %}
     </div>
   </div>
+
 </div>

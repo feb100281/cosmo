@@ -6,11 +6,13 @@
 
     {% include "reports/sales_report/sections/kpi/_cards.html" with cards=kpi_ctx.cards %}
 
+    {% include "reports/sales_report/sections/kpi/_categories_period.html" %}
+
     {% include "reports/sales_report/sections/kpi/_types.html" with rows=kpi_ctx.sales_by_type %}
 
-    {% include "reports/sales_report/sections/kpi/_shops.html" with rows=kpi_ctx.sales_by_shop total_amount=summary.values.amount total_cr=summary.values.cr %}
-
     <div class="page-break"></div>
+
+    {% include "reports/sales_report/sections/kpi/_shops.html" with rows=kpi_ctx.sales_by_shop total_amount=summary.values.amount total_cr=summary.values.cr %}
 
     {% comment %} {% include "reports/sales_report/sections/kpi/_control.html" with max_order=kpi_ctx.max_order median_check=kpi_ctx.median_check %} {% endcomment %}
 
