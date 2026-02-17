@@ -26,6 +26,20 @@ from sales.reports.sales_report.store_logos import STORE_LOGOS
 from django.templatetags.static import static
 from django.db import connections
 from django.db.models import Subquery
+from django.urls import reverse
+from django.utils.http import urlencode
+from django.db.models import Count
+from django.utils import timezone
+
+
+
+@admin.register(ItemManufacturer)
+class ItemManufacturerAdmin(admin.ModelAdmin):
+    search_fields = ("name",)
+
+@admin.register(ItemBrend)
+class ItemBrendAdmin(admin.ModelAdmin):
+    search_fields = ("name",)
 
 
 
@@ -73,97 +87,75 @@ class ItemsAdminForm(forms.ModelForm):
         css = {"all": ("css/admin_overrides.css",)}
 
 
-
-class ItemsInline(admin.TabularInline):
-    model = Items
-    extra = 0
-    verbose_name = "Номенклатура"
-    verbose_name_plural = "Номенклатуры"
-    fields = ('fullname',"item_subcat")
-    readonly_fields = fields
-    
-    def item_subcat(self, obj):
-        return obj.subcat.name if obj.subcat else "-"
-    
-    item_subcat.short_description = "Подкатегория"
-    class Media:
-        css = {"all": ("css/admin_overrides.css",)}
-
-
-
-class StoreAdmin(admin.ModelAdmin):
-    list_display = ('name','gr','chanel',)
-    class Media:
-        css = {"all": ("css/admin_overrides.css",)}
-
-class StoreGroupAdmin(admin.ModelAdmin):
-    list_display = ('name', 'region','logo_preview')
-    def logo_preview(self, obj):
-        if obj.pict:
-            return format_html('<img src="{}" style="height: 25px;" />', obj.pict.url)
-        return "-"
-    logo_preview.short_description = "Логотип"
-    class Media:
-        css = {"all": ("css/admin_overrides.css",)}
-
-
-class SubCatAdmin(admin.ModelAdmin):
-    list_display = ('name','category','icon_preview',)
-    inlines = [ItemsInline]
-    
-    def icon_preview(self, obj):
-        if obj.icon and obj.icon.strip().startswith('<svg'):
-            return format_html('{}', mark_safe(obj.icon))
-        return "-"
-    class Media:
-        css = {"all": ("css/admin_overrides.css",)}
-
-class CatTreeAdmin(DraggableMPTTAdmin):
-    mptt_indent_field = "name"
-    list_display = ("tree_actions", "indented_title", "icon_preview",)
-    list_display_links = ("indented_title",)
-    
-    inlines = [ItemsInline]
-
-    def icon_preview(self, obj):
-        if obj.icon and obj.icon.strip().startswith('<svg'):
-            return format_html('{}', mark_safe(obj.icon))
-        return "-"
-    class Media:
-        css = {"all": ("css/admin_overrides.css",)}
-    
-
+@admin.register(Items)
 class ItemsAdmin(admin.ModelAdmin):
     form = ItemsAdminForm
-    list_display = ('icon_preview','article','init_date','cat','subcat')
-    list_filter = ("cat",)
+
+    change_list_template = "admin/corporate/items/change_list.html"
+    change_form_template = "admin/corporate/items/change_form.html"
+
+    list_display = ("item_title", "article", "init_date", "cat_link", "subcat_link")
+    list_display_links = ("item_title",)
+    list_per_page = 50
+    ordering = ("-init_date", "fullname")
+    empty_value_display = "—"
+
+    search_fields = (
+        "fullname", "name", "article", "im_id", "guid",
+        "manufacturer__name", "brend__name",
+        "cat__name", "subcat__name",
+        "onec_cat", "onec_subcat",
+    )
+
+    list_filter = ("cat", "subcat", "brend", "manufacturer")
+
+    autocomplete_fields = ("cat", "subcat", "manufacturer", "brend")
+    filter_horizontal = ("collection", "item_property", "colors", "sizes", "material", "zones",)
+
     fieldsets = (
-        ("Основное", {
-            "fields": ("guid", "fullname", "article", "name","brend","cat","subcat","init_date")
+        ("🧾 Основное", {
+            "fields": ("guid", "fullname", "name", "article", "brend", "cat", "subcat", "init_date"),
         }),
-        ("Описание", {
-            "fields": ("description","manufacturer",'collection',"weight","volume","zones","pict")
+        ("📝 Описание", {
+            "fields": ("description", "manufacturer", "collection", "weight", "volume", "zones", "pict"),
         }),
-        ("Характеристики", {
-            "fields": ("item_property","colors","sizes",'material')
+        ("🎛️ Характеристики", {
+            "fields": ("item_property", "colors", "sizes", "material"),
         }),
-        ("Прочие", {
-            "fields": ("im_id","onec_cat",'onec_subcat')
+        ("🔎 Прочее", {
+            "fields": ("im_id", "onec_cat", "onec_subcat", "barcode"),
         }),
     )
-    actions = ['assign_category']
-    
-    def icon_preview(self, obj):
-        if obj.cat and obj.cat.icon and obj.cat.icon.strip().startswith('<svg'):
-            return format_html(
-                '{}&nbsp;<strong>{}</strong>',
-                mark_safe(obj.cat.icon),
-                obj.fullname
-            )
-        return obj.fullname
-    icon_preview.short_description = 'Наименование'
-    icon_preview.admin_order_field = 'fullname'
-    
+
+    actions = ["assign_category"]
+
+    # -------- красивые колонки --------
+    @admin.display(description="Номенклатура", ordering="fullname")
+    def item_title(self, obj):
+        icon = ""
+        if obj.cat and obj.cat.icon:
+            s = (obj.cat.icon or "").strip()
+            if s.startswith("<svg"):
+                icon = format_html('<span class="it-icon">{}</span>', mark_safe(s))
+            else:
+                icon = format_html('<span class="it-emoji">{}</span>', s)
+        return format_html('{}{}', icon, obj.fullname)
+
+    @admin.display(description="Категория", ordering="cat__name")
+    def cat_link(self, obj):
+        if not obj.cat:
+            return "—"
+        url = reverse("admin:corporate_cattree_change", args=[obj.cat_id])
+        return format_html('<a href="{}">{}</a>', url, obj.cat.name)
+
+    @admin.display(description="Подкатегория", ordering="subcat__name")
+    def subcat_link(self, obj):
+        if not obj.subcat:
+            return "—"
+        url = reverse("admin:corporate_subcategory_change", args=[obj.subcat_id])
+        return format_html('<a href="{}">{}</a>', url, obj.subcat.name)
+
+    # -------- твой action назначить категорию (перенёс сюда) --------
     def assign_category(self, request, queryset):
         if 'apply' in request.POST:
             form = AssignCategoryForm(request.POST)
@@ -190,11 +182,343 @@ class ItemsAdmin(admin.ModelAdmin):
             path('assign-category/', self.admin_site.admin_view(self.assign_category))
         ]
         return custom_urls + urls
+
+    class Media:
+        css = {"all": ("css/admin_overrides.css", "css/admin_items.css")}
+
+class ItemsInline(admin.TabularInline):
+    model = Items
+    extra = 0
+    verbose_name = "Номенклатура"
+    verbose_name_plural = "Номенклатуры"
+    fields = ('fullname',"item_subcat")
+    readonly_fields = fields
+    
+    def item_subcat(self, obj):
+        return obj.subcat.name if obj.subcat else "-"
+    
+    item_subcat.short_description = "Подкатегория"
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
+
+class StoreAdmin(admin.ModelAdmin):
+    list_display = ('name','gr','chanel',)
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
+
+class StoreGroupAdmin(admin.ModelAdmin):
+    list_display = ('name', 'region','logo_preview')
+    def logo_preview(self, obj):
+        if obj.pict:
+            return format_html('<img src="{}" style="height: 25px;" />', obj.pict.url)
+        return "-"
+    logo_preview.short_description = "Логотип"
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
+
+
+class SubCatAdmin(admin.ModelAdmin):
+    list_display = ('name','category','icon_preview',)
+    inlines = [ItemsInline]
+    search_fields = ("name", "category__name")
+    
+    def icon_preview(self, obj):
+        if obj.icon and obj.icon.strip().startswith('<svg'):
+            return format_html('{}', mark_safe(obj.icon))
+        return "-"
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
+        
+        
+        
+
+# class CatTreeAdmin(DraggableMPTTAdmin):
+#     mptt_indent_field = "name"
+#     list_display = ("tree_actions", "indented_title", "icon_preview",)
+#     list_display_links = ("indented_title",)
+    
+#     inlines = [ItemsInline]
+
+#     def icon_preview(self, obj):
+#         if obj.icon and obj.icon.strip().startswith('<svg'):
+#             return format_html('{}', mark_safe(obj.icon))
+#         return "-"
+#     class Media:
+#         css = {"all": ("css/admin_overrides.css",)}
+    
+    
+
+class CatTreeForm(forms.ModelForm):
+    class Meta:
+        model = CatTree
+        fields = "__all__"
+        widgets = {
+            "name": forms.TextInput(attrs={
+                "placeholder": "Например: Мебель / Свет / Декор",
+                "style": "width: 100%;",
+            }),
+            "comments": forms.Textarea(attrs={
+                "rows": 3,
+                "placeholder": "Комментарий для команды (не обязателен)",
+                "style": "width: 100%;",
+            }),
+            "icon": forms.Textarea(attrs={
+                "rows": 6,
+                "placeholder": "Вставьте SVG-код целиком (начиная с <svg ...>)",
+                "style": "width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;",
+            }),
+        }
+
+    class Media:
+        css = {"all": ("css/admin_overrides.css", "css/admin_cattree_form.css")}
+   
+class HasIconFilter(admin.SimpleListFilter):
+    title = "Иконка"
+    parameter_name = "has_icon"
+
+    def lookups(self, request, model_admin):
+        return (("1", "Есть"), ("0", "Нет"))
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v == "1":
+            return queryset.exclude(icon__isnull=True).exclude(icon__exact="")
+        if v == "0":
+            return queryset.filter(icon__isnull=True) | queryset.filter(icon__exact="")
+        return queryset
+
+
+class CatTreeAdmin(DraggableMPTTAdmin):
+    mptt_indent_field = "name"
+    change_list_template = "admin/corporate/cattree/change_list.html"
+    actions = ["print_tree_action"]
+
+    list_display = (
+        "tree_actions",
+        "indented_title",
+        "icon_preview",
+        "subcats_count",
+        "items_count",
+    )
+    list_display_links = ("indented_title",)
+
+    search_fields = (
+        "name",
+        "comments",
+        "subcategories__name",
+        "items__fullname",
+        "items__article",
+        "items__name",
+    )
+    list_filter = (
+        HasIconFilter,
+        "parent",
+    )
+
+    ordering = ("tree_id", "lft")
+    list_per_page = 50
+    empty_value_display = "—"
+    
+    fieldsets = (
+        ("🧾 Основное", {
+            "fields": ("name", "parent"),
+        }),
+        ("🎨 Визуальное оформление", {
+            "fields": ("icon_preview_form", "icon"),
+        }),
+        ("🗒️ Комментарий", {
+            "fields": ("comments",),
+        }),
+    )
+
+
+    readonly_fields = ("icon_preview_form",)
+
+    def icon_preview(self, obj):
+        if obj.icon and obj.icon.strip().startswith("<svg"):
+            return format_html("{}", mark_safe(obj.icon))
+        return "—"
+    icon_preview.short_description = "Иконка"
+
+    @admin.display(description="Предпросмотр")
+    def icon_preview_form(self, obj):
+        if obj and obj.icon and obj.icon.strip().startswith("<svg"):
+            return format_html(
+                '<div class="ct-preview">{}</div>',
+                mark_safe(obj.icon)
+            )
+        return format_html('<div class="ct-preview ct-preview--empty">Иконка не задана</div>')
+
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(
+            _subcats=Count("subcategories", distinct=True),
+            _items=Count("items", distinct=True),
+        )
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "print-tree/",
+                self.admin_site.admin_view(self.print_tree_view),
+                name="corporate_cattree_print_tree",
+            ),
+        ]
+        return custom + urls
+
+    # ---------- action ----------
+    @admin.action(description="🖨️ Печать дерева (HTML → PDF)")
+    def print_tree_action(self, request, queryset):
+        ids = list(queryset.values_list("id", flat=True))
+        if not ids:
+            self.message_user(request, "Ничего не выбрано.")
+            return
+        return redirect(f"print-tree/?ids={','.join(map(str, ids))}")
+
+    # ---------- view ----------
+    def print_tree_view(self, request):
+        ids_raw = request.GET.get("ids", "")
+        ids = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
+
+        roots = CatTree.objects.all() if not ids else CatTree.objects.filter(id__in=ids)
+
+        # печатаем выбранные как "корни" + всех потомков
+        nodes = []
+        for r in roots:
+            nodes.append(r)
+            nodes.extend(list(r.get_descendants()))
+
+        # убираем дубли (если выбрали и родителя и ребёнка)
+        uniq = {}
+        for n in nodes:
+            uniq[n.id] = n
+        nodes = list(uniq.values())
+
+        # сортировка по дереву
+        nodes = sorted(nodes, key=lambda x: (x.tree_id, x.lft))
+
+        nodes_ids = [n.id for n in nodes]
+        counts = (
+            CatTree.objects.filter(id__in=nodes_ids)
+            .annotate(
+                subcats_count=Count("subcategories", distinct=True),
+                items_count=Count("items", distinct=True),
+            )
+        )
+        counts_map = {c.id: c for c in counts}
+
+        rows = []
+        for n in nodes:
+            c = counts_map.get(n.id)
+            rows.append({
+                "id": n.id,
+                "name": n.name,
+                "level": n.level,     # 0 = корневая группа
+                "icon": n.icon,
+                "comments": n.comments,
+                "subcats": getattr(c, "subcats_count", 0) if c else 0,
+                "items": getattr(c, "items_count", 0) if c else 0,
+            })
+
+        context = dict(
+            self.admin_site.each_context(request),
+            title="Печать категорий",
+            generated_at=timezone.now(),
+            rows=rows,
+        )
+        return render(request, "admin/corporate/cattree/print_tree.html", context)
+
+    @admin.display(description="Иконка")
+    def icon_preview(self, obj):
+        if obj.icon and obj.icon.strip().startswith("<svg"):
+            return format_html("{}", mark_safe(obj.icon))
+        return "—"
+
+    @admin.display(description="Подкатегорий", ordering="_subcats")
+    def subcats_count(self, obj):
+        return getattr(obj, "_subcats", 0)
+
+    @admin.display(description="Товаров", ordering="_items")
+    def items_count(self, obj):
+        cnt = getattr(obj, "_items", 0)
+        if not cnt:
+            return "0"
+
+        url = (
+            reverse("admin:corporate_items_changelist")
+            + "?"
+            + urlencode({"cat__id__exact": obj.id})
+        )
+        return format_html('<a href="{}" title="Открыть номенклатуру по категории">{}</a>', url, cnt)
+
     class Media:
         css = {"all": ("css/admin_overrides.css",)}
 
 
 
+
+
+# class ItemsAdmin(admin.ModelAdmin):
+#     form = ItemsAdminForm
+#     list_display = ('icon_preview','article','init_date','cat','subcat')
+#     list_filter = ("cat",)
+#     fieldsets = (
+#         ("Основное", {
+#             "fields": ("guid", "fullname", "article", "name","brend","cat","subcat","init_date")
+#         }),
+#         ("Описание", {
+#             "fields": ("description","manufacturer",'collection',"weight","volume","zones","pict")
+#         }),
+#         ("Характеристики", {
+#             "fields": ("item_property","colors","sizes",'material')
+#         }),
+#         ("Прочие", {
+#             "fields": ("im_id","onec_cat",'onec_subcat')
+#         }),
+#     )
+#     actions = ['assign_category']
+    
+#     def icon_preview(self, obj):
+#         if obj.cat and obj.cat.icon and obj.cat.icon.strip().startswith('<svg'):
+#             return format_html(
+#                 '{}&nbsp;<strong>{}</strong>',
+#                 mark_safe(obj.cat.icon),
+#                 obj.fullname
+#             )
+#         return obj.fullname
+#     icon_preview.short_description = 'Наименование'
+#     icon_preview.admin_order_field = 'fullname'
+    
+#     def assign_category(self, request, queryset):
+#         if 'apply' in request.POST:
+#             form = AssignCategoryForm(request.POST)
+#             if form.is_valid():
+#                 category = form.cleaned_data['category']
+#                 updated = queryset.update(cat=category)
+#                 self.message_user(request, f"Категория '{category}' назначена для {updated} объектов.")
+#                 return redirect(request.get_full_path())
+#         else:
+#             form = AssignCategoryForm()
+
+#         return render(request, 'admin/corporate/items/assign_category.html', context={
+#             'items': queryset,
+#             'form': form,
+#             'title': 'Назначить категорию',
+#             'action_checkbox_name': admin.helpers.ACTION_CHECKBOX_NAME,
+#         })
+
+#     assign_category.short_description = "Назначить категорию"
+
+#     def get_urls(self):
+#         urls = super().get_urls()
+#         custom_urls = [
+#             path('assign-category/', self.admin_site.admin_view(self.assign_category))
+#         ]
+#         return custom_urls + urls
+#     class Media:
+#         css = {"all": ("css/admin_overrides.css",)}
 
 class ManagerStoreGroupFilter(admin.SimpleListFilter):
     title = "Магазин"
@@ -221,8 +545,6 @@ class ManagerStoreGroupFilter(admin.SimpleListFilter):
         )
 
         return queryset.filter(id__in=Subquery(manager_ids))
-
-
 
 class ManagersAdmin(admin.ModelAdmin):
     list_display = (
@@ -328,7 +650,7 @@ class ManagersAdmin(admin.ModelAdmin):
 admin.site.register(Companies)
 admin.site.register(Projects)
 admin.site.register(CatTree, CatTreeAdmin)
-admin.site.register(Items,ItemsAdmin)
+# admin.site.register(Items,ItemsAdmin)
 admin.site.register(StoreGroups,StoreGroupAdmin)
 admin.site.register(Stores,StoreAdmin)
 admin.site.register(ItemProperty)
@@ -336,8 +658,8 @@ admin.site.register(ItemCollections)
 admin.site.register(ItemSizes)
 admin.site.register(ItemColors)
 admin.site.register(ItemMaterial)
-admin.site.register(ItemManufacturer)
-admin.site.register(ItemBrend)
+# admin.site.register(ItemManufacturer)
+# admin.site.register(ItemBrend)
 admin.site.register(ItemZones)
 admin.site.register(SubCategory,SubCatAdmin)
 admin.site.register(Managers, ManagersAdmin) 

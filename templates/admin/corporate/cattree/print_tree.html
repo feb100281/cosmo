@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root{
+      --text:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --head:#f8fafc;
+      --group:#eef2ff;
+      --group-line:#c7d2fe;
+      --accent:#4f46e5;
+    }
+
+    html, body{
+      margin:0;
+      padding:0;
+      background:#fff;
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    }
+
+    .wrap{
+      max-width: 980px;
+      margin: 20px auto 40px;
+      padding: 0 16px;
+    }
+
+    /* ---------- шапка документа ---------- */
+    .dochead{
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--line);
+      margin-bottom: 14px;
+    }
+
+    .kicker{
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .title{
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .meta{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ---------- кнопки ---------- */
+    .printbar{
+      margin: 12px 0 16px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .printbar button{
+      font-size: 13px;
+      padding: 6px 14px;
+      border: 1px solid #d1d5db;
+      background: #f3f4f6;
+      cursor: pointer;
+    }
+
+    .printbar button:hover{
+      background: #e5e7eb;
+    }
+
+    /* ---------- таблица ---------- */
+    table{
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+    }
+
+    thead th{
+      background: var(--head);
+      color: #374151;
+      text-align: left;
+      font-size: 12px;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    tbody td{
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      font-size: 13px;
+    }
+
+    tbody tr:last-child td{
+      border-bottom: none;
+    }
+
+    .num{
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    /* ---------- структура строки ---------- */
+    .catcell{
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .icon{
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+
+    .icon svg{
+      width: 18px;
+      height: 18px;
+    }
+
+    .name{
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .comment{
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
+    /* ---------- выделение корневых групп ---------- */
+    tr.is-root td{
+      background: var(--group);
+      border-bottom-color: var(--group-line);
+      font-weight: 700;
+    }
+
+    tr.is-root td:first-child{
+      border-left: 6px solid var(--accent);
+    }
+
+    tr.is-root .comment{
+      color: #4b5563;
+      font-weight: 400;
+    }
+
+    /* ---------- печать ---------- */
+    @media print{
+      .wrap{ max-width: 100%; margin: 0; padding: 0; }
+      .printbar{ display: none; }
+      @page{ size: A4; margin: 12mm; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="dochead">
+      <div class="kicker">Corporate · справочники</div>
+      <h1 class="title">Дерево категорий товаров</h1>
+      <div class="meta">Сформировано: {{ generated_at|date:"d.m.Y H:i" }}</div>
+    </div>
+
+    <!-- КНОПКИ -->
+    <div class="printbar">
+      <button onclick="window.print()">🖨️ Печать / PDF</button>
+      <button onclick="history.back()">↩ Назад</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:60%;">Категория</th>
+          <th style="width:20%;">Подкатегорий</th>
+          <th style="width:20%;">Товаров</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for r in rows %}
+          <tr class="{% if r.level == 0 %}is-root{% endif %}">
+            <td>
+              <div class="catcell">
+                <div style="margin-left: {{ r.level }}em;"></div>
+
+                <div class="icon">
+                  {% if r.icon and r.icon|slice:":4" == "<svg" %}
+                    {{ r.icon|safe }}
+                  {% endif %}
+                </div>
+
+                <div>
+                  <div class="name">{{ r.name }}</div>
+                  {% if r.comments %}
+                    <div class="comment">{{ r.comments }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+
+            <td class="num">{{ r.subcats }}</td>
+            <td class="num">{{ r.items }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+  </div>
+</body>
+</html>

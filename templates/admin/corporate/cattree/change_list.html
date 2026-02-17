@@ -1,0 +1,131 @@
+{% extends "admin/change_list.html" %}
+{% load static admin_urls %}
+
+{% block breadcrumbs %}{% endblock %}
+{% block object-tools %}{% endblock %}
+
+{% block title %}Справочники | Категории{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/admin_overrides.css' %}">
+  <style>
+    .cat-hero{ display:flex; gap:16px; flex-wrap:wrap; padding-bottom:6px; align-items:flex-start; }
+    .cat-left{ display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+
+    .cat-avatar{
+      width:44px;height:44px;border-radius:12px;
+      background: linear-gradient(135deg, #f8fafc, #f5f3ff);
+      border:1px solid rgba(99,102,241,.18);
+      display:flex;align-items:center;justify-content:center;
+      color:#4f46e5;font-size:20px;
+      box-shadow:0 4px 12px rgba(99,102,241,.10), 0 0 0 3px rgba(99,102,241,.04);
+      transition:.25s ease;
+    }
+    .cat-avatar:hover{
+      transform: translateY(-1px);
+      box-shadow:0 8px 20px rgba(99,102,241,.16), 0 0 0 4px rgba(99,102,241,.07);
+    }
+
+    .cat-meta{ display:flex; flex-direction:column; gap:4px; line-height:1.3; }
+    .cat-kicker{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#6b7280; }
+    .cat-title{ font-size:19px; font-weight:600; color:#111827; }
+    .cat-desc{ margin-top:4px; font-size:11px; color:#6b7280; max-width:640px; }
+
+    .cat-card{
+      min-width:230px; max-width:320px;
+      border-radius:14px; background:rgba(248,250,252,0.96);
+      box-shadow:0 18px 40px rgba(15,23,42,0.16);
+      padding:10px 12px 12px;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .cat-card-top{ display:flex; justify-content:space-between; align-items:baseline; }
+    .cat-card-k{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9ca3af; }
+    .cat-card-t{ font-size:13px; font-weight:600; color:#0f172a; }
+
+    .cat-btn{
+      display:inline-flex; align-items:center; justify-content:flex-start; gap:8px;
+      width:100%;
+      font-size:13px;
+      padding:6px 10px;
+      border-radius:8px;
+      text-decoration:none;
+      border:1px solid #d1d5db;
+      background:#f3f4f6;
+      color:#111827;
+      box-shadow:0 1px 2px rgba(15,23,42,.06);
+    }
+    .cat-btn:hover{ background:#e5e7eb; color:#111827; }
+
+    .cat-btn-primary{
+      border:1px solid rgba(99,102,241,.22);
+      background:rgba(99,102,241,.10);
+    }
+    .cat-btn-primary:hover{ background:rgba(99,102,241,.16); }
+
+    .cat-divider{ height:1px; background:rgba(148,163,184,0.35); margin:2px 0 4px; }
+
+    .cat-bcrumb{
+      display:flex; justify-content:space-between; align-items:center;
+      margin-top:6px; padding:6px 2px 0;
+      border-top:1px solid #e5e7eb;
+      color:#6b7280; font-size:11px; gap:12px; flex-wrap:wrap;
+    }
+    .cat-bcrumb a{ text-transform:uppercase; letter-spacing:.08em; text-decoration:none; color:#9ca3af; }
+    .cat-bcrumb strong{ text-transform:uppercase; letter-spacing:.08em; color:#4b5563; font-weight:600; }
+  </style>
+{% endblock %}
+
+{% block content_title %}
+  {% url cl.opts|admin_urlname:'add' as add_url %}
+
+  <div class="cat-hero">
+
+    <div class="cat-left">
+      <div class="cat-avatar">🗂️</div>
+
+      <div class="cat-meta">
+        <span class="cat-kicker">Справочники · Corporate</span>
+        <span class="cat-title">Категории</span>
+      </div>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <div class="cat-card">
+      <div class="cat-card-top">
+        <span class="cat-card-k">Навигация</span>
+        <span class="cat-card-t">Действия</span>
+      </div>
+
+      <div class="cat-divider"></div>
+
+      <div style="display:flex; flex-direction:column; gap:6px;">
+
+        {% if has_add_permission %}
+          <a href="{{ add_url }}" class="cat-btn cat-btn-primary">
+            ➕ Добавить категорию
+          </a>
+        {% endif %}
+
+      </div>
+
+      <div class="cat-divider"></div>
+
+      <div style="font-size:11px;color:#9ca3af;">
+        Сейчас в списке: <strong style="color:#4b5563;">{{ cl.result_count }}</strong>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="cat-bcrumb">
+    <nav style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <a href="{% url 'admin:index' %}">НАЧАЛО</a>
+      <span>›</span>
+      <a href="{% url 'admin:app_list' 'corporate' %}">CORPORATE</a>
+      <span>›</span>
+      <strong>КАТЕГОРИИ</strong>
+    </nav>
+  </div>
+{% endblock %}

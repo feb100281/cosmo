@@ -1,0 +1,57 @@
+{% extends "admin/change_form.html" %}
+{% load static admin_urls %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/admin_overrides.css' %}">
+  <link rel="stylesheet" href="{% static 'css/admin_items.css' %}">
+  <style>
+    .it-form-hero{ display:flex; gap:14px; flex-wrap:wrap; align-items:center; padding-bottom:10px; }
+    .it-back-btn{
+      font-size:13px; padding:6px 10px; border-radius:8px;
+      border:1px solid #d1d5db; background:#f3f4f6; text-decoration:none;
+      color:#111827; font-weight:600; display:inline-flex; align-items:center; gap:6px;
+      box-shadow:0 1px 2px rgba(15,23,42,.06);
+    }
+    .it-back-btn:hover{ background:#e5e7eb; color:#111827; }
+    .it-form-avatar{
+      width:44px;height:44px;border-radius:12px;
+      background:linear-gradient(135deg,#f8fafc,#ecfeff);
+      border:1px solid rgba(2,132,199,.18);
+      display:flex;align-items:center;justify-content:center;
+      font-size:20px;color:#0284c7;box-shadow:0 4px 12px rgba(2,132,199,.10);
+    }
+    .it-form-meta{ display:flex; flex-direction:column; gap:3px; }
+    .it-form-kicker{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#6b7280; }
+    .it-form-title{ font-size:19px; font-weight:600; color:#111827; }
+
+    .it-form-card{
+      margin-top:12px;border-radius:14px;background:rgba(248,250,252,0.96);
+      box-shadow:0 18px 40px rgba(15,23,42,0.12);
+      padding:18px 20px 16px;
+    }
+  </style>
+{% endblock %}
+
+{% block content_title %}
+  <div class="it-form-hero">
+    <a href="{% url 'admin:corporate_items_changelist' %}" class="it-back-btn">← Назад</a>
+    <div class="it-form-avatar">📦</div>
+    <div class="it-form-meta">
+      <span class="it-form-kicker">Corporate · Справочник</span>
+      {% if original %}
+        <span class="it-form-title">Редактирование номенклатуры</span>
+      {% else %}
+        <span class="it-form-title">Добавление номенклатуры</span>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="it-form-card">
+    {{ block.super }}
+  </div>
+{% endblock %}
