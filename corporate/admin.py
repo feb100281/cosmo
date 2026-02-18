@@ -30,6 +30,7 @@ from django.urls import reverse
 from django.utils.http import urlencode
 from django.db.models import Count
 from django.utils import timezone
+from mptt.admin import MPTTModelAdmin
 
 
 
@@ -41,6 +42,13 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
 class ItemBrendAdmin(admin.ModelAdmin):
     search_fields = ("name",)
 
+
+
+class SubCategoryInline(admin.TabularInline):
+    model = SubCategory
+    extra = 0
+    fields = ("name", "comments")
+    show_change_link = True
 
 
 
@@ -289,18 +297,26 @@ class HasIconFilter(admin.SimpleListFilter):
 
 
 class CatTreeAdmin(DraggableMPTTAdmin):
-    mptt_indent_field = "name"
+    # mptt_indent_field = "name"
+    mptt_level_indent = 32 
     change_list_template = "admin/corporate/cattree/change_list.html"
     actions = ["print_tree_action"]
+    inlines = [SubCategoryInline]
 
     list_display = (
         "tree_actions",
-        "indented_title",
-        "icon_preview",
-        "subcats_count",
+        "category_title", 
+        # "indented_title",
+        # "icon_preview",
+        # "subcats_count",
+        "subcats_preview", 
         "items_count",
     )
-    list_display_links = ("indented_title",)
+    # list_display_links = ("indented_title",)
+    list_display_links = ("category_title",)
+    
+
+
 
     search_fields = (
         "name",
@@ -334,11 +350,11 @@ class CatTreeAdmin(DraggableMPTTAdmin):
 
     readonly_fields = ("icon_preview_form",)
 
-    def icon_preview(self, obj):
-        if obj.icon and obj.icon.strip().startswith("<svg"):
-            return format_html("{}", mark_safe(obj.icon))
-        return "—"
-    icon_preview.short_description = "Иконка"
+    # def icon_preview(self, obj):
+    #     if obj.icon and obj.icon.strip().startswith("<svg"):
+    #         return format_html("{}", mark_safe(obj.icon))
+    #     return "—"
+    # icon_preview.short_description = "Иконка"
 
     @admin.display(description="Предпросмотр")
     def icon_preview_form(self, obj):
@@ -350,12 +366,85 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         return format_html('<div class="ct-preview ct-preview--empty">Иконка не задана</div>')
 
 
+    @admin.display(description="Категория", ordering="name")
+    def category_title(self, obj):
+        # DraggableMPTTAdmin сам отдаёт obj.level
+        indent = (getattr(obj, "level", 0) or 0) * 18  # можно 16–22
+
+        icon_html = ""
+        if obj.icon:
+            s = (obj.icon or "").strip()
+            if s.startswith("<svg"):
+                icon_html = format_html('<span class="it-icon">{}</span>', mark_safe(s))
+            else:
+                icon_html = format_html('<span class="it-emoji">{}</span>', s)
+
+        comment_html = ""
+        if obj.comments:
+            comment_html = format_html(
+                '<div style="margin-top:3px;font-size:11px;color:#6b7280;white-space:pre-wrap;">{}</div>',
+                obj.comments
+            )
+
+        return format_html(
+            '<div style="padding-left:{}px;">'
+            '  <div style="display:flex;align-items:center;gap:8px;">'
+            '    {}'
+            '    <span style="font-weight:700;color:#0f172a;">{}</span>'
+            '  </div>'
+            '  {}'
+            '</div>',
+            indent,
+            icon_html,
+            obj.name,
+            comment_html,
+        )
+
+
+
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.annotate(
-            _subcats=Count("subcategories", distinct=True),
-            _items=Count("items", distinct=True),
+        return (
+            qs.annotate(
+                _subcats=Count("subcategories", distinct=True),
+                _items=Count("items", distinct=True),
+            )
+            .prefetch_related("subcategories")
         )
+    
+    # @admin.display(description="Категория", ordering="name")
+    # def indented_title_custom(self, obj):
+    #     # отступ в зависимости от уровня
+    #     indent = getattr(obj, "level", 0) * 22  # px
+    #     return format_html(
+    #         '<div style="padding-left:{}px;">{}</div>',
+    #         indent,
+    #         obj.name,
+    #     )
+
+
+
+
+    @admin.display(description="Подкатегории")
+    def subcats_preview(self, obj):
+        subs = list(obj.subcategories.all())
+        if not subs:
+            return format_html('<span class="muted">—</span>')
+
+        # лимит, чтобы список не раздувал таблицу
+        limit = 6
+        shown = subs[:limit]
+        more = len(subs) - limit
+
+        chips = []
+        for s in shown:
+            chips.append(format_html('<span class="chip">{}</span>', s.name))
+
+        if more > 0:
+            chips.append(format_html('<span class="chip chip--muted">+{}</span>', more))
+
+        return format_html(" ".join(chips))
+
     
     def get_urls(self):
         urls = super().get_urls()
@@ -400,6 +489,8 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         nodes = sorted(nodes, key=lambda x: (x.tree_id, x.lft))
 
         nodes_ids = [n.id for n in nodes]
+
+        # ---- 1) считаем кол-во подкатегорий и товаров (как было) ----
         counts = (
             CatTree.objects.filter(id__in=nodes_ids)
             .annotate(
@@ -409,6 +500,19 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         )
         counts_map = {c.id: c for c in counts}
 
+        # ---- 2) подтягиваем НАЗВАНИЯ подкатегорий для каждой категории ----
+        subcats_qs = (
+            SubCategory.objects
+            .filter(category_id__in=nodes_ids)
+            .values("category_id", "name")
+            .order_by("name")
+        )
+
+        subcats_map = {}
+        for sc in subcats_qs:
+            subcats_map.setdefault(sc["category_id"], []).append(sc["name"])
+
+        # ---- 3) собираем rows ----
         rows = []
         for n in nodes:
             c = counts_map.get(n.id)
@@ -420,6 +524,7 @@ class CatTreeAdmin(DraggableMPTTAdmin):
                 "comments": n.comments,
                 "subcats": getattr(c, "subcats_count", 0) if c else 0,
                 "items": getattr(c, "items_count", 0) if c else 0,
+                "subcat_names": subcats_map.get(n.id, []),   # ← ВОТ ОНО
             })
 
         context = dict(
@@ -429,6 +534,7 @@ class CatTreeAdmin(DraggableMPTTAdmin):
             rows=rows,
         )
         return render(request, "admin/corporate/cattree/print_tree.html", context)
+
 
     @admin.display(description="Иконка")
     def icon_preview(self, obj):
@@ -454,7 +560,8 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         return format_html('<a href="{}" title="Открыть номенклатуру по категории">{}</a>', url, cnt)
 
     class Media:
-        css = {"all": ("css/admin_overrides.css",)}
+        css = {"all": ("css/admin_overrides.css", "css/cattree_no_drag.css")}
+        js = ("js/cattree_no_drag.js",)
 
 
 

@@ -6,7 +6,8 @@
 
 {% block title %}Справочники | Категории{% endblock %}
 
-{% block extrahead %}
+{# ВАЖНО: extrastyle тоже должен звать block.super #}
+{% block extrastyle %}
   {{ block.super }}
   <link rel="stylesheet" href="{% static 'css/admin_overrides.css' %}">
   <style>
@@ -30,7 +31,6 @@
     .cat-meta{ display:flex; flex-direction:column; gap:4px; line-height:1.3; }
     .cat-kicker{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#6b7280; }
     .cat-title{ font-size:19px; font-weight:600; color:#111827; }
-    .cat-desc{ margin-top:4px; font-size:11px; color:#6b7280; max-width:640px; }
 
     .cat-card{
       min-width:230px; max-width:320px;
@@ -76,6 +76,11 @@
   </style>
 {% endblock %}
 
+{# ВАЖНО: extrahead тоже оставляем super #}
+{% block extrahead %}
+  {{ block.super }}
+{% endblock %}
+
 {% block content_title %}
   {% url cl.opts|admin_urlname:'add' as add_url %}
 
@@ -101,13 +106,9 @@
       <div class="cat-divider"></div>
 
       <div style="display:flex; flex-direction:column; gap:6px;">
-
         {% if has_add_permission %}
-          <a href="{{ add_url }}" class="cat-btn cat-btn-primary">
-            ➕ Добавить категорию
-          </a>
+          <a href="{{ add_url }}" class="cat-btn cat-btn-primary">➕ Добавить категорию</a>
         {% endif %}
-
       </div>
 
       <div class="cat-divider"></div>
@@ -129,3 +130,5 @@
     </nav>
   </div>
 {% endblock %}
+
+{# НИ В КОЕМ СЛУЧАЕ не переопределяй result_list / change_list_results #}

@@ -143,6 +143,26 @@
       white-space: pre-wrap;
     }
 
+    /* ---------- подкатегории (чипы) ---------- */
+    .subcats{
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .subchip{
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #374151;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
     /* ---------- выделение корневых групп ---------- */
     tr.is-root td{
       background: var(--group);
@@ -157,6 +177,11 @@
     tr.is-root .comment{
       color: #4b5563;
       font-weight: 400;
+    }
+
+    /* корневым группам можно чуть подсветить чипы */
+    tr.is-root .subchip{
+      background: rgba(255,255,255,.7);
     }
 
     /* ---------- печать ---------- */
@@ -207,8 +232,17 @@
 
                 <div>
                   <div class="name">{{ r.name }}</div>
+
                   {% if r.comments %}
                     <div class="comment">{{ r.comments }}</div>
+                  {% endif %}
+
+                  {% if r.subcat_names %}
+                    <div class="subcats">
+                      {% for s in r.subcat_names %}
+                        <span class="subchip">{{ s }}</span>
+                      {% endfor %}
+                    </div>
                   {% endif %}
                 </div>
               </div>
@@ -224,3 +258,4 @@
   </div>
 </body>
 </html>
+
