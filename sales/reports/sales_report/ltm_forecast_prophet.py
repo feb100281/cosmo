@@ -108,13 +108,27 @@ def build_prophet_eom_projection(
     )
     model.fit(df)
 
-    # --- горизонты: EOM + 2 месяца вперёд ---
+    # # --- горизонты: EOM + 2 месяца вперёд ---
+    # this_eom = (current_date + pd.offsets.MonthEnd(0)).normalize()
+    # m1_eom = (this_eom + pd.offsets.MonthEnd(1)).normalize()
+    # m2_eom = (this_eom + pd.offsets.MonthEnd(2)).normalize()
+
+    # # сколько дней прогнозируем вперёд до конца M+2
+    # num_days = int((m2_eom - current_date).days)
+    # future = model.make_future_dataframe(periods=max(num_days, 0))
+    # fc = model.predict(future)[["ds", "yhat"]].copy()
+    
+    
+    # --- горизонты: EOM + 2 месяца вперёд (для карточек) ---
     this_eom = (current_date + pd.offsets.MonthEnd(0)).normalize()
     m1_eom = (this_eom + pd.offsets.MonthEnd(1)).normalize()
     m2_eom = (this_eom + pd.offsets.MonthEnd(2)).normalize()
 
-    # сколько дней прогнозируем вперёд до конца M+2
-    num_days = int((m2_eom - current_date).days)
+    # ✅ ДО КОНЦА ГОДА (для графика FY)
+    year_end = pd.Timestamp(year=int(current_date.year), month=12, day=31).normalize()
+
+    # сколько дней прогнозируем вперёд: ДО КОНЦА ГОДА
+    num_days = int((year_end - current_date).days)
     future = model.make_future_dataframe(periods=max(num_days, 0))
     fc = model.predict(future)[["ds", "yhat"]].copy()
 
@@ -178,4 +192,5 @@ def build_prophet_eom_projection(
         ),
 
         "note": "Прогноз: Prophet на дневной выручке. EOM — прогноз закрытия текущего месяца, M+1/M+2 — суммы по следующим месяцам. MAPE рассчитан по месяцам.",
+         "_forecast_df": fc, 
     }

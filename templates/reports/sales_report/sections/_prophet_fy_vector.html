@@ -1,0 +1,101 @@
+{% comment %}
+  Годовой прогноз Prophet (FY) + ежедневный вектор.
+  Ожидает в контексте: ltm_prophet_year
+{% endcomment %}
+
+{% if ltm_prophet_year and ltm_prophet_year.has_data %}
+
+<div class="owner-block owner-block--fy">
+
+  <div class="owner-block__head">
+    <div class="owner-block__title">
+
+      Прогноз до конца {{ ltm_prophet_year.year|safe }} года (FY)
+
+    </div>
+
+    <div class="owner-badge owner-badge--soft">
+      MAPE*: <span class="owner-badge__value">{{ ltm_prophet_year.mape_total }}</span>
+    </div>
+  </div>
+
+  <div class="owner-grid owner-grid--forecast">
+
+    <!-- Левая карточка: сам прогноз -->
+    <div class="owner-metric owner-metric--hero">
+
+      <div class="m-k">FY прогноз</div>
+      <div class="m-v">{{ ltm_prophet_year.fy_forecast }}</div>
+      <div class="m-s">
+        до {{ ltm_prophet_year.year_end|date:"d.m.Y" }}
+      </div>
+
+      <div class="m-subnote">
+        YTD факт:
+        <b>{{ ltm_prophet_year.ytd_actual }}</b>
+      </div>
+
+      <div class="m-subnote">
+        Осталось добрать:
+        <b>{{ ltm_prophet_year.remaining_forecast }}</b>
+      </div>
+
+    </div>
+
+    <!-- Правая карточка: вектор -->
+    <div class="owner-metric owner-metric--plans">
+
+      <div class="m-k">Динамика прогноза</div>
+
+      <div class="plans">
+
+        <div class="plans__row">
+          <div class="plans__label">Прогноз вчера</div>
+          <div class="plans__value">
+            {{ ltm_prophet_year.fy_yesterday }}
+          </div>
+        </div>
+
+        <div class="plans__row">
+          <div class="plans__label">Изменение</div>
+          <div class="plans__value owner-delta owner-delta--{{ ltm_prophet_year.vector_dir }}">
+            {{ ltm_prophet_year.d_fy }}
+          </div>
+        </div>
+
+        <div class="plans__row">
+          <div class="plans__label">Δ %</div>
+          <div class="plans__value owner-delta owner-delta--{{ ltm_prophet_year.vector_dir }}">
+            {{ ltm_prophet_year.d_fy_pct }}
+          </div>
+        </div>
+
+      </div>
+
+      <div class="m-s">
+        Вектор: {{ ltm_prophet_year.vector_text }}
+      </div>
+
+    </div>
+
+  </div>
+
+  {% if fy_bar_svg %}
+  <div class="chart-block chart-block--fy">
+    {{ fy_bar_svg|safe }}
+  </div>
+{% endif %}
+
+
+  <!-- мини-пояснение -->
+  <div class="owner-methodology">
+    <div class="owner-methodology__text">
+      FY прогноз рассчитывается ежедневно на основе дневной выручки.
+      Δ рассчитывается как разница между прогнозом на текущую дату
+      и прогнозом, построенным на данных до вчерашнего дня.
+    </div>
+  </div>
+
+</div>
+
+{% endif %}

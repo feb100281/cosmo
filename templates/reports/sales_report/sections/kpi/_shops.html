@@ -2,7 +2,8 @@
 
 
 <h3 class="compare-title" style="margin-top:32px;">
-  Выручка по магазинам (чистая выручка за период)
+  Выручка по магазинам (реализация за период 
+  {{ period_start|date:"d.m.Y" }}–{{ period_end|date:"d.m.Y" }})
 </h3>
 
 {% if rows %}

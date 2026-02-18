@@ -34,6 +34,10 @@ from .managers_block import build_managers_context
 from .orders.orders_block import build_orders_context
 from .orders.orders_flow.flow_block import build_orders_flow_context
 from .orders.orders_lifecycle.lifecycle_block import build_orders_lifecycle_context
+from .ltm_forecast_prophet_year import build_prophet_fy_vector
+from .prophet_fy_chart import build_prophet_fy_bar_svg
+
+
 
 from .formatters import (
     fmt_money,
@@ -457,6 +461,29 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         changepoint_range=1.0,
         n_changepoints=25,
     )
+    
+    fy_bar_svg = build_prophet_fy_bar_svg(
+    df_fc_raw,
+    ltm_prophet["_forecast_df"],   # если сохранишь fc внутри build_prophet...
+    report_date=d,
+        )
+
+    
+    # --- Prophet projection (FY vector: year-end) ---
+    ltm_prophet_year = build_prophet_fy_vector(
+        df_fc_raw,
+        report_date=d,
+        historical_cut_off=None,     # можно потом сделать “последние 24 месяца”, если надо
+        yearly_seasonality=True,
+        weekly_seasonality=True,
+        seasonality_mode="additive",
+        changepoint_prior_scale=0.05,
+        changepoint_range=1.0,
+        n_changepoints=25,
+        compare_with_yesterday=True,
+        last_n_days=14,
+    )
+
 
     # --- INSIGHTS ---
     insights = build_insights(obj)
@@ -509,6 +536,8 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         "revenue_13m_svg": revenue_13m_svg,
         "ltm_insights": ltm_insights,
         "ltm_prophet": ltm_prophet,
+        "ltm_prophet_year": ltm_prophet_year,
+        "fy_bar_svg": fy_bar_svg,
 
         # ✅ categories
         "categories": categories,
