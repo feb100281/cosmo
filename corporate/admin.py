@@ -225,10 +225,40 @@ class StoreGroupAdmin(admin.ModelAdmin):
         css = {"all": ("css/admin_overrides.css",)}
 
 
+# class SubCatAdmin(admin.ModelAdmin):
+#     list_display = ('name','category','icon_preview',)
+#     inlines = [ItemsInline]
+#     search_fields = ("name", "category__name")
+    
+#     def icon_preview(self, obj):
+#         if obj.icon and obj.icon.strip().startswith('<svg'):
+#             return format_html('{}', mark_safe(obj.icon))
+#         return "-"
+#     class Media:
+#         css = {"all": ("css/admin_overrides.css",)}
+        
+        
+
 class SubCatAdmin(admin.ModelAdmin):
-    list_display = ('name','category','icon_preview',)
-    inlines = [ItemsInline]
+    list_display = ('name','category','items_count_link','icon_preview',)
     search_fields = ("name", "category__name")
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(_items=Count("items", distinct=True))
+
+    @admin.display(description="Товаров", ordering="_items")
+    def items_count_link(self, obj):
+        cnt = getattr(obj, "_items", 0)
+        if not cnt:
+            return "0"
+        url = (
+            reverse("admin:corporate_items_changelist")
+            + "?"
+            + urlencode({"subcat__id__exact": obj.id})
+        )
+        return format_html('<a href="{}" title="Открыть номенклатуру">{}</a>', url, cnt)
+    
     
     def icon_preview(self, obj):
         if obj.icon and obj.icon.strip().startswith('<svg'):
@@ -236,7 +266,6 @@ class SubCatAdmin(admin.ModelAdmin):
         return "-"
     class Media:
         css = {"all": ("css/admin_overrides.css",)}
-        
         
         
 
@@ -312,6 +341,7 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         "subcats_preview", 
         "items_count",
     )
+    
     # list_display_links = ("indented_title",)
     list_display_links = ("category_title",)
     
@@ -404,13 +434,20 @@ class CatTreeAdmin(DraggableMPTTAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return (
-            qs.annotate(
-                _subcats=Count("subcategories", distinct=True),
-                _items=Count("items", distinct=True),
-            )
-            .prefetch_related("subcategories")
+        return qs.annotate(_subcats=Count("subcategories", distinct=True),
+                           _items=Count("items", distinct=True)).prefetch_related("subcategories")
+
+    @admin.display(description="Подкатегорий", ordering="_subcats")
+    def subcats_count_link(self, obj):
+        cnt = getattr(obj, "_subcats", 0)
+        if not cnt:
+            return "0"
+        url = (
+            reverse("admin:corporate_subcategory_changelist")
+            + "?"
+            + urlencode({"category__id__exact": obj.id})
         )
+        return format_html('<a href="{}" title="Открыть подкатегории">{}</a>', url, cnt)
     
     # @admin.display(description="Категория", ordering="name")
     # def indented_title_custom(self, obj):
@@ -431,19 +468,25 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         if not subs:
             return format_html('<span class="muted">—</span>')
 
-        # лимит, чтобы список не раздувал таблицу
         limit = 6
         shown = subs[:limit]
         more = len(subs) - limit
 
         chips = []
         for s in shown:
-            chips.append(format_html('<span class="chip">{}</span>', s.name))
+            # ВАЖНО: ведём в список номенклатуры, отфильтрованный по subcat
+            url = reverse("admin:corporate_items_changelist")
+            url = f"{url}?{urlencode({'subcat__id__exact': s.id})}"
+            chips.append(format_html('<a class="chip" href="{}">{}</a>', url, s.name))
 
         if more > 0:
-            chips.append(format_html('<span class="chip chip--muted">+{}</span>', more))
+            # если подкатегорий больше лимита — ведём в список номенклатуры по категории
+            # (или можно вести в список подкатегорий — как тебе удобнее)
+            url = reverse("admin:corporate_items_changelist")
+            url = f"{url}?{urlencode({'cat__id__exact': obj.id})}"
+            chips.append(format_html('<a class="chip chip--muted" href="{}">+{}</a>', url, more))
 
-        return format_html(" ".join(chips))
+        return mark_safe(" ".join(chips))
 
     
     def get_urls(self):
