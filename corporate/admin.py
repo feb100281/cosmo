@@ -31,6 +31,8 @@ from django.utils.http import urlencode
 from django.db.models import Count
 from django.utils import timezone
 from mptt.admin import MPTTModelAdmin
+import csv
+from django.http import HttpResponse
 
 
 
@@ -95,6 +97,32 @@ class ItemsAdminForm(forms.ModelForm):
         css = {"all": ("css/admin_overrides.css",)}
 
 
+class RootCategoryFilter(admin.SimpleListFilter):
+    title = "Группа (1 уровень)"
+    parameter_name = "root_cat"
+
+    def lookups(self, request, model_admin):
+        roots = CatTree.objects.filter(parent__isnull=True).order_by("name")
+        return [(str(r.id), r.name) for r in roots]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if not v:
+            return queryset
+
+        try:
+            root = CatTree.objects.get(pk=int(v))
+        except (ValueError, CatTree.DoesNotExist):
+            return queryset
+
+        # MPTT: берём все категории внутри поддерева root
+        return queryset.filter(
+            cat__tree_id=root.tree_id,
+            cat__lft__gte=root.lft,
+            cat__rght__lte=root.rght,
+        )
+
+
 @admin.register(Items)
 class ItemsAdmin(admin.ModelAdmin):
     form = ItemsAdminForm
@@ -102,7 +130,8 @@ class ItemsAdmin(admin.ModelAdmin):
     change_list_template = "admin/corporate/items/change_list.html"
     change_form_template = "admin/corporate/items/change_form.html"
 
-    list_display = ("item_title", "article", "init_date", "cat_link", "subcat_link")
+    # list_display = ("item_title", "article", "init_date", "cat_link", "subcat_link")
+    list_display = ("item_title", "article", "init_date", "cat_root_link", "cat_link", "subcat_link")
     list_display_links = ("item_title",)
     list_per_page = 50
     ordering = ("-init_date", "fullname")
@@ -115,7 +144,7 @@ class ItemsAdmin(admin.ModelAdmin):
         "onec_cat", "onec_subcat",
     )
 
-    list_filter = ("cat", "subcat", "brend", "manufacturer")
+    list_filter = (RootCategoryFilter, "cat", "subcat", "brend", "manufacturer")
 
     autocomplete_fields = ("cat", "subcat", "manufacturer", "brend")
     filter_horizontal = ("collection", "item_property", "colors", "sizes", "material", "zones",)
@@ -135,7 +164,9 @@ class ItemsAdmin(admin.ModelAdmin):
         }),
     )
 
-    actions = ["assign_category"]
+
+    # actions = ["print_items_action", "assign_category"]
+    actions = ["export_items_csv", "print_items_action", "assign_category"]
 
     # -------- красивые колонки --------
     @admin.display(description="Номенклатура", ordering="fullname")
@@ -163,6 +194,29 @@ class ItemsAdmin(admin.ModelAdmin):
         url = reverse("admin:corporate_subcategory_change", args=[obj.subcat_id])
         return format_html('<a href="{}">{}</a>', url, obj.subcat.name)
 
+    @admin.display(description="Группа", ordering="cat__tree_id")
+    def cat_root_link(self, obj):
+        if not obj.cat:
+            return "—"
+
+        root = obj.cat.get_root()  # parent=None -> root
+        url = reverse("admin:corporate_cattree_change", args=[root.id])
+
+        # если хочешь иконку корня
+        icon_html = ""
+        if root.icon:
+            s = (root.icon or "").strip()
+            if s.startswith("<svg"):
+                icon_html = format_html('<span class="it-icon">{}</span>', mark_safe(s))
+            else:
+                icon_html = format_html('<span class="it-emoji">{}</span>', s)
+
+        return format_html('{}<a href="{}">{}</a>', icon_html, url, root.name)
+
+
+
+
+
     # -------- твой action назначить категорию (перенёс сюда) --------
     def assign_category(self, request, queryset):
         if 'apply' in request.POST:
@@ -184,15 +238,156 @@ class ItemsAdmin(admin.ModelAdmin):
 
     assign_category.short_description = "Назначить категорию"
 
+    # def get_urls(self):
+    #     urls = super().get_urls()
+    #     custom_urls = [
+    #         path('assign-category/', self.admin_site.admin_view(self.assign_category))
+    #     ]
+    #     return custom_urls + urls
+    
     def get_urls(self):
         urls = super().get_urls()
-        custom_urls = [
-            path('assign-category/', self.admin_site.admin_view(self.assign_category))
+        custom = [
+            path(
+                "print-items/",
+                self.admin_site.admin_view(self.print_items_view),
+                name="corporate_items_print_items",
+            ),
         ]
-        return custom_urls + urls
+        return custom + urls
+
+    @admin.action(description="🖨️ Печать списка (по группам) (HTML → PDF)")
+    def print_items_action(self, request, queryset):
+        ids = list(queryset.values_list("id", flat=True))
+        if not ids:
+            self.message_user(request, "Ничего не выбрано.")
+            return
+        return redirect(f"print-items/?ids={','.join(map(str, ids))}")
+
+    def print_items_view(self, request):
+        ids_raw = request.GET.get("ids", "")
+        ids = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
+
+        qs = (
+            Items.objects.all() if not ids else Items.objects.filter(id__in=ids)
+        ).select_related("cat", "subcat", "manufacturer", "brend").prefetch_related("barcode")
+
+        # --- собираем tree_id категорий, чтобы одним запросом получить корни ---
+        tree_ids = set()
+        for it in qs:
+            if it.cat_id:
+                tree_ids.add(it.cat.tree_id)
+
+        roots = CatTree.objects.filter(tree_id__in=tree_ids, level=0)
+        roots_map = {r.tree_id: r for r in roots}
+
+        rows = []
+        for it in qs:
+            root = None
+            group_name = ""
+            group_icon = ""
+
+            if it.cat_id:
+                root = roots_map.get(it.cat.tree_id)
+                if root:
+                    group_name = root.name or ""
+                    group_icon = (root.icon or "")
+
+            rows.append({
+                "group": group_name,
+                "group_icon": group_icon,
+                "fullname": it.fullname,
+                "name": it.name,
+                "article": it.article,
+                "cat": it.cat.name if it.cat else "",
+                "subcat": it.subcat.name if it.subcat else "",
+                "brend": it.brend.name if it.brend else "",
+                "manufacturer": it.manufacturer.name if it.manufacturer else "",
+                "barcodes": list(it.barcode.values_list("barcode", flat=True)),
+            })
+
+        # сортировка: сначала группа (корень), потом категория/подкатегория/наименование
+        rows.sort(key=lambda r: (
+            r["group"] or "ЯЯЯ_без_группы",
+            r["cat"] or "",
+            r["subcat"] or "",
+            r["fullname"] or "",
+        ))
+
+        context = dict(
+            self.admin_site.each_context(request),
+            title="Печать номенклатуры",
+            generated_at=timezone.now(),
+            rows=rows,
+        )
+        return render(request, "admin/corporate/items/print_items.html", context)
+
+    @admin.action(description="⬇️ Скачать CSV (выбранные позиции)")
+    def export_items_csv(self, request, queryset):
+        # чтобы не было N+1
+        qs = queryset.select_related("cat", "subcat", "manufacturer", "brend").prefetch_related("barcode")
+
+        # корни по tree_id (группа = первый уровень)
+        tree_ids = {it.cat.tree_id for it in qs if it.cat_id}
+        roots = CatTree.objects.filter(tree_id__in=tree_ids, level=0)
+        roots_map = {r.tree_id: r for r in roots}
+
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="items_export.csv"'
+
+        # BOM для корректного открытия в Excel
+        # response.write("\ufeff")
+        # writer = csv.writer(response, delimiter="|")
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="items_export.csv"'
+        response.write("\ufeff")   # BOM для Excel
+
+        writer = csv.writer(response, delimiter="|")
+
+
+        writer.writerow([
+            "Группа(корень)",
+            "Категория",
+            "Подкатегория",
+            "Номенклатура(1С)",
+            "Название на сайте",
+            "Артикль",
+            "Бренд",
+            "Производитель",
+            "Штрихкоды",
+            "im_id",
+            "guid",
+            "Дата инициализации",
+        ])
+
+        for it in qs:
+            root_name = ""
+            if it.cat_id:
+                root = roots_map.get(it.cat.tree_id)
+                root_name = root.name if root else ""
+
+            barcodes = list(it.barcode.values_list("barcode", flat=True))
+
+            writer.writerow([
+                root_name,
+                it.cat.name if it.cat else "",
+                it.subcat.name if it.subcat else "",
+                it.fullname or "",
+                it.name or "",
+                it.article or "",
+                it.brend.name if it.brend else "",
+                it.manufacturer.name if it.manufacturer else "",
+                ", ".join(barcodes),
+                it.im_id or "",
+                it.guid or "",
+                it.init_date.strftime("%d.%m.%Y") if it.init_date else "",
+            ])
+
+        return response
+
 
     class Media:
-        css = {"all": ("css/admin_overrides.css", "css/admin_items.css")}
+        css = {"all": ("css/admin_overrides.css",)}
 
 class ItemsInline(admin.TabularInline):
     model = Items
