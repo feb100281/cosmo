@@ -57,6 +57,30 @@
       color: var(--muted);
     }
 
+    /* ---------- декоративная "река" ---------- */
+    .river{
+      margin: 10px 0 14px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      overflow: hidden;
+    }
+    .river svg{ width:100%; height:48px; display:block; }
+    .river .hint{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background: var(--accent);
+      display:inline-block;
+    }
+
     /* ---------- кнопки ---------- */
     .printbar{
       margin: 12px 0 16px;
@@ -74,6 +98,25 @@
 
     .printbar button:hover{
       background: #e5e7eb;
+    }
+
+    /* ---------- график ---------- */
+    .chartbox{
+      margin: 14px 0 16px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+    .chartbox img{
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .chartnote{
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
     }
 
     /* ---------- таблица ---------- */
@@ -108,6 +151,7 @@
     .num{
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
+      text-align: right;
     }
 
     /* ---------- структура строки ---------- */
@@ -117,6 +161,11 @@
       gap: 10px;
     }
 
+    .indent{
+      flex: 0 0 auto;
+      height: 1px;
+    }
+
     .icon{
       width: 18px;
       height: 18px;
@@ -124,6 +173,7 @@
       align-items: center;
       justify-content: center;
       margin-top: 1px;
+      flex: 0 0 18px;
     }
 
     .icon svg{
@@ -163,31 +213,35 @@
       line-height: 1.4;
     }
 
-    /* ---------- выделение корневых групп ---------- */
-    tr.is-root td{
+    /* ---------- выделение верхних узлов (level 0) ---------- */
+    tr.is-top td{
       background: var(--group);
       border-bottom-color: var(--group-line);
-      font-weight: 700;
+      font-weight: 800;
     }
-
-    tr.is-root td:first-child{
+    tr.is-top td:first-child{
       border-left: 6px solid var(--accent);
     }
-
-    tr.is-root .comment{
+    tr.is-top .comment{
       color: #4b5563;
       font-weight: 400;
     }
-
-    /* корневым группам можно чуть подсветить чипы */
-    tr.is-root .subchip{
+    tr.is-top .subchip{
       background: rgba(255,255,255,.7);
+    }
+
+    /* ---------- подчёркивание 1-го уровня (level 1) ---------- */
+    tr.is-l1 .name{
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
     }
 
     /* ---------- печать ---------- */
     @media print{
       .wrap{ max-width: 100%; margin: 0; padding: 0; }
       .printbar{ display: none; }
+      .chartbox{ break-inside: avoid; page-break-inside: avoid; }
       @page{ size: A4; margin: 12mm; }
     }
   </style>
@@ -202,27 +256,34 @@
       <div class="meta">Сформировано: {{ generated_at|date:"d.m.Y H:i" }}</div>
     </div>
 
+
     <!-- КНОПКИ -->
     <div class="printbar">
       <button onclick="window.print()">🖨️ Печать / PDF</button>
       <button onclick="history.back()">↩ Назад</button>
     </div>
 
+    <!-- ГРАФИК -->
+    {% if chart_png %}
+      <div class="chartbox">
+        <img src="{{ chart_png }}" alt="График структуры каталога">
+      </div>
+    {% endif %}
+
     <table>
       <thead>
         <tr>
-          <th style="width:60%;">Категория</th>
-          <th style="width:20%;">Подкатегорий</th>
-          <th style="width:20%;">Товаров</th>
+          <th style="width:80%;">Категория</th>
+          <th style="width:20%; text-align:right;">Подкатегорий</th>
         </tr>
       </thead>
 
       <tbody>
         {% for r in rows %}
-          <tr class="{% if r.level == 0 %}is-root{% endif %}">
+          <tr class="{% if r.is_top %}is-top{% endif %}{% if r.is_l1 %} is-l1{% endif %}">
             <td>
               <div class="catcell">
-                <div style="margin-left: {{ r.level }}em;"></div>
+                <div class="indent" style="width: calc({{ r.level }} * 18px);"></div>
 
                 <div class="icon">
                   {% if r.icon and r.icon|slice:":4" == "<svg" %}
@@ -248,8 +309,13 @@
               </div>
             </td>
 
-            <td class="num">{{ r.subcats }}</td>
-            <td class="num">{{ r.items }}</td>
+            <td class="num">
+              {% if r.is_top %}
+                —
+              {% else %}
+                {{ r.subcat_names|length }}
+              {% endif %}
+            </td>
           </tr>
         {% endfor %}
       </tbody>
@@ -258,4 +324,3 @@
   </div>
 </body>
 </html>
-

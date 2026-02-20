@@ -34,7 +34,7 @@ from mptt.admin import MPTTModelAdmin
 import csv
 from django.http import HttpResponse
 
-
+from collections import defaultdict
 
 @admin.register(ItemManufacturer)
 class ItemManufacturerAdmin(admin.ModelAdmin):
@@ -46,11 +46,19 @@ class ItemBrendAdmin(admin.ModelAdmin):
 
 
 
-class SubCategoryInline(admin.TabularInline):
+# class SubCategoryInline(admin.TabularInline):
+#     model = SubCategory
+#     extra = 0
+#     fields = ("name", "comments")
+#     show_change_link = True
+
+
+class SubCategoryInline(admin.StackedInline):
     model = SubCategory
     extra = 0
-    fields = ("name", "comments")
+    fields = ("name",)
     show_change_link = True
+
 
 
 
@@ -70,31 +78,68 @@ class CatTreeForm(forms.ModelForm):
         css = {"all": ("css/admin_overrides.css",)}
 
 
+# class ItemsAdminForm(forms.ModelForm):
+#     class Meta:
+#         model = Items
+#         fields = '__all__'
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         cat = None
+#         if self.instance and self.instance.pk:
+#             cat = self.instance.cat
+#         elif 'cat' in self.data:
+#             try:
+#                 cat_id = int(self.data.get('cat'))
+#                 cat = CatTree.objects.get(pk=cat_id)
+#             except (ValueError, CatTree.DoesNotExist):
+#                 pass
+
+#         # проверяем, есть ли поле 'subcat' в форме
+#         if 'subcat' in self.fields:
+#             if cat:
+#                 self.fields['subcat'].queryset = SubCategory.objects.filter(category=cat)
+#             else:
+#                 self.fields['subcat'].queryset = SubCategory.objects.none()
+#     class Media:
+#         css = {"all": ("css/admin_overrides.css",)}
+
+
+
 class ItemsAdminForm(forms.ModelForm):
     class Meta:
         model = Items
-        fields = '__all__'
+        fields = "__all__"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # 👉 Категория: убираем корневой уровень (1 уровень дерева)
+        if "cat" in self.fields:
+            self.fields["cat"].queryset = CatTree.objects.filter(
+                parent__isnull=False
+            ).order_by("name")
+
         cat = None
         if self.instance and self.instance.pk:
             cat = self.instance.cat
-        elif 'cat' in self.data:
+        elif "cat" in self.data:
             try:
-                cat_id = int(self.data.get('cat'))
+                cat_id = int(self.data.get("cat"))
                 cat = CatTree.objects.get(pk=cat_id)
             except (ValueError, CatTree.DoesNotExist):
-                pass
+                cat = None
 
-        # проверяем, есть ли поле 'subcat' в форме
-        if 'subcat' in self.fields:
+        # 👉 Подкатегория: только для выбранной категории
+        if "subcat" in self.fields:
             if cat:
-                self.fields['subcat'].queryset = SubCategory.objects.filter(category=cat)
+                self.fields["subcat"].queryset = (
+                    SubCategory.objects
+                    .filter(category=cat)
+                    .order_by("name")
+                )
             else:
-                self.fields['subcat'].queryset = SubCategory.objects.none()
-    class Media:
-        css = {"all": ("css/admin_overrides.css",)}
+                self.fields["subcat"].queryset = SubCategory.objects.none()
 
 
 class RootCategoryFilter(admin.SimpleListFilter):
@@ -131,7 +176,7 @@ class ItemsAdmin(admin.ModelAdmin):
     change_form_template = "admin/corporate/items/change_form.html"
 
     # list_display = ("item_title", "article", "init_date", "cat_link", "subcat_link")
-    list_display = ("item_title", "article", "init_date", "cat_root_link", "cat_link", "subcat_link")
+    list_display = ("item_title", "article", "init_date", "cat_link", "subcat_link")
     list_display_links = ("item_title",)
     list_per_page = 50
     ordering = ("-init_date", "fullname")
@@ -146,7 +191,7 @@ class ItemsAdmin(admin.ModelAdmin):
 
     list_filter = (RootCategoryFilter, "cat", "subcat", "brend", "manufacturer")
 
-    autocomplete_fields = ("cat", "subcat", "manufacturer", "brend")
+    autocomplete_fields = ( "manufacturer", "brend")
     filter_horizontal = ("collection", "item_property", "colors", "sizes", "material", "zones",)
 
     fieldsets = (
@@ -304,6 +349,7 @@ class ItemsAdmin(admin.ModelAdmin):
                 "brend": it.brend.name if it.brend else "",
                 "manufacturer": it.manufacturer.name if it.manufacturer else "",
                 "barcodes": list(it.barcode.values_list("barcode", flat=True)),
+ 
             })
 
         # сортировка: сначала группа (корень), потом категория/подкатегория/наименование
@@ -534,7 +580,7 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         # "icon_preview",
         # "subcats_count",
         "subcats_preview", 
-        "items_count",
+        # "items_count",
     )
     
     # list_display_links = ("indented_title",)
@@ -663,7 +709,7 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         if not subs:
             return format_html('<span class="muted">—</span>')
 
-        limit = 6
+        limit = 14
         shown = subs[:limit]
         more = len(subs) - limit
 
@@ -704,7 +750,84 @@ class CatTreeAdmin(DraggableMPTTAdmin):
             return
         return redirect(f"print-tree/?ids={','.join(map(str, ids))}")
 
-    # ---------- view ----------
+    # # ---------- view ----------
+    # def print_tree_view(self, request):
+    #     ids_raw = request.GET.get("ids", "")
+    #     ids = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
+
+    #     roots = CatTree.objects.all() if not ids else CatTree.objects.filter(id__in=ids)
+
+    #     # печатаем выбранные как "корни" + всех потомков
+    #     nodes = []
+    #     for r in roots:
+    #         nodes.append(r)
+    #         nodes.extend(list(r.get_descendants()))
+
+    #     # убираем дубли (если выбрали и родителя и ребёнка)
+    #     uniq = {}
+    #     for n in nodes:
+    #         uniq[n.id] = n
+    #     nodes = list(uniq.values())
+
+    #     # сортировка по дереву
+    #     nodes = sorted(nodes, key=lambda x: (x.tree_id, x.lft))
+
+    #     nodes_ids = [n.id for n in nodes]
+
+    #     # ---- 1) считаем кол-во подкатегорий и товаров (как было) ----
+    #     counts = (
+    #         CatTree.objects.filter(id__in=nodes_ids)
+    #         .annotate(
+    #             subcats_count=Count("subcategories", distinct=True),
+    #             items_count=Count("items", distinct=True),
+    #         )
+    #     )
+    #     counts_map = {c.id: c for c in counts}
+
+    #     # ---- 2) подтягиваем НАЗВАНИЯ подкатегорий для каждой категории ----
+    #     subcats_qs = (
+    #         SubCategory.objects
+    #         .filter(category_id__in=nodes_ids)
+    #         .values("category_id", "name")
+    #         .order_by("name")
+    #     )
+
+    #     subcats_map = {}
+    #     for sc in subcats_qs:
+    #         subcats_map.setdefault(sc["category_id"], []).append(sc["name"])
+
+    #     # ---- 3) собираем rows ----
+    #     # ---- 3) собираем rows ----
+    #     rows = []
+    #     for n in nodes:
+    #         c = counts_map.get(n.id)
+
+    #         rows.append({
+    #             "id": n.id,
+    #             "name": n.name,
+    #             "level": int(getattr(n, "level", 0) or 0),
+    #             "icon": n.icon,
+    #             "comments": n.comments,
+    #             "subcats": getattr(c, "subcats_count", 0) if c else 0,
+    #             "items": getattr(c, "items_count", 0) if c else 0,
+    #             "subcat_names": subcats_map.get(n.id, []),
+
+    #             # ВАЖНО: отметки для оформления
+    #             "is_top": (n.level == 0),   # корневые группы дерева
+    #             "is_l1": (n.level == 1),    # "первые вложенные" (если нужно именно так)
+    #         })
+
+    #     context = dict(
+    #         self.admin_site.each_context(request),
+    #         title="Печать категорий",
+    #         generated_at=timezone.now(),
+    #         rows=rows,
+    #     )
+    #     return render(request, "admin/corporate/cattree/print_tree.html", context)
+    
+    
+    
+   # ---------- view ----------
     def print_tree_view(self, request):
         ids_raw = request.GET.get("ids", "")
         ids = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
@@ -725,10 +848,9 @@ class CatTreeAdmin(DraggableMPTTAdmin):
 
         # сортировка по дереву
         nodes = sorted(nodes, key=lambda x: (x.tree_id, x.lft))
-
         nodes_ids = [n.id for n in nodes]
 
-        # ---- 1) считаем кол-во подкатегорий и товаров (как было) ----
+        # ---- 1) считаем кол-во подкатегорий и товаров ----
         counts = (
             CatTree.objects.filter(id__in=nodes_ids)
             .annotate(
@@ -738,14 +860,13 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         )
         counts_map = {c.id: c for c in counts}
 
-        # ---- 2) подтягиваем НАЗВАНИЯ подкатегорий для каждой категории ----
+        # ---- 2) подтягиваем НАЗВАНИЯ подкатегорий ----
         subcats_qs = (
             SubCategory.objects
             .filter(category_id__in=nodes_ids)
             .values("category_id", "name")
             .order_by("name")
         )
-
         subcats_map = {}
         for sc in subcats_qs:
             subcats_map.setdefault(sc["category_id"], []).append(sc["name"])
@@ -754,25 +875,54 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         rows = []
         for n in nodes:
             c = counts_map.get(n.id)
+            level = int(getattr(n, "level", 0) or 0)
+
             rows.append({
                 "id": n.id,
+                "parent_id": n.parent_id,  # ✅ важно для графиков/структуры
                 "name": n.name,
-                "level": n.level,     # 0 = корневая группа
+                "level": level,
                 "icon": n.icon,
                 "comments": n.comments,
-                "subcats": getattr(c, "subcats_count", 0) if c else 0,
-                "items": getattr(c, "items_count", 0) if c else 0,
-                "subcat_names": subcats_map.get(n.id, []),   # ← ВОТ ОНО
+                "subcats": int(getattr(c, "subcats_count", 0) or 0) if c else 0,
+                "items": int(getattr(c, "items_count", 0) or 0) if c else 0,
+                "subcat_names": subcats_map.get(n.id, []),
+
+                # для оформления
+                "is_top": (level == 0),   # корни
+                "is_l1": (level == 1),    # 1-й уровень вложенности
+                "l2_names": subcats_map.get(n.id, []),
             })
+
+        # ---- 4) график (corporate/reports/cattree_chart.py) ----
+        chart_png = None
+        try:
+            from corporate.reports.cattree_chart import build_cattree_chart_base64
+            chart_png = build_cattree_chart_base64(
+                rows=rows,
+                top_n_roots=8,
+                max_l1_per_root=10,
+                max_l2_per_l1=10,
+                sort="alpha",  # или "structure"
+            )
+
+        except Exception as e:
+            # ✅ не молчим: иначе потом не поймёшь, почему график исчез
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception("cattree chart build failed: %s", e)
+            chart_png = None
 
         context = dict(
             self.admin_site.each_context(request),
             title="Печать категорий",
             generated_at=timezone.now(),
             rows=rows,
+            chart_png=chart_png,
         )
         return render(request, "admin/corporate/cattree/print_tree.html", context)
 
+    
 
     @admin.display(description="Иконка")
     def icon_preview(self, obj):
@@ -784,18 +934,18 @@ class CatTreeAdmin(DraggableMPTTAdmin):
     def subcats_count(self, obj):
         return getattr(obj, "_subcats", 0)
 
-    @admin.display(description="Товаров", ordering="_items")
-    def items_count(self, obj):
-        cnt = getattr(obj, "_items", 0)
-        if not cnt:
-            return "0"
+    # @admin.display(description="Товаров", ordering="_items")
+    # def items_count(self, obj):
+    #     cnt = getattr(obj, "_items", 0)
+    #     if not cnt:
+    #         return "0"
 
-        url = (
-            reverse("admin:corporate_items_changelist")
-            + "?"
-            + urlencode({"cat__id__exact": obj.id})
-        )
-        return format_html('<a href="{}" title="Открыть номенклатуру по категории">{}</a>', url, cnt)
+    #     url = (
+    #         reverse("admin:corporate_items_changelist")
+    #         + "?"
+    #         + urlencode({"cat__id__exact": obj.id})
+    #     )
+    #     return format_html('<a href="{}" title="Открыть номенклатуру по категории">{}</a>', url, cnt)
 
     class Media:
         css = {"all": ("css/admin_overrides.css", "css/cattree_no_drag.css")}
