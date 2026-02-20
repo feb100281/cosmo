@@ -11,33 +11,16 @@ def build_cattree_chart_base64(
     max_l2_per_l1=12,
     sort="alpha",   # "alpha" | "structure"
 ):
-    """
-    Icicle 3 уровня (структура, без метрик):
-      Level 0 = CatTree level 0
-      Level 1 = CatTree level 1
-      Level 2 = SubCategory names (rows[*].l2_names) привязанные к узлу level 1
-
-    ВАЖНО:
-      - Никаких цифр/процентов
-      - Ширины считаем по структуре (ветвистости), а не по товарам
-      - Подписи:
-          Level0 = по центру
-          Level1 = вертикальные (если не влезают — перенос на 2 строки)
-          Level2 = вертикальные (если не влезают — многоточие)
-      - Без верхней полосы "Каталог"
-      - Без пустого места снизу (поджимаем ось Y)
-    """
-
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
-    from matplotlib.patches import Rectangle
+    from matplotlib.patches import FancyBboxPatch
 
     if not rows:
         return None
 
-    # ---------- helpers ----------
+    # ---------------- helpers ----------------
     def lighten(rgba, amount=0.55):
         r, g, b, a = rgba
         r = r + (1 - r) * amount
@@ -45,69 +28,36 @@ def build_cattree_chart_base64(
         b = b + (1 - b) * amount
         return (r, g, b, a)
 
-    def add_box(ax, x, y, w, h, face, edge=(1, 1, 1, 1), lw=1.0):
-        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=lw))
-
-    def add_label_h(ax, x, y, w, h, text, *, size=9, weight="bold", color="#0f172a",
-                    pad=0.008, min_w=0.05):
-        """Горизонтальная подпись (не используем для Level0, но оставляем как helper)."""
-        if w < min_w:
-            return
-        t = (text or "—").strip()
-        ax.text(
-            x + pad,
-            y + h - 0.16,
-            t,
-            fontsize=size,
-            fontweight=weight,
-            color=color,
-            va="top",
-            ha="left",
+    def add_box(ax, x, y, w, h, face, edge=(1, 1, 1, 0.95), lw=0.9, radius=0.010):
+        ax.add_patch(
+            FancyBboxPatch(
+                (x, y),
+                w,
+                h,
+                boxstyle=f"round,pad=0.002,rounding_size={radius}",
+                facecolor=face,
+                edgecolor=edge,
+                linewidth=lw,
+                mutation_aspect=1,
+            )
         )
 
-    def add_label_center(ax, x, y, w, h, text, *, size=10, weight="bold", color="#0f172a", min_w=0.04):
-        """Центрированная подпись (Level0)."""
-        if w < min_w:
-            return
-        t = (text or "—").strip()
-        ax.text(
-            x + w / 2,
-            y + h / 2,
-            t,
-            fontsize=size,
-            fontweight=weight,
-            color=color,
-            va="center",
-            ha="center",
-        )
-
-    def add_label_v(ax, x, y, w, h, text, *, size=8, weight="bold", color="#0f172a",
-                    min_w=0.015):
-        """Простая вертикальная подпись (для коротких служебных текстов типа '+ ещё')."""
-        if w < min_w:
-            return
-        t = (text or "—").strip()
-        ax.text(
-            x + w / 2,
-            y + h / 2,
-            t,
-            fontsize=size,
-            fontweight=weight,
-            color=color,
-            rotation=90,
-            va="center",
-            ha="center",
-        )
-
-    def add_label_v_ellipsis(ax, x, y, w, h, text, *, size=6, weight="normal", color="#0f172a",
-                            min_w=0.010, pad_ratio=0.92):
+    def add_text_fit(ax, x, y, w, h, text, *,
+                     rotation=0,
+                     size=10,
+                     min_size=5,
+                     weight="bold",
+                     color="#0f172a",
+                     pad_ratio=0.92,
+                     ellipsis=True):
         """
-        Вертикальная подпись с многоточием (Level2):
-        если текст по высоте не помещается в прямоугольник — обрезаем и добавляем '…'.
+        Универсальный текст:
+        - пробует уменьшать шрифт, пока не влезет
+        - если всё равно не влезло и ellipsis=True -> режет и ставит '…'
+        Ограничение:
+          rotation=0  -> проверяем bbox.width <= rect_w_px
+          rotation=90 -> проверяем bbox.height <= rect_h_px
         """
-        if w < min_w:
-            return
-
         t_full = (text or "—").strip()
         fig = ax.figure
 
@@ -118,7 +68,7 @@ def build_cattree_chart_base64(
             fontsize=size,
             fontweight=weight,
             color=color,
-            rotation=90,
+            rotation=rotation,
             va="center",
             ha="center",
         )
@@ -126,28 +76,37 @@ def build_cattree_chart_base64(
         fig.canvas.draw()
         renderer = fig.canvas.get_renderer()
 
-        # высота прямоугольника в пикселях
         p0 = ax.transData.transform((x, y))
-        p1 = ax.transData.transform((x, y + h))
+        p1 = ax.transData.transform((x + w, y + h))
+        rect_w_px = abs(p1[0] - p0[0]) * pad_ratio
         rect_h_px = abs(p1[1] - p0[1]) * pad_ratio
 
-        bbox = txt.get_window_extent(renderer=renderer)
-        if bbox.height <= rect_h_px:
-            return  # влезло
+        def fits():
+            bbox = txt.get_window_extent(renderer=renderer)
+            if rotation == 90:
+                return bbox.height <= rect_h_px
+            return bbox.width <= rect_w_px
 
-        # не влезло -> уменьшаем строку, добавляя многоточие
+        # 1) уменьшаем шрифт
+        fs = size
+        while not fits() and fs > min_size:
+            fs -= 1
+            txt.set_fontsize(fs)
+            fig.canvas.draw()
+
+        if fits() or not ellipsis:
+            return
+
+        # 2) режем + …
         base = t_full
         lo, hi = 0, len(base)
         best = "…"
-
         while lo <= hi:
             mid = (lo + hi) // 2
             candidate = (base[:mid].rstrip() + "…") if mid > 0 else "…"
             txt.set_text(candidate)
             fig.canvas.draw()
-            bbox = txt.get_window_extent(renderer=renderer)
-
-            if bbox.height <= rect_h_px:
+            if fits():
                 best = candidate
                 lo = mid + 1
             else:
@@ -156,76 +115,123 @@ def build_cattree_chart_base64(
         txt.set_text(best)
 
     def split_2lines(text: str) -> str:
-        """Разбить строку на 2 строки максимально красиво (Level1)."""
         s = (text or "").strip()
         if not s:
             return "—"
-
         mid = len(s) // 2
-        candidates = []
-        for i, ch in enumerate(s):
-            if ch in (" ", "-", "–", "—", "/"):
-                candidates.append(i)
-
+        candidates = [i for i, ch in enumerate(s) if ch in (" ", "-", "–", "—", "/")]
         if candidates:
             cut = min(candidates, key=lambda i: abs(i - mid))
             left = s[:cut].strip(" -–—/")
             right = s[cut + 1:].strip(" -–—/")
             if left and right:
                 return left + "\n" + right
-
         return s[:mid].strip() + "\n" + s[mid:].strip()
 
-    def add_label_v_l1(ax, x, y, w, h, text, *, size=8, weight="bold", color="#0f172a",
-                       min_w=0.012, pad_ratio=0.92):
-        """
-        Вертикальная подпись для Level1:
-        если не влазит в высоту прямоугольника — переносим на 2 строки,
-        если всё равно не влезло — уменьшаем шрифт.
-        """
-        if w < min_w:
-            return
+    def add_label_root(ax, x, y, w, h, text, *,
+                       size=10,
+                       min_size=6,
+                       rotate_threshold=0.060,
+                       color="#0f172a"):
+        # Root: если узко -> вертикально; иначе горизонтально
+        rot = 90 if w < rotate_threshold else 0
+        add_text_fit(
+            ax, x, y, w, h, text,
+            rotation=rot,
+            size=size,
+            min_size=min_size,
+            weight="bold",
+            color=color,
+            pad_ratio=0.92,
+            ellipsis=True,
+        )
 
+    def add_label_l1(ax, x, y, w, h, text, *,
+                     size=8,
+                     min_size=5,
+                     color="#0f172a"):
+        """
+        Level1: ВСЕГДА пишем.
+        Сначала пытаемся как есть (вертикально).
+        Если не влезло — перенос на 2 строки + авто-уменьшение.
+        Если всё равно не влезло — режем с '…'.
+        """
         t = (text or "—").strip()
         fig = ax.figure
 
-        txt = ax.text(
-            x + w / 2,
-            y + h / 2,
-            t,
-            fontsize=size,
-            fontweight=weight,
-            color=color,
+        # 1) пробуем обычный текст
+        add_text_fit(
+            ax, x, y, w, h, t,
             rotation=90,
-            va="center",
-            ha="center",
+            size=size,
+            min_size=min_size,
+            weight="bold",
+            color=color,
+            pad_ratio=0.90,
+            ellipsis=False,   # пока без обрезки
         )
 
+        # проверим, влез ли (если нет — заменим на перенос)
         fig.canvas.draw()
         renderer = fig.canvas.get_renderer()
 
+        # найдём последний добавленный Text объект в axes
+        # (в matplotlib это нормально для такой задачи)
+        txt = ax.texts[-1]
         p0 = ax.transData.transform((x, y))
         p1 = ax.transData.transform((x, y + h))
-        rect_h_px = abs(p1[1] - p0[1]) * pad_ratio
-
+        rect_h_px = abs(p1[1] - p0[1]) * 0.90
         bbox = txt.get_window_extent(renderer=renderer)
 
-        # если не влезло — перенос на 2 строки
-        if bbox.height > rect_h_px:
-            txt.set_text(split_2lines(t))
+        if bbox.height <= rect_h_px:
+            return
+
+        # 2) перенос на 2 строки (всё равно rotation=90, но строки помогут)
+        txt.set_text(split_2lines(t))
+        fig.canvas.draw()
+        bbox = txt.get_window_extent(renderer=renderer)
+
+        fs = txt.get_fontsize()
+        while bbox.height > rect_h_px and fs > min_size:
+            fs -= 1
+            txt.set_fontsize(fs)
             fig.canvas.draw()
             bbox = txt.get_window_extent(renderer=renderer)
 
-            # если всё равно не влезло — уменьшаем шрифт
-            fs = size
-            while bbox.height > rect_h_px and fs > 6:
-                fs -= 1
-                txt.set_fontsize(fs)
-                fig.canvas.draw()
-                bbox = txt.get_window_extent(renderer=renderer)
+        if bbox.height <= rect_h_px:
+            return
 
-    # ---------- 1) соберём CatTree структуру (level0 -> level1) ----------
-    # rows MUST contain: id, parent_id, level, name, l2_names(for level1)
+        # 3) если всё равно не влезло — обрезаем
+        # (тут проще создать новый текст, а старый “погасить”)
+        txt.set_visible(False)
+        add_text_fit(
+            ax, x, y, w, h, t,
+            rotation=90,
+            size=size,
+            min_size=min_size,
+            weight="bold",
+            color=color,
+            pad_ratio=0.90,
+            ellipsis=True,
+        )
+
+    def add_label_l2(ax, x, y, w, h, text, *,
+                     size=6,
+                     min_size=4,
+                     color="#0f172a"):
+        # Level2: всегда вертикально + авто-уменьшение + …
+        add_text_fit(
+            ax, x, y, w, h, str(text),
+            rotation=90,
+            size=size,
+            min_size=min_size,
+            weight="normal",
+            color=color,
+            pad_ratio=0.92,
+            ellipsis=True,
+        )
+
+    # ---------------- 1) собрать структуру (level0 -> level1) ----------------
     by_id = {r["id"]: r for r in rows if r.get("id") is not None}
 
     children = defaultdict(list)
@@ -260,7 +266,7 @@ def build_cattree_chart_base64(
     if not root_ids:
         return None
 
-    # ---------- 2) подготовим узлы level1 и их level2=SubCategory ----------
+    # ---------------- 2) level1 + level2 ----------------
     root_to_l1 = {}
     l1_to_l2 = {}
 
@@ -273,7 +279,6 @@ def build_cattree_chart_base64(
         root_to_l1[rid] = (shown_l1, rest_l1)
 
         for c1 in shown_l1:
-            # Level2 = SubCategory names from print_tree_view (l2_names)
             l2_names = list(by_id[c1].get("l2_names", []) or [])
             l2_names = sorted(set([str(x).strip() for x in l2_names if str(x).strip()]))
 
@@ -281,7 +286,7 @@ def build_cattree_chart_base64(
             rest_l2 = len(l2_names) - len(shown_l2)
             l1_to_l2[c1] = (shown_l2, rest_l2)
 
-    # ---------- 3) структурные веса (НЕ items!) ----------
+    # ---------------- 3) веса (структурные) ----------------
     def l1_weight(l1_id):
         shown_l2, rest_l2 = l1_to_l2.get(l1_id, ([], 0))
         return max(1, len(shown_l2) + (1 if rest_l2 > 0 else 0))
@@ -294,14 +299,13 @@ def build_cattree_chart_base64(
     root_weights = [(rid, root_weight(rid)) for rid in root_ids]
     total_w = sum(w for _, w in root_weights) or 1
 
-    # ---------- 4) рисуем 3 полосы (без "Каталог") ----------
+    # ---------------- 4) рисование ----------------
     fig = plt.figure(figsize=(12.2, 5.0), dpi=170)
     ax = fig.add_subplot(111)
     ax.set_xlim(0, 1)
-
-    # ВАЖНО: поджимаем по высоте, чтобы не было пустого места снизу
     ax.set_ylim(0, 3.05)
     ax.axis("off")
+    fig.patch.set_facecolor("white")
 
     ax.text(
         0.0,
@@ -309,7 +313,9 @@ def build_cattree_chart_base64(
         "Структура каталога",
         fontsize=12,
         fontweight="bold",
+        color="#0f172a",
         va="bottom",
+        ha="left",
     )
 
     palette = cm.get_cmap("tab20", len(root_weights))
@@ -319,18 +325,24 @@ def build_cattree_chart_base64(
     y_l1 = 1.05
     y_l2 = 0.10
 
-    # Level0 -> Level1 -> Level2
+    # gap между root для читаемости
+    gap = 0.006
+    total_gap = gap * (len(root_weights) - 1) if len(root_weights) > 1 else 0.0
+    usable = 1.0 - total_gap
+    if usable <= 0:
+        usable = 1.0
+
     x = 0.0
     for i, (rid, rw_struct) in enumerate(root_weights):
-        rw = rw_struct / total_w
+        rw = (rw_struct / total_w) * usable
         root_name = (by_id[rid].get("name") or "—").strip()
         root_color = palette(i)
 
-        # Level 0 block
-        add_box(ax, x, y_l0, rw, H, face=lighten(root_color, 0.15), edge=(1, 1, 1, 1), lw=1.2)
-        add_label_center(ax, x, y_l0, rw, H, root_name, size=10, min_w=0.04)
+        # Level0
+        add_box(ax, x, y_l0, rw, H, face=lighten(root_color, 0.15), lw=0.9, radius=0.012)
+        add_label_root(ax, x, y_l0, rw, H, root_name, size=10, min_size=6, rotate_threshold=0.060)
 
-        # Level 1 inside root
+        # Level1
         shown_l1, rest_l1 = root_to_l1.get(rid, ([], 0))
         l1_units = [("ID", c1, l1_weight(c1)) for c1 in shown_l1]
         if rest_l1 > 0:
@@ -345,16 +357,17 @@ def build_cattree_chart_base64(
                 continue
 
             if kind == "MORE":
-                add_box(ax, cx, y_l1, cw1, H, face=(0.92, 0.93, 0.95, 1), edge=(1, 1, 1, 1), lw=1.0)
-                add_label_v(ax, cx, y_l1, cw1, H, "+ ещё", size=8, weight="bold", color="#334155", min_w=0.012)
+                add_box(ax, cx, y_l1, cw1, H, face=(0.94, 0.95, 0.97, 1), lw=0.8, radius=0.010)
+                add_text_fit(ax, cx, y_l1, cw1, H, "+ ещё", rotation=90, size=8, min_size=6,
+                             weight="bold", color="#334155", pad_ratio=0.90, ellipsis=True)
                 cx += cw1
                 continue
 
             l1_name = (by_id[c1].get("name") or "—").strip()
-            add_box(ax, cx, y_l1, cw1, H, face=lighten(root_color, 0.55), edge=(1, 1, 1, 1), lw=1.0)
-            add_label_v_l1(ax, cx, y_l1, cw1, H, l1_name, size=8, min_w=0.012)
+            add_box(ax, cx, y_l1, cw1, H, face=lighten(root_color, 0.55), lw=0.8, radius=0.010)
+            add_label_l1(ax, cx, y_l1, cw1, H, l1_name, size=8, min_size=5)
 
-            # Level 2 = SubCategory names for this level1
+            # Level2
             shown_l2, rest_l2 = l1_to_l2.get(c1, ([], 0))
             l2_units = [("ID", nm) for nm in shown_l2]
             if rest_l2 > 0:
@@ -369,22 +382,24 @@ def build_cattree_chart_base64(
                     continue
 
                 if k2 == "MORE":
-                    add_box(ax, cxx, y_l2, cw2, H, face=(0.95, 0.95, 0.96, 1), edge=(1, 1, 1, 1), lw=1.0)
-                    add_label_v(ax, cxx, y_l2, cw2, H, "+ ещё", size=7, weight="bold", color="#64748b", min_w=0.010)
+                    add_box(ax, cxx, y_l2, cw2, H, face=(0.96, 0.96, 0.97, 1), lw=0.75, radius=0.009)
+                    add_text_fit(ax, cxx, y_l2, cw2, H, "+ ещё", rotation=90, size=7, min_size=5,
+                                 weight="bold", color="#64748b", pad_ratio=0.92, ellipsis=True)
                     cxx += cw2
                     continue
 
-                add_box(ax, cxx, y_l2, cw2, H, face=lighten(root_color, 0.70), edge=(1, 1, 1, 1), lw=1.0)
-                add_label_v_ellipsis(ax, cxx, y_l2, cw2, H, str(nm),
-                                    size=6, weight="normal", color="#0f172a", min_w=0.010)
+                add_box(ax, cxx, y_l2, cw2, H, face=lighten(root_color, 0.70), lw=0.75, radius=0.009)
+                add_label_l2(ax, cxx, y_l2, cw2, H, nm, size=6, min_size=4)
 
                 cxx += cw2
 
             cx += cw1
 
         x += rw
+        if i < len(root_weights) - 1:
+            x += gap
 
-    fig.tight_layout(pad=0.4)
+    fig.tight_layout(pad=0.35)
 
     buf = io.BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight")

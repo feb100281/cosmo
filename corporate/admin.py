@@ -898,6 +898,7 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         chart_png = None
         try:
             from corporate.reports.cattree_chart import build_cattree_chart_base64
+            from corporate.reports.cattree_weights_bar import build_cattree_weights_bar_base64
             chart_png = build_cattree_chart_base64(
                 rows=rows,
                 top_n_roots=8,
@@ -905,6 +906,16 @@ class CatTreeAdmin(DraggableMPTTAdmin):
                 max_l2_per_l1=10,
                 sort="alpha",  # или "structure"
             )
+            
+            
+            weights_bar_png = build_cattree_weights_bar_base64(
+                rows=rows,      # ✅ те же данные
+                top_n_roots=12,
+                max_l1_per_root=10,
+                max_l2_per_l1=12,
+                sort="structure",
+            )
+
 
         except Exception as e:
             # ✅ не молчим: иначе потом не поймёшь, почему график исчез
@@ -919,6 +930,7 @@ class CatTreeAdmin(DraggableMPTTAdmin):
             generated_at=timezone.now(),
             rows=rows,
             chart_png=chart_png,
+            weights_bar_png=weights_bar_png,
         )
         return render(request, "admin/corporate/cattree/print_tree.html", context)
 
