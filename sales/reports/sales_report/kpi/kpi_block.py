@@ -66,21 +66,26 @@ def build_kpi_context(
 
     # --- магазины (форматируем + доля + логотипы) ---
     total_amount_dec = _to_decimal(kpi_raw.get("amount"))
+ 
 
     shops_tmp: List[Dict[str, Any]] = []
     for r in (kpi_raw.get("sales_by_shop") or []):
         shop_name = (r.get("shop") or "—").strip() or "—"
         amount_dec = _to_decimal(r.get("amount"))
         cr_dec = _to_decimal(r.get("cr"))
+        dt_dec = _to_decimal(r.get("dt"))
+
 
         share = (amount_dec / total_amount_dec) if total_amount_dec else None
 
         shops_tmp.append({
             "shop": shop_name,
             "amount_raw": amount_dec,  # для сортировки (не выводим)
+            "turnover": fmt_money(dt_dec), 
             "amount": fmt_money(amount_dec),
             "cr": fmt_money(cr_dec),
             "share": fmt_pct(share) if share is not None else "—",
+            
         })
 
     # сортировка по выручке

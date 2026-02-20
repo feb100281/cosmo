@@ -86,11 +86,13 @@ def build_summary(
         shop_name = (r.get("shop") or "—").strip() or "—"
         amount_shop = _to_decimal(r.get("amount"))  # чистая выручка (dt-cr)
         cr_shop = _to_decimal(r.get("cr"))          # возвраты
+        dt_shop = _to_decimal(r.get("dt"))
 
         shops.append({
             "shop": shop_name,
             "amount": amount_shop,
             "cr": cr_shop,
+             "dt": dt_shop, 
         })
 
     shops.sort(key=lambda x: x["amount"], reverse=True)
@@ -103,6 +105,7 @@ def build_summary(
         share = (s["amount"] / total_amount) if total_amount else None
         sales_by_shop.append({
             "shop": s["shop"],
+            "turnover": fmt_money(s["dt"]),
             "amount": fmt_money(s["amount"]),
             "cr": fmt_money(s["cr"]),
             "share": fmt_pct(share) if share is not None else None,

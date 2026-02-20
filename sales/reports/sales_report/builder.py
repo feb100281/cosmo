@@ -219,6 +219,10 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         period_end=period_end,
         trend_points=12,
     )
+    
+    total_dt = fmt_money(kpi.get("dt"))        # оборот по всем
+    total_cr = fmt_money(kpi.get("cr"))        # возвраты по всем
+    total_amount = fmt_money(kpi.get("amount"))# чистая выручка по всем
 
     # --- ORDERS ---
     orders = build_orders_context(
@@ -520,6 +524,10 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         "summary": summary,
         "kpi": kpi,          # raw (если где-то еще нужно)
         "kpi_ctx": kpi_ctx,  # чистый контекст для шаблонов KPI
+        "total_dt": total_dt,
+        "total_cr": total_cr,
+        "total_amount": total_amount,
+        "total_dt_fmt": fmt_money(kpi.get("dt")),
 
         # ✅ managers
         "managers": managers,

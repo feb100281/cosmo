@@ -73,8 +73,7 @@ def build_kpi_for_range(start: date, end: date) -> Dict[str, Any]:
         LEFT JOIN corporate_stores store ON store.id = d.store_id
         LEFT JOIN corporate_storegroups sg ON sg.id = store.gr_id
         WHERE d.date BETWEEN :start AND :end
-          AND d.orders_id IS NOT NULL
-          AND (d.dt > 0 OR d.cr > 0)
+
         GROUP BY COALESCE(sg.name, '—')
         ORDER BY (COALESCE(SUM(d.dt),0) - COALESCE(SUM(d.cr),0)) DESC
     """)

@@ -11,13 +11,14 @@
     <thead>
       <tr>
         <th>Магазин</th>
+        <th>Оборот</th>
         <th>Выручка чистая</th>
         <th>Возвраты</th>
         <th>Доля выручки</th>
       </tr>
     </thead>
     <tbody>
-      {% for r in rows|slice:":8" %}
+      {% for r in rows|slice:":28" %}
         <tr>
           <td class="shop-cell">
             {% if r.logo %}
@@ -25,6 +26,7 @@
             {% endif %}
             <span class="shop-name">{{ r.shop }}</span>
           </td>
+          <td>{{ r.turnover }}</td>
           <td>{{ r.amount }}</td>
           <td>{{ r.cr }}</td>
           <td>{% if r.share %}{{ r.share }}{% else %}—{% endif %}</td>
@@ -33,6 +35,7 @@
 
       <tr class="total-row">
         <td class="shop-cell"><span class="shop-name">Итого</span></td>
+        <td>{{ total_dt_fmt }}</td>
         <td>{{ total_amount }}</td>
         <td>{{ total_cr }}</td>
         <td>100%</td>
