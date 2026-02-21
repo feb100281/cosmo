@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root{
+      --text:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --head:#f8fafc;
+
+      /* как у тебя в дереве категорий */
+      --group:#eef2ff;
+      --group-line:#c7d2fe;
+      --accent:#4f46e5;
+
+      /* чипы производителей */
+      --chip-bg:#ffffff;
+      --chip-text:#111827;
+      --chip-border:#e5e7eb;
+    }
+
+    html, body{
+      margin:0;
+      padding:0;
+      background:#fff;
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    }
+
+    .wrap{
+      max-width: 980px;
+      margin: 20px auto 40px;
+      padding: 0 16px;
+    }
+
+    /* ---------- шапка ---------- */
+    .dochead{
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--line);
+      margin-bottom: 14px;
+    }
+    .kicker{
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .title{
+      font-size: 20px;
+      font-weight: 800;
+      margin: 0;
+    }
+    .meta{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      font-size: 12px;
+      color: #374151;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background: var(--accent);
+      display:inline-block;
+    }
+
+    /* ---------- кнопки ---------- */
+    .printbar{
+      margin: 12px 0 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap:wrap;
+    }
+    .printbar button{
+      font-size: 13px;
+      padding: 6px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      background: #f3f4f6;
+      cursor: pointer;
+    }
+    .printbar button:hover{ background: #e5e7eb; }
+
+    /* ---------- заголовки секций ---------- */
+    .section-title{
+      margin: 18px 0 10px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #374151;
+    }
+
+
+    .cat-block{
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 12px;
+      background:#fff;
+    }
+
+    /* шапка категории — как top row */
+    .cat-head{
+      background: var(--group);
+      border-bottom: 1px solid var(--group-line);
+      padding: 10px 12px;
+      display:flex;
+      align-items:flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      position: relative;
+    }
+    .cat-head::before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:0;
+      bottom:0;
+      width:6px;
+      background: var(--accent);
+    }
+
+    .cat-name{
+      font-weight: 800;
+      font-size: 14px;
+      line-height: 1.2;
+      padding-left: 8px; /* чтобы не наезжало на accent bar */
+    }
+    .cat-meta{
+      font-size: 12px;
+      color: #4b5563;
+      white-space: nowrap;
+      align-self:center;
+      padding-left: 8px;
+    }
+
+    .cat-body{
+      padding: 10px 12px 12px;
+      background:#fff;
+    }
+
+    /* “профессиональные” чипы производителей */
+    .mf-list{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .mf-chip{
+      display:inline-flex;
+      align-items:center;
+      padding: 6px 10px;
+  
+
+      background: var(--chip-bg);
+      color: var(--chip-text);
+      font-size: 13px;
+      line-height: 1;
+      font-weight: 600;
+      max-width: 100%;
+      word-break: break-word;
+    }
+
+    /* =========================================================
+       PAGE BREAK
+       ========================================================= */
+    .pagebreak{
+      height: 1px;
+      margin: 18px 0;
+      page-break-before: always;
+      break-before: page;
+    }
+
+    /* =========================================================
+       PART 2: Алфавитная таблица (2 колонки)
+       ========================================================= */
+    table{
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    thead th{
+      background: var(--head);
+      color: #374151;
+      text-align: left;
+      font-size: 12px;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    tbody td{
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      font-size: 13px;
+    }
+    tbody tr:last-child td{ border-bottom: none; }
+
+    .mname{
+      font-weight: 800;
+      line-height: 1.25;
+      font-size: 14px;
+    }
+
+    .chips{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .subchip{
+      display:inline-flex;
+      align-items:center;
+      padding: 2px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #374151;
+      font-size: 12px;
+      line-height: 1.4;
+      max-width: 100%;
+      word-break: break-word;
+    }
+
+
+    .cat-title{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+}
+
+.cat-icon{
+  width:18px;
+  height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 18px;
+}
+
+.cat-icon svg{
+  width:18px;
+  height:18px;
+  display:block;
+}
+
+    @media print{
+      .wrap{ max-width: 100%; margin: 0; padding: 0; }
+      .printbar{ display: none; }
+      @page{ size: A4; margin: 12mm; }
+      .cat-block{ break-inside: avoid; page-break-inside: avoid; }
+      tr{ break-inside: avoid; page-break-inside: avoid; }
+    }
+
+
+    /* ВАЖНО для PDF: печатать фоновые цвета */
+@media print{
+  *{
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="dochead">
+      <div class="kicker">Corporate · справочники</div>
+      <h1 class="title">Список производителей</h1>
+
+      <div class="meta">
+        <span>Сформировано: {{ generated_at|date:"d.m.Y H:i" }}</span>
+        <span class="pill"><span class="dot"></span> Производителей: <b>{{ rows|length }}</b></span>
+      </div>
+    </div>
+
+    <div class="printbar">
+      <button onclick="window.print()">🖨️ Печать / PDF</button>
+      <button onclick="history.back()">↩ Назад</button>
+    </div>
+
+    <!-- ===================== PART 1 ===================== -->
+    <div class="section-title">Категории → производители</div>
+
+    {% if cats_blocks %}
+      {% for block in cats_blocks %}
+        <div class="cat-block">
+          <div class="cat-head">
+         <div class="cat-name">
+                <span class="cat-title">
+                    <span class="cat-icon">
+                    {% if block.icon %}
+                        {% if block.icon|slice:":4" == "<svg" %}
+                        {{ block.icon|safe }}
+                        {% else %}
+                        {{ block.icon }}
+                        {% endif %}
+                    {% endif %}
+                    </span>
+                    <span>{{ block.cat }}</span>
+                </span>
+                </div>
+            <div class="cat-meta">Производителей: <b>{{ block.manufacturers_count }}</b></div>
+          </div>
+
+          <div class="cat-body">
+            <div class="mf-list">
+              {% for mf_name in block.manufacturers %}
+                <span class="mf-chip">{{ mf_name }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div style="color:var(--muted);font-size:12px;">Нет данных для группировки по категориям.</div>
+    {% endif %}
+
+    <div class="pagebreak"></div>
+
+    <!-- ===================== PART 2 ===================== -->
+    <div class="section-title">Производители (алфавит) → подкатегории</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30%;">Производитель</th>
+          <th style="width:70%;">Подкатегории</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>
+              <div class="mname">{{ r.report_name }}</div>
+            </td>
+
+            <td>
+              <div class="chips">
+                {% for s in r.subcats %}
+                  <span class="subchip">{{ s }}</span>
+                {% endfor %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+
+  </div>
+</body>
+</html>
