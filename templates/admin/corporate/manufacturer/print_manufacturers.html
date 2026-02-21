@@ -1,323 +1,11 @@
+{% load static %}
 <!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
   <title>{{ title }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <style>
-    :root{
-      --text:#111827;
-      --muted:#6b7280;
-      --line:#e5e7eb;
-      --head:#f8fafc;
-
-      /* как у тебя в дереве категорий */
-      --group:#eef2ff;
-      --group-line:#c7d2fe;
-      --accent:#4f46e5;
-
-      /* чипы производителей */
-      --chip-bg:#ffffff;
-      --chip-text:#111827;
-      --chip-border:#e5e7eb;
-    }
-
-    html, body{
-      margin:0;
-      padding:0;
-      background:#fff;
-      color:var(--text);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-    }
-
-    .wrap{
-      max-width: 980px;
-      margin: 20px auto 40px;
-      padding: 0 16px;
-    }
-
-    /* ---------- шапка ---------- */
-    .dochead{
-      padding-bottom: 12px;
-      border-bottom: 2px solid var(--line);
-      margin-bottom: 14px;
-    }
-    .kicker{
-      font-size: 11px;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    .title{
-      font-size: 20px;
-      font-weight: 800;
-      margin: 0;
-    }
-    .meta{
-      margin-top: 6px;
-      font-size: 12px;
-      color: var(--muted);
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--line);
-      background: linear-gradient(180deg, #ffffff, #f8fafc);
-      font-size: 12px;
-      color: #374151;
-    }
-    .dot{
-      width:8px;height:8px;border-radius:50%;
-      background: var(--accent);
-      display:inline-block;
-    }
-
-    /* ---------- кнопки ---------- */
-    .printbar{
-      margin: 12px 0 16px;
-      display: flex;
-      gap: 10px;
-      flex-wrap:wrap;
-    }
-    .printbar button{
-      font-size: 13px;
-      padding: 6px 14px;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-      background: #f3f4f6;
-      cursor: pointer;
-    }
-    .printbar button:hover{ background: #e5e7eb; }
-
-    /* ---------- заголовки секций ---------- */
-    .section-title{
-      margin: 18px 0 10px;
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: #374151;
-    }
-
-
-    .cat-block{
-      border: 1px solid var(--line);
-      border-radius: 4px;
-      overflow: hidden;
-      margin-bottom: 12px;
-      background:#fff;
-    }
-
-    /* шапка категории — как top row */
-    .cat-head{
-      background: var(--group);
-      border-bottom: 1px solid var(--group-line);
-      padding: 10px 12px;
-      display:flex;
-      align-items:flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      position: relative;
-    }
-    .cat-head::before{
-      content:"";
-      position:absolute;
-      left:0;
-      top:0;
-      bottom:0;
-      width:6px;
-      background: var(--accent);
-    }
-
-    .cat-name{
-      font-weight: 800;
-      font-size: 14px;
-      line-height: 1.2;
-      padding-left: 8px; /* чтобы не наезжало на accent bar */
-    }
-    .cat-meta{
-      font-size: 12px;
-      color: #4b5563;
-      white-space: nowrap;
-      align-self:center;
-      padding-left: 8px;
-    }
-
-    .cat-body{
-      padding: 10px 12px 12px;
-      background:#fff;
-    }
-
-    /* “профессиональные” чипы производителей */
-    .mf-list{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-    .mf-chip{
-      display:inline-flex;
-      align-items:center;
-      padding: 6px 10px;
-  
-
-      background: var(--chip-bg);
-      color: var(--chip-text);
-      font-size: 13px;
-      line-height: 1;
-      font-weight: 600;
-      max-width: 100%;
-      word-break: break-word;
-    }
-
-    /* =========================================================
-       PAGE BREAK
-       ========================================================= */
-    .pagebreak{
-      height: 1px;
-      margin: 18px 0;
-      page-break-before: always;
-      break-before: page;
-    }
-
-    /* =========================================================
-       PART 2: Алфавитная таблица (2 колонки)
-       ========================================================= */
-    table{
-      width: 100%;
-      border-collapse: collapse;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      overflow: hidden;
-    }
-
-    thead th{
-      background: var(--head);
-      color: #374151;
-      text-align: left;
-      font-size: 12px;
-      letter-spacing: .10em;
-      text-transform: uppercase;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    tbody td{
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-      font-size: 13px;
-    }
-    tbody tr:last-child td{ border-bottom: none; }
-
-    .mname{
-      font-weight: 800;
-      line-height: 1.25;
-      font-size: 14px;
-    }
-
-    .chips{
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-    }
-    .subchip{
-      display:inline-flex;
-      align-items:center;
-      padding: 2px 8px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      background: #fff;
-      color: #374151;
-      font-size: 12px;
-      line-height: 1.4;
-      max-width: 100%;
-      word-break: break-word;
-    }
-
-
-    .cat-title{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-}
-
-.cat-icon{
-  width:18px;
-  height:18px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  flex:0 0 18px;
-}
-
-.cat-icon svg{
-  width:18px;
-  height:18px;
-  display:block;
-}
-
-/* ===================== PART 3: Revenue by year ===================== */
-.rev-table{
-  width:100%;
-  border-collapse:collapse;
-  border:1px solid var(--line);
-  border-radius:14px;
-  overflow:hidden;
-}
-.rev-table thead th{
-  background: var(--head);
-  color:#374151;
-  font-size:12px;
-  letter-spacing:.10em;
-  text-transform:uppercase;
-  padding:10px 12px;
-  border-bottom:1px solid var(--line);
-  white-space:nowrap;
-}
-.rev-table tbody td{
-  padding:10px 12px;
-  border-bottom:1px solid var(--line);
-  font-size:13px;
-  vertical-align:middle;
-}
-.rev-table tbody tr:last-child td{ border-bottom:none; }
-
-.num{ text-align:right; font-variant-numeric: tabular-nums; }
-.sticky-col{
-  font-weight:800;
-}
-.total-col{
-  font-weight:900;
-  background: rgba(248,250,252,.9);
-}
-.smallmuted{ color:var(--muted); font-size:12px; }
-
-    @media print{
-      .wrap{ max-width: 100%; margin: 0; padding: 0; }
-      .printbar{ display: none; }
-      @page{ size: A4; margin: 12mm; }
-      .cat-block{ break-inside: avoid; page-break-inside: avoid; }
-      tr{ break-inside: avoid; page-break-inside: avoid; }
-    }
-
-
-    /* ВАЖНО для PDF: печатать фоновые цвета */
-@media print{
-  *{
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-}
-  </style>
+  <link rel="stylesheet" href="{% static 'css/corporate/manufacturers.css' %}">
 </head>
 
 <body>
@@ -329,7 +17,7 @@
 
       <div class="meta">
         <span>Сформировано: {{ generated_at|date:"d.m.Y H:i" }}</span>
-        <span class="pill"><span class="dot"></span> Производителей: <b>{{ rows|length }}</b></span>
+        {% comment %} <span class="pill"><span class="dot"></span> Производителей: <b>{{ rows|length }}</b></span> {% endcomment %}
       </div>
     </div>
 
@@ -338,8 +26,120 @@
       <button onclick="history.back()">↩ Назад</button>
     </div>
 
-    <!-- ===================== PART 1 ===================== -->
-    <div class="section-title">Категории → производители</div>
+
+
+
+
+
+    {% include "admin/corporate/manufacturer/_brief.html" with brief=manufacturers_brief %}
+
+
+
+
+    {% if lost_manufacturers_svg %}
+
+      <div class="section-title">Производители без текущей активности продаж</div>
+      <div class="svg-wrap">
+        {{ lost_manufacturers_svg|safe }}
+      </div>
+    {% endif %}
+
+
+
+
+
+   <div class="pagebreak"></div>
+<h3 class="section-title">Чистая выручка по производителям в динамике по годам</h3>
+{% comment %} <div class="smallmuted">
+  Чистая выручка. Период: с {{ years.0 }} года.
+</div> {% endcomment %}
+
+<div class="rev-legend">
+  <div class="legend-item li-active">
+    <span class="legend-dot"></span>
+    <div class="legend-text">
+      <div class="legend-title">Работает</div>
+      <div class="legend-sub">В текущем году есть отгрузки.</div>
+    </div>
+  </div>
+
+  <div class="legend-item li-pause">
+    <span class="legend-dot"></span>
+    <div class="legend-text">
+      <div class="legend-title">Пауза</div>
+      <div class="legend-sub">В прошлом году были отгрузки, в текущем — пока нет.</div>
+    </div>
+  </div>
+
+  <div class="legend-item li-stopped">
+    <span class="legend-dot"></span>
+    <div class="legend-text">
+      <div class="legend-title">Перестали</div>
+      <div class="legend-sub">2 года подряд нет отгрузок, при этом раньше они были.</div>
+    </div>
+  </div>
+</div>
+
+<table class="rev-table">
+  <thead>
+    <tr>
+      <th>Производитель</th>
+      {% for y in years %}
+        <th class="num">{{ y|stringformat:"d" }}</th>
+      {% endfor %}
+      <th class="num">Итого</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for r in revenue_rows %}
+      <tr class="mf-row status-{{ r.status }}">
+        <td class="sticky-col">
+          <div class="mf-cell">
+            <div class="mf-name">{{ r.name }}</div>
+            {% comment %} <div class="mf-meta">
+              {% if r.status == "active" %}
+                <span class="badge badge-active">работает</span>
+              {% elif r.status == "pause" %}
+                <span class="badge badge-pause">пауза</span>
+              {% else %}
+                <span class="badge badge-stopped">перестали</span>
+              {% endif %}
+            </div> {% endcomment %}
+          </div>
+        </td>
+
+        {% for c in r.cells %}
+          <td class="num heat" style="--k: {{ c.k|floatformat:2 }};">
+            {{ c.disp }}
+          </td>
+        {% endfor %}
+
+        <td class="num total-col">
+          {{ r.total_disp }}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+
+  <tfoot>
+    <tr class="totals-row">
+      <td class="sticky-col totals-title">Итого</td>
+
+      {% for c in revenue_totals.cells %}
+        <td class="num totals-num">{{ c.disp }}</td>
+      {% endfor %}
+
+      <td class="num totals-grand">{{ revenue_totals.total_disp }}</td>
+    </tr>
+  </tfoot>
+</table>
+
+
+      <div class="pagebreak"></div>
+
+
+    <div class="section-title">Распределение производителей по категориям</div>
 
     {% if cats_blocks %}
       {% for block in cats_blocks %}
@@ -377,9 +177,13 @@
 
     <div class="pagebreak"></div>
 
-    <!-- ===================== PART 2 ===================== -->
-    <div class="section-title">Производители (алфавит) → подкатегории</div>
 
+
+
+
+
+
+<div class="section-title">Производители и их подкатегории (алфавит)</div>
     <table>
       <thead>
         <tr>
@@ -408,41 +212,7 @@
     </table>
 
 
-    <div class="pagebreak"></div>
-
-<!-- ===================== PART 3 ===================== -->
-<div class="pagebreak"></div>
-
-<div class="section-title">Производители → чистая выручка по годам</div>
-<div class="smallmuted">
-  Чистая выручка. Период: с {{ years.0 }} года.
-</div>
-
-<table class="rev-table">
-  <thead>
-    <tr>
-      <th>Производитель</th>
-      {% for y in years %}
-        <th class="num">{{ y|safe }}</th>
-      {% endfor %}
-      <th class="num">Итого</th>
-    </tr>
-  </thead>
-
-  <tbody>
-    {% for r in revenue_rows %}
-      <tr>
-        <td class="sticky-col">{{ r.name }}</td>
-
-        {% for v in r.values %}
-          <td class="num">{{ v|floatformat:2 }}</td>
-        {% endfor %}
-
-        <td class="num total-col">{{ r.total|floatformat:2 }}</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    {% comment %} <div class="pagebreak"></div> {% endcomment %}
 
 
   </div>

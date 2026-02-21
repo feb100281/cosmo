@@ -1,0 +1,116 @@
+{# admin/corporate/manufacturer/_brief.html #}
+
+
+
+{% comment %} {% if manufacturers_wordstrip_svg %}
+  <div class="hero-chart">
+    {{ manufacturers_wordstrip_svg|safe }}
+  </div>
+{% endif %} {% endcomment %}
+
+
+<div class="brief">
+  <div class="section-title">Краткая справка</div>
+
+  <p class="brief-p">
+    За период <b>{{ brief.start_year_str }}–{{ brief.current_year_str }}</b>
+    в отчёте представлено <b>{{ brief.total_manufacturers }}</b> производителей.
+    В <b>{{ brief.current_year_str }}</b> году отгрузки есть у <b>{{ brief.status_counts.active }}</b> производителей,
+    у <b>{{ brief.status_counts.pause }}</b> — временная пауза,
+    у <b>{{ brief.status_counts.stopped }}</b> — отгрузки прекращены минимум на два года подряд.
+  </p>
+
+  {% if brief.leader %}
+    <p class="brief-p">
+      Лидером <b>{{ brief.current_year_str }}</b> года является <b><i>{{ brief.leader.name }}</i></b>
+      с чистой выручкой <b>{{ brief.leader.disp }}</b>.
+    </p>
+  {% endif %}
+
+  {% if brief.max_yoy %}
+    <p class="brief-p">
+      Наибольший прирост выручки к <b>{{ brief.prev_year_str }}</b> году показал производитель <b><i>{{ brief.max_yoy.name }}</i></b>:
+      {{ brief.max_yoy.prev_disp }} → {{ brief.max_yoy.last_disp }}
+      (прирост <b>{{ brief.max_yoy.delta_disp }}</b>, +{{ brief.max_yoy.pct|floatformat:0 }}%).
+    </p>
+  {% endif %}
+
+  {% if brief.lists.new %}
+    <div class="brief-label">Новые производители в {{ brief.current_year_str }} году:</div>
+    <ul class="brief-list brief-list--compact">
+      {% for x in brief.lists.new %}
+        <li class="brief-item">
+          <span class="brief-name">• <b><i>{{ x.name }}</i></b></span>
+          <span class="brief-val">{{ x.value }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if brief.lists.revived %}
+    <div class="brief-label">Возобновили отгрузки после паузы:</div>
+    <ul class="brief-list brief-list--compact">
+      {% for x in brief.lists.revived %}
+        <li class="brief-item">
+          <span class="brief-name">• <b><i>{{ x.name }}</i></b></span>
+          <span class="brief-val">{{ x.value }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if brief.lists.lost_this_year %}
+    <div class="brief-label">
+      Перестали отгружать в {{ brief.current_year_str }} году
+      <span class="brief-note">(при наличии отгрузок в {{ brief.prev_year_str }})</span>:
+    </div>
+    <ul class="brief-list">
+      {% for x in brief.lists.lost_this_year %}
+        <li class="brief-item">
+          <span class="brief-name">• <b><i>{{ x.name }}</i></b></span>
+          <span class="brief-val">ранее {{ x.value }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+
+  {% endif %}
+
+
+
+<div class="pagebreak"></div>
+
+<div class="brief-label">Производители по группам категорий</div>
+
+<table class="mini-table">
+  <thead>
+    <tr>
+      <th>Группа</th>
+{% for y in root_years %}
+  <th class="num">{{ y }}</th>
+{% endfor %}
+<th class="num">
+    Итого<br>
+    <span class="small">уникальных</span>
+</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for r in rootcat_rows %}
+      <tr>
+        <td class="mini-name">{{ r.root_name }}</td>
+
+        {% for v in r.counts_list %}
+          <td class="num">{{ v }}</td>
+        {% endfor %}
+
+        <td class="num mini-total">{{ r.total }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+</div>
+
+
+

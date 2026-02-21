@@ -36,6 +36,11 @@ from django.http import HttpResponse
 
 from collections import defaultdict
 from corporate.reports.manufacturers_revenue import get_manufacturers_net_by_year
+from corporate.reports.manufacturers_lost_chart import build_lost_manufacturers_svg
+from corporate.reports.manufacturers_revenue_summary import build_manufacturers_brief
+from corporate.reports.manufacturers_by_rootcat import get_rootcat_manufacturers_count_by_year
+from corporate.reports.manufacturers_wordstrip_chart import build_manufacturers_wordstrip_svg
+
 
 
 
@@ -201,12 +206,10 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
         qs = ItemManufacturer.objects.all() if not ids else ItemManufacturer.objects.filter(id__in=ids)
         qs = qs.prefetch_related("items__cat", "items__subcat")
 
-        # (A) алфавитная часть: производитель -> подкатегории
         rows = []
         all_cats = set()
         all_subcats = set()
 
-        # (B) категорийная часть: category (по id) -> {name, icon, manufacturers(set)}
         cats_index = defaultdict(lambda: {"name": "", "icon": "", "mfs": set()})
 
         for m in qs:
@@ -214,27 +217,23 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
             subcats_map = {}
 
             for it in m.items.all():
-                # для алфавитной части
                 if it.cat_id and it.cat:
                     cats_map[it.cat_id] = it.cat.name
                 if it.subcat_id and it.subcat:
                     subcats_map[it.subcat_id] = it.subcat.name
 
-                # для категорийной части — только если есть связка cat + subcat
                 if it.cat_id and it.cat and it.subcat_id and it.subcat:
                     cat = it.cat
                     cat_id = cat.id
 
                     cats_index[cat_id]["name"] = (cat.name or "").strip()
-                    cats_index[cat_id]["icon"] = (cat.icon or "")  # SVG или emoji
+                    cats_index[cat_id]["icon"] = (cat.icon or "")
                     mf_name = (m.report_name or m.name or "").strip() or "—"
-
                     cats_index[cat_id]["mfs"].add(mf_name)
 
             cat_names = sorted(cats_map.values(), key=lambda x: (x or "").lower())
             subcat_names = sorted(subcats_map.values(), key=lambda x: (x or "").lower())
 
-            # ✅ если у производителя нет подкатегорий — НЕ выводим его во 2-й части
             if not subcat_names:
                 continue
 
@@ -250,7 +249,6 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
 
         rows.sort(key=lambda r: (r["report_name"] or "").lower())
 
-        # cats_blocks для шаблона (с icon)
         cats_blocks = []
         cats_sorted = sorted(
             cats_index.items(),
@@ -270,20 +268,39 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
                 "manufacturers_count": len(mf_list),
             })
 
-        context = dict(
-            self.admin_site.each_context(request),
-            title="Печать производителей",
-            generated_at=timezone.now(),
-            cats_blocks=cats_blocks,  # часть 1: категории -> производители (+ icon)
-            rows=rows,                # часть 2: производители -> подкатегории
-            total_cats=len(all_cats),
-            total_subcats=len(all_subcats),
-        )
-        
         # === PART 3: выручка по годам ===
-        years, revenue_rows = get_manufacturers_net_by_year(
+        years, revenue_rows, revenue_totals = get_manufacturers_net_by_year(
             start_year=2022,
             ids=ids
+        )
+        
+        root_years, rootcat_rows = get_rootcat_manufacturers_count_by_year(
+            start_year=2022,
+            manufacturer_ids=ids,
+        )
+
+        for r in rootcat_rows:
+            r["counts_list"] = [r["counts"].get(y, 0) for y in root_years]
+            
+        manufacturers_brief = build_manufacturers_brief(
+            years=years,
+            revenue_rows=revenue_rows,
+            exclude_unknown=True,
+            top_n_lists=8,
+        )
+
+        # === PART 4: SVG график "потерянные" ===
+        lost_manufacturers_svg = build_lost_manufacturers_svg(
+            revenue_rows=revenue_rows,
+            years=years,
+            top_n=15,
+            exclude_unknown=True,   # НЕ учитывать manufacturer_id=0
+        )
+        
+        manufacturers_wordstrip_svg = build_manufacturers_wordstrip_svg(
+            revenue_rows=revenue_rows,
+            years=years,
+            theme="pastel_mix",
         )
 
         context = dict(
@@ -295,12 +312,18 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
             total_cats=len(all_cats),
             total_subcats=len(all_subcats),
 
-            # PART 3
-            
             years=years,
             revenue_rows=revenue_rows,
+            revenue_totals=revenue_totals,
+            manufacturers_brief=manufacturers_brief,
+            manufacturers_wordstrip_svg=manufacturers_wordstrip_svg,
+            lost_manufacturers_svg=lost_manufacturers_svg,
+            root_years=root_years,
+            rootcat_rows=rootcat_rows,
         )
+
         return render(request, "admin/corporate/manufacturer/print_manufacturers.html", context)
+
 
 @admin.register(ItemBrend)
 class ItemBrendAdmin(admin.ModelAdmin):
