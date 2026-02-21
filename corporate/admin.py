@@ -35,6 +35,7 @@ import csv
 from django.http import HttpResponse
 
 from collections import defaultdict
+from corporate.reports.manufacturers_revenue import get_manufacturers_net_by_year
 
 
 
@@ -277,6 +278,27 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
             rows=rows,                # часть 2: производители -> подкатегории
             total_cats=len(all_cats),
             total_subcats=len(all_subcats),
+        )
+        
+        # === PART 3: выручка по годам ===
+        years, revenue_rows = get_manufacturers_net_by_year(
+            start_year=2022,
+            ids=ids
+        )
+
+        context = dict(
+            self.admin_site.each_context(request),
+            title="Печать производителей",
+            generated_at=timezone.now(),
+            cats_blocks=cats_blocks,
+            rows=rows,
+            total_cats=len(all_cats),
+            total_subcats=len(all_subcats),
+
+            # PART 3
+            
+            years=years,
+            revenue_rows=revenue_rows,
         )
         return render(request, "admin/corporate/manufacturer/print_manufacturers.html", context)
 

@@ -265,6 +265,42 @@
   display:block;
 }
 
+/* ===================== PART 3: Revenue by year ===================== */
+.rev-table{
+  width:100%;
+  border-collapse:collapse;
+  border:1px solid var(--line);
+  border-radius:14px;
+  overflow:hidden;
+}
+.rev-table thead th{
+  background: var(--head);
+  color:#374151;
+  font-size:12px;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  padding:10px 12px;
+  border-bottom:1px solid var(--line);
+  white-space:nowrap;
+}
+.rev-table tbody td{
+  padding:10px 12px;
+  border-bottom:1px solid var(--line);
+  font-size:13px;
+  vertical-align:middle;
+}
+.rev-table tbody tr:last-child td{ border-bottom:none; }
+
+.num{ text-align:right; font-variant-numeric: tabular-nums; }
+.sticky-col{
+  font-weight:800;
+}
+.total-col{
+  font-weight:900;
+  background: rgba(248,250,252,.9);
+}
+.smallmuted{ color:var(--muted); font-size:12px; }
+
     @media print{
       .wrap{ max-width: 100%; margin: 0; padding: 0; }
       .printbar{ display: none; }
@@ -370,6 +406,43 @@
         {% endfor %}
       </tbody>
     </table>
+
+
+    <div class="pagebreak"></div>
+
+<!-- ===================== PART 3 ===================== -->
+<div class="pagebreak"></div>
+
+<div class="section-title">Производители → чистая выручка по годам</div>
+<div class="smallmuted">
+  Чистая выручка. Период: с {{ years.0 }} года.
+</div>
+
+<table class="rev-table">
+  <thead>
+    <tr>
+      <th>Производитель</th>
+      {% for y in years %}
+        <th class="num">{{ y|safe }}</th>
+      {% endfor %}
+      <th class="num">Итого</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for r in revenue_rows %}
+      <tr>
+        <td class="sticky-col">{{ r.name }}</td>
+
+        {% for v in r.values %}
+          <td class="num">{{ v|floatformat:2 }}</td>
+        {% endfor %}
+
+        <td class="num total-col">{{ r.total|floatformat:2 }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
 
 
   </div>
