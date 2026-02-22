@@ -19,13 +19,13 @@
     </p>
   {% endif %}
 
-  {% if brief.efficiency %}
+  {% comment %} {% if brief.efficiency %}
     <p class="brief-p">
       Эффективность активных производителей в <b>{{ brief.current_year_str }}</b> году:
       средняя выручка на активного — <b>{{ brief.efficiency.avg_disp }}</b>,
       медианная — <b>{{ brief.efficiency.median_disp }}</b>.
     </p>
-  {% endif %}
+  {% endif %} {% endcomment %}
 
   {% if brief.leader %}
     <p class="brief-p">
