@@ -1,29 +1,52 @@
-{# admin/corporate/manufacturer/_brief.html #}
-
-
-
-{% comment %} {% if manufacturers_wordstrip_svg %}
-  <div class="hero-chart">
-    {{ manufacturers_wordstrip_svg|safe }}
-  </div>
-{% endif %} {% endcomment %}
-
-
 <div class="brief">
   <div class="section-title">Краткая справка</div>
 
-  <p class="brief-p">
-    За период <b>{{ brief.start_year_str }}–{{ brief.current_year_str }}</b>
-    в отчёте представлено <b>{{ brief.total_manufacturers }}</b> производителей.
-    В <b>{{ brief.current_year_str }}</b> году отгрузки есть у <b>{{ brief.status_counts.active }}</b> производителей,
-    у <b>{{ brief.status_counts.pause }}</b> — временная пауза,
-    у <b>{{ brief.status_counts.stopped }}</b> — отгрузки прекращены минимум на два года подряд.
-  </p>
+<p class="brief-p">
+  За период <b>{{ brief.start_year_str }}–{{ brief.current_year_str }}</b>
+  в отчёте представлено <b>{{ brief.total_manufacturers }}</b> производителей.
+  В <b>{{ brief.current_year_str }}</b> году отгрузки есть у <b>{{ brief.status_counts.active }}</b> производителей,
+  у <b>{{ brief.status_counts.pause }}</b> — нет отгрузок в текущем году (временная пауза),
+  у <b>{{ brief.status_counts.stopped }}</b> — отгрузки отсутствуют минимум два года подряд.
+</p>
+
+  {% if brief.totals and brief.prev_year_str %}
+    <p class="brief-p">
+      Общая чистая выручка производителей в <b>{{ brief.current_year_str }}</b> году составила <b>{{ brief.totals.cy_disp }}</b>,
+      к <b>{{ brief.prev_year_str }}</b> году: {{ brief.totals.sign }}<b>{{ brief.totals.delta_disp }}</b>
+      {% if brief.totals.pct != None %}
+        ({{ brief.totals.sign }}{{ brief.totals.pct|floatformat:0 }}%).
+      {% endif %}
+    </p>
+  {% endif %}
+
+  {% if brief.efficiency %}
+    <p class="brief-p">
+      Эффективность активных производителей в <b>{{ brief.current_year_str }}</b> году:
+      средняя выручка на активного — <b>{{ brief.efficiency.avg_disp }}</b>,
+      медианная — <b>{{ brief.efficiency.median_disp }}</b>.
+    </p>
+  {% endif %}
 
   {% if brief.leader %}
     <p class="brief-p">
       Лидером <b>{{ brief.current_year_str }}</b> года является <b><i>{{ brief.leader.name }}</i></b>
       с чистой выручкой <b>{{ brief.leader.disp }}</b>.
+    </p>
+  {% endif %}
+
+  {% if brief.concentration %}
+    <p class="brief-p">
+      Концентрация выручки: доля лидера — <b>{{ brief.concentration.leader_share|floatformat:0 }}%</b>,
+      доля топ-{{ brief.concentration.topn }} производителей — <b>{{ brief.concentration.topn_share|floatformat:0 }}%</b>.
+    </p>
+  {% endif %}
+
+  {% if brief.churn and brief.prev_year_str %}
+    <p class="brief-p">
+      Риск портфеля: в <b>{{ brief.current_year_str }}</b> году <b>{{ brief.churn.lost_cnt }}</b> производителей,
+      отгружавших в <b>{{ brief.prev_year_str }}</b>, не имеют отгрузок.
+      Их вклад в <b>{{ brief.prev_year_str }}</b> году — <b>{{ brief.churn.lost_prev_sum_disp }}</b>
+      ({{ brief.churn.lost_prev_share|floatformat:0 }}% от выручки года).
     </p>
   {% endif %}
 
@@ -33,6 +56,88 @@
       {{ brief.max_yoy.prev_disp }} → {{ brief.max_yoy.last_disp }}
       (прирост <b>{{ brief.max_yoy.delta_disp }}</b>, +{{ brief.max_yoy.pct|floatformat:0 }}%).
     </p>
+  {% endif %}
+
+
+
+  {% if top_by_year_svg %}
+  <div class="card">
+    <div class="card-body">
+      {{ top_by_year_svg|safe }}
+    </div>
+  </div>
+{% endif %}
+
+
+{% comment %} 
+{% if top_by_year.per_year %}
+  <div class="brief-label">Топ-5 производителей по годам</div>
+  {% for b in top_by_year.per_year %}
+    <div class="brief-note"><b>{{ b.year }}</b> (итого: {{ b.total_disp }})</div>
+    <ul class="brief-list brief-list--compact">
+      {% for it in b.items %}
+        <li class="brief-item">
+          <span class="brief-name">• <b><i>{{ it.name }}</i></b></span>
+          <span class="brief-val">{{ it.value_disp }}{% if it.share_pct != None %} ({{ it.share_pct|floatformat:0 }}%){% endif %}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endfor %}
+{% endif %} {% endcomment %}
+
+
+
+
+
+  {% if brief.lists.steady_decline %}
+    <div class="brief-label">
+      Устойчивое снижение выручки ({{ brief.start_year_str }}–{{ brief.last_closed_year_str }}):
+      <span class="brief-note">(показаны крупные производители)</span>
+    </div>
+    <ul class="brief-list">
+      {% for x in brief.lists.steady_decline %}
+        <li class="brief-item">
+          <span class="brief-name">• <b><i>{{ x.name }}</i></b></span>
+          <span class="brief-val">
+            {{ x.first_year }}: {{ x.first_disp }} → {{ x.last_closed_year }}: {{ x.last_closed_disp }}
+            (−{{ x.drop_disp }}, −{{ x.drop_pct|floatformat:0 }}%)
+            <span class="brief-note">; {{ x.now_year }} YTD: {{ x.now_disp }}</span>
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+
+  {% if decline_dumbbell_svg %}
+  <div class="card">
+    <div class="card-body">
+      {{ decline_dumbbell_svg|safe }}
+    </div>
+  </div>
+{% endif %} 
+
+
+
+
+  {% if brief.lists.former_leaders %}
+    <div class="brief-label">
+      Бывшие лидеры (в топе по закрытым годам, сейчас низкая выручка):
+    </div>
+    <ul class="brief-list">
+      {% for x in brief.lists.former_leaders %}
+        <li class="brief-item">
+          <span class="brief-name">• <b><i>{{ x.name }}</i></b></span>
+          <span class="brief-val">
+            пик {{ x.peak_year }}: {{ x.peak_disp }}
+            → {{ x.now_year }} YTD: {{ x.now_disp }}
+            {% if x.delta_pct != None %}
+              (−{{ x.delta_pct|floatformat:0 }}%)
+            {% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
   {% endif %}
 
   {% if brief.lists.new %}
@@ -72,26 +177,32 @@
         </li>
       {% endfor %}
     </ul>
-
   {% endif %}
 
 
 
-<div class="pagebreak"></div>
 
-<div class="brief-label">Производители по группам категорий</div>
+
+
+
+
+    <div class="pagebreak"></div>
+
+
+
+<div class="brief-label">Производители по группам категорий и их выручка</div>
 
 <table class="mini-table">
   <thead>
     <tr>
       <th>Группа</th>
-{% for y in root_years %}
-  <th class="num">{{ y }}</th>
-{% endfor %}
-<th class="num">
-    Итого<br>
-    <span class="small">уникальных</span>
-</th>
+      {% for y in root_years %}
+        <th class="num">{{ y }}</th>
+      {% endfor %}
+      <th class="num">
+        Итого<br>
+        <span class="small">уникальных</span>
+      </th>
     </tr>
   </thead>
 
@@ -100,37 +211,70 @@
       <tr>
         <td class="mini-name">{{ r.root_name }}</td>
 
-        {% comment %} {% for v in r.counts_list %}
-          <td class="num">{{ v }}</td>
+        {% for cnt, rev in r.pairs_list %}
+          <td class="num">
+            <div class="cell-main">
+              <span class="icon icon-mfs"></span> {{ cnt }} <span class="unit">произв.</span>
+            </div>
+            <div class="cell-sub">
+              <span class="icon icon-money"></span> {{ rev }}
+            </div>
+          </td>
         {% endfor %}
 
-        <td class="num mini-total">{{ r.total }}</td> {% endcomment %}
-
-
-{% for cnt, rev in r.pairs_list %}
-  <td class="num">
-    <div class="cell-main">
-      <span class="icon icon-mfs"></span> {{ cnt }} <span class="unit">произв.</span>
-    </div>
-    <div class="cell-sub">
-      <span class="icon icon-money"></span> {{ rev }}
-    </div>
-  </td>
-{% endfor %}
-
-<td class="num mini-total">
-  <div class="cell-main">
-     {{ r.total_mf }} <span class="unit">произв.</span>
-  </div>
-  <div class="cell-sub">
-     {{ r.total_rev_disp }}
-  </div>
-</td>
-
+        <td class="num mini-total">
+          <div class="cell-main">
+            {{ r.total_mf }} <span class="unit">произв.</span>
+          </div>
+          <div class="cell-sub">
+            {{ r.total_rev_disp }}
+          </div>
+        </td>
       </tr>
     {% endfor %}
   </tbody>
+
+  <tfoot>
+  <tr class="mini-total-row">
+    <td class="mini-name"><b>Итого</b></td>
+
+    {% for t in rootcat_totals.by_year %}
+      <td class="num mini-total">
+        <div class="cell-main">
+          <span class="icon icon-mfs"></span> <b>{{ t.mf|default:0 }}</b> <span class="unit">произв.</span>
+        </div>
+        <div class="cell-sub">
+          <span class="icon icon-money"></span> <b>{{ t.net_disp|default:"0 ₽" }}</b>
+        </div>
+      </td>
+    {% endfor %}
+
+    <td class="num mini-total">
+      <div class="cell-main">
+        <b>{{ rootcat_totals.period_total_mf }}</b> <span class="unit">произв.</span>
+      </div>
+      <div class="cell-sub">
+        <b>{{ rootcat_totals.period_total_net_disp }}</b>
+      </div>
+    </td>
+  </tr>
+</tfoot>
+
+
 </table>
+
+
+
+
+{% if rootcat_mix_svg %}
+  <div class="card">
+    <div class="card-body">
+      {{ rootcat_mix_svg|safe }}
+    </div>
+  </div>
+{% endif %}
+
+
 
 </div>
 

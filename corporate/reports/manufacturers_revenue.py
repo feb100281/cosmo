@@ -143,6 +143,7 @@ def get_manufacturers_net_by_year(
             cells.append({"v": v, "k": k, "disp": fmt_money_ru(v)})
         r["cells"] = cells
 
+
         # --- статусы (3 категории) ---
         last = vals[-1] if vals else Decimal("0")
         prev = vals[-2] if len(vals) >= 2 else Decimal("0")

@@ -284,41 +284,76 @@ tbody tr:last-child td{ border-bottom: none; }
 }
 
 /* ===================== PART 3: Revenue by year ===================== */
+/* === Elegant dotted table (rev-table) === */
 .rev-table{
-  width:100%;
-  border-collapse:collapse;
-  border:1px solid var(--line);
-  border-radius:14px;
-  overflow:hidden;
+  width: 100%;
+  border-collapse: separate;      /* важно для аккуратных радиусов + dotted */
+  border-spacing: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
 }
+
+/* header */
 .rev-table thead th{
   background: var(--head);
   color:#374151;
-  font-size:12px;
-  letter-spacing:.10em;
-  text-transform:uppercase;
-  padding:10px 12px;
-  border-bottom:1px solid var(--line);
-  white-space:nowrap;
+  font-size: 11px;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
 }
-.rev-table tbody td{
-  padding:10px 12px;
-  border-bottom:1px solid var(--line);
-  font-size:13px;
-  vertical-align:middle;
-}
-.rev-table tbody tr:last-child td{ border-bottom:none; }
 
-.num{ text-align:right; font-variant-numeric: tabular-nums; }
-.sticky-col{ font-weight:800; }
+/* body cells */
+.rev-table tbody td{
+  padding: 10px 12px;
+  font-size: 13px;
+  vertical-align: middle;
+
+  /* dotted horizontal separators like mini-table */
+  border-bottom: 1px dotted rgba(107,114,128,.35);
+
+  /* keep cell backgrounds clean */
+  background-clip: padding-box;
+}
+
+/* remove last row separator */
+.rev-table tbody tr:last-child td{
+  border-bottom: none;
+}
+
+/* dotted vertical separators */
+.rev-table tbody td + td{
+  border-left: 1px dotted rgba(107,114,128,.30);
+}
+
+/* numeric alignment */
+.num{
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* sticky/first cols */
+.sticky-col{
+  font-weight: 800;
+}
+
+/* total column background stays */
 .total-col{
-  font-weight:900;
+  font-weight: 900;
   background: rgba(248,250,252,.9);
 }
 
-.smallmuted{ color:var(--muted); font-size:12px; }
+/* small muted text */
+.smallmuted{
+  color: var(--muted);
+  font-size: 12px;
+}
 
-/* “Горизонтальный анализ”: выделение min/max в строке */
+/* “Горизонтальный анализ”: min/max (оставляем, но делаем совместимым с dotted) */
 .rev-table td.is-max{
   background: var(--hi-max-bg);
   box-shadow: inset 0 0 0 1px var(--hi-max-br);
@@ -329,11 +364,15 @@ tbody tr:last-child td{ border-bottom: none; }
   box-shadow: inset 0 0 0 1px var(--hi-min-br);
 }
 
-/* Лёгкий hover по строке */
+/* лёгкий hover по строке (так, чтобы не убить подсветку min/max/total) */
 .rev-table tbody tr:hover td{
   background-image: linear-gradient(0deg, rgba(17,24,39,.03), rgba(17,24,39,.03));
 }
-
+.rev-table tbody tr:hover td.is-max,
+.rev-table tbody tr:hover td.is-min{
+  /* подсветка важнее hover */
+  background-image: none;
+}
 
 /* ===================== PART 3: Horizontal analysis (heatmap + status) ===================== */
 
@@ -887,3 +926,33 @@ th .small {
   opacity:.75;
   white-space:nowrap;
 }
+
+
+.brief-p{ margin: 10px 0; }
+.brief-label{ margin-top: 14px; }
+
+
+
+.hero-chart{
+  margin: 10px 0 16px 0;
+}
+.hero-chart svg{
+  width: 100%;
+  height: auto;
+  display:block;
+}
+
+
+.mini-table tfoot td {
+    background: #f6f8ff;   /* тот же фон что у подсвеченных колонок */
+}
+
+.mini-table tfoot .mini-total {
+    color: #0f172a;        /* как у остальных итоговых ячеек */
+    font-weight: 700;
+}
+
+
+
+
+

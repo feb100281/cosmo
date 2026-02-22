@@ -33,13 +33,29 @@ from django.utils import timezone
 from mptt.admin import MPTTModelAdmin
 import csv
 from django.http import HttpResponse
+from django.db import connection
 
 from collections import defaultdict
 from corporate.reports.manufacturers_revenue import get_manufacturers_net_by_year
 from corporate.reports.manufacturers_lost_chart import build_lost_manufacturers_svg
 from corporate.reports.manufacturers_revenue_summary import build_manufacturers_brief
 from corporate.reports.manufacturers_by_rootcat import get_rootcat_manufacturers_metrics_by_year
-from corporate.reports.manufacturers_wordstrip_chart import build_manufacturers_wordstrip_svg
+# from corporate.reports.manufacturers_wordstrip_chart import build_manufacturers_wordstrip_svg
+from corporate.reports.manufacturers_decline_dumbbell_svg import build_decline_dumbbell_svg
+from corporate.reports.manufacturers_top_by_year_chart import build_top_manufacturers_by_year
+from corporate.reports.manufacturers_top_by_year_svg import build_top_by_year_svg
+from corporate.reports.manufacturers_rootcat_mix_svg import build_rootcat_mix_svg
+from corporate.reports.manufacturers_revenue_by_rootcat import get_manufacturer_net_by_rootcat_total
+
+from decimal import Decimal
+from datetime import date
+
+def _d(x):
+    try:
+        return Decimal(str(x or "0"))
+    except Exception:
+        return Decimal("0")
+
 
 
 
@@ -197,8 +213,7 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
             return
         return redirect(f"print-manufacturers/?ids={','.join(map(str, ids))}")
 
-
-
+    
     def print_manufacturers_view(self, request):
         ids_raw = request.GET.get("ids", "")
         ids = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
@@ -249,6 +264,97 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
 
         rows.sort(key=lambda r: (r["report_name"] or "").lower())
 
+        # === PART 3: выручка по годам ===
+        years, revenue_rows, revenue_totals = get_manufacturers_net_by_year(
+            start_year=2022,
+            ids=ids
+        )
+
+        manufacturers_brief = build_manufacturers_brief(
+            years=years,
+            revenue_rows=revenue_rows,
+            exclude_unknown=False,
+            top_n_lists=8,
+        )
+
+        # === карта выручки ИТОГО с 2022 года по производителю (как было) ===
+        rev_val_map = {}   # name -> Decimal
+        rev_disp_map = {}  # name -> "12,3 млн ₽"
+
+        for rr in (revenue_rows or []):
+            name = (rr.get("report_name") or rr.get("name") or rr.get("manufacturer") or "").strip()
+            if not name:
+                continue
+            rev_val_map[name] = _d(rr.get("total") or 0)
+            rev_disp_map[name] = (rr.get("total_disp") or "").strip()
+
+        # ============================================================
+        # === ДОБАВЛЯЕМ: выручка по (cat_id, производитель) ===========
+        # ============================================================
+        from corporate.reports.manufacturers_revenue_summary import fmt_money_ru
+
+        cat_mf_val_map = {}   # (cat_id, mf_name) -> Decimal
+        cat_mf_disp_map = {}  # (cat_id, mf_name) -> str
+
+        cat_ids = list(cats_index.keys())
+        if cat_ids:
+            params = {"start_year": 2022}
+
+            where_mf = ""
+            if ids:
+                ph = []
+                for i, v in enumerate(ids):
+                    k = f"mf{i}"
+                    params[k] = int(v)
+                    ph.append(f"%({k})s")
+                # НЕ теряем NULL (как у тебя в других отчётах)
+                where_mf = f" AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL) "
+
+            phc = []
+            for i, v in enumerate(cat_ids):
+                k = f"c{i}"
+                params[k] = int(v)
+                phc.append(f"%({k})s")
+            where_cat = f" AND it.cat_id IN ({', '.join(phc)}) "
+
+            # ВАЖНО: mf_name формируем так же, как ты формируешь mf_name в cats_index
+            q_cat_rev = f"""
+                    SELECT
+                        it.cat_id AS cat_id,
+                        CASE
+                            WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
+                            ELSE COALESCE(m.report_name, m.name, '—')
+                        END AS mf_name,
+                        SUM(s.dt - s.cr) AS net_amount
+                    FROM sales_salesdata s
+                    JOIN corporate_items it ON it.id = s.item_id
+                    LEFT JOIN corporate_itemmanufacturer m ON m.id = it.manufacturer_id
+                    WHERE YEAR(s.`date`) >= %(start_year)s
+                    {where_cat}
+                    {where_mf}
+                    GROUP BY it.cat_id, mf_name
+                """
+
+            with connection.cursor() as cur:
+                cur.execute(q_cat_rev, params)
+                rows_rev = cur.fetchall()
+
+            for cat_id, mf_name, net_amount in rows_rev:
+                cat_id = int(cat_id)
+                name = (mf_name or "—").strip() or "—"
+                net = _d(net_amount or 0)
+
+                cat_mf_val_map[(cat_id, name)] = net
+                cat_mf_disp_map[(cat_id, name)] = fmt_money_ru(net) if net else f"0\u00A0₽"
+                
+            
+            # добавить "не указан" в список производителей категории, если по нему есть выручка
+            UNKNOWN_NAME = "!Производитель не указан"
+            for (cat_id, mf_name), net in cat_mf_val_map.items():
+                if mf_name == UNKNOWN_NAME and net > 0:
+                    cats_index[cat_id]["mfs"].add(UNKNOWN_NAME)
+
+        # === cats_blocks (теперь сортируем и подписываем ПО КАТЕГОРИИ) ===
         cats_blocks = []
         cats_sorted = sorted(
             cats_index.items(),
@@ -256,61 +362,76 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
         )
 
         for cat_id, payload in cats_sorted:
-            mf_list = sorted(list(payload["mfs"]), key=lambda x: (x or "").lower())
-            if not mf_list:
+            mf_names = list(payload["mfs"])
+            if not mf_names:
                 continue
+
+            # сортируем по выручке В ЭТОЙ КАТЕГОРИИ, fallback на общий total
+            mf_names.sort(
+                key=lambda n: (
+                    cat_mf_val_map.get((cat_id, n), rev_val_map.get(n, Decimal("0"))),
+                    (n or "").lower()
+                ),
+                reverse=True
+            )
+
+            mf_list = []
+            for i, name in enumerate(mf_names, start=1):
+                medal = "🥇 " if i == 1 else "🥈 " if i == 2 else "🥉 " if i == 3 else ""
+
+                # ВАЖНО: берем disp по категории, если нет — fallback на общий
+                disp = cat_mf_disp_map.get((cat_id, name), rev_disp_map.get(name, ""))
+
+                tail = f" ({disp})" if (i <= 5 and disp) else ""
+                mf_list.append(f"{medal}{name}{tail}")
 
             cats_blocks.append({
                 "cat_id": cat_id,
                 "cat": payload["name"],
                 "icon": payload["icon"],
                 "manufacturers": mf_list,
-                "manufacturers_count": len(mf_list),
+                "manufacturers_count": len(mf_names),
             })
 
-        # === PART 3: выручка по годам ===
-        years, revenue_rows, revenue_totals = get_manufacturers_net_by_year(
-            start_year=2022,
-            ids=ids
-        )
-        
-        # root_years, rootcat_rows = get_rootcat_manufacturers_count_by_year(
-        #     start_year=2022,
-        #     manufacturer_ids=ids,
-        # )
-
-        # for r in rootcat_rows:
-        #     r["counts_list"] = [r["counts"].get(y, 0) for y in root_years]
-        
-        root_years, rootcat_rows = get_rootcat_manufacturers_metrics_by_year(
+        # === прочие блоки отчёта ===
+        root_years, rootcat_rows, rootcat_totals = get_rootcat_manufacturers_metrics_by_year(
             start_year=2022,
             manufacturer_ids=ids,
         )
-            
-        manufacturers_brief = build_manufacturers_brief(
-            years=years,
-            revenue_rows=revenue_rows,
-            exclude_unknown=True,
-            top_n_lists=8,
+
+        rootcat_mix_svg = build_rootcat_mix_svg(
+            years=root_years,
+            rootcat_rows=rootcat_rows,
+            title="Производители по группам категорий и их выручка",
         )
 
-        # === PART 4: SVG график "потерянные" ===
+        decline_dumbbell_svg = build_decline_dumbbell_svg(
+            manufacturers_brief.get("lists", {}).get("steady_decline", []),
+            title=f"Устойчивое снижение выручки ({manufacturers_brief['start_year_str']}→{manufacturers_brief['last_closed_year_str']})",
+            year_start=int(manufacturers_brief["start_year_str"]),
+            last_closed_year=int(manufacturers_brief["last_closed_year_str"]),
+            current_year=int(manufacturers_brief["current_year_str"]),
+            max_rows=15,
+        )
+
         lost_manufacturers_svg = build_lost_manufacturers_svg(
             revenue_rows=revenue_rows,
             years=years,
             top_n=15,
-            exclude_unknown=True,   # НЕ учитывать manufacturer_id=0
+            exclude_unknown=True,
         )
-        
-        manufacturers_wordstrip_svg = build_manufacturers_wordstrip_svg(
-            revenue_rows=revenue_rows,
+
+        top_by_year = build_top_manufacturers_by_year(
             years=years,
-            theme="pastel_mix",
+            revenue_rows=revenue_rows,
+            start_year=2022,
+            top_n=5,
         )
+        top_by_year_svg = build_top_by_year_svg(top_by_year, title="Топ-5 производителей по годам")
 
         context = dict(
             self.admin_site.each_context(request),
-            title="Печать производителей",
+            title="Производители",
             generated_at=timezone.now(),
             cats_blocks=cats_blocks,
             rows=rows,
@@ -321,10 +442,16 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
             revenue_rows=revenue_rows,
             revenue_totals=revenue_totals,
             manufacturers_brief=manufacturers_brief,
-            manufacturers_wordstrip_svg=manufacturers_wordstrip_svg,
+
             lost_manufacturers_svg=lost_manufacturers_svg,
             root_years=root_years,
             rootcat_rows=rootcat_rows,
+            rootcat_totals=rootcat_totals,
+            decline_dumbbell_svg=decline_dumbbell_svg,
+
+            top_by_year=top_by_year,
+            top_by_year_svg=top_by_year_svg,
+            rootcat_mix_svg=rootcat_mix_svg,
         )
 
         return render(request, "admin/corporate/manufacturer/print_manufacturers.html", context)
