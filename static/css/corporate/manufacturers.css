@@ -851,3 +851,39 @@ th .small {
     font-weight: 500;
     opacity: 0.7;
 }
+
+
+/* контейнер строки внутри ячейки */
+.cell-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+/* иконки — строго в одну колонку слева */
+.icon{
+  width:16px;          /* фиксируем ширину */
+  text-align:left;
+  margin-right:4px;
+  opacity:.85;
+  font-size:13px;
+  flex-shrink:0;       /* чтобы не сжимались */
+}
+
+/* подпись "произв." */
+.unit{
+  font-size:12px;
+  opacity:.7;
+  margin-left:2px;
+}
+
+.cell-main{
+  font-weight:700;
+}
+
+.cell-sub{
+  margin-top:2px;
+  font-size:12px;
+  opacity:.75;
+  white-space:nowrap;
+}

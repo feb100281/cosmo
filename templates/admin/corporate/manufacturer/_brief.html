@@ -100,11 +100,33 @@
       <tr>
         <td class="mini-name">{{ r.root_name }}</td>
 
-        {% for v in r.counts_list %}
+        {% comment %} {% for v in r.counts_list %}
           <td class="num">{{ v }}</td>
         {% endfor %}
 
-        <td class="num mini-total">{{ r.total }}</td>
+        <td class="num mini-total">{{ r.total }}</td> {% endcomment %}
+
+
+{% for cnt, rev in r.pairs_list %}
+  <td class="num">
+    <div class="cell-main">
+      <span class="icon icon-mfs"></span> {{ cnt }} <span class="unit">произв.</span>
+    </div>
+    <div class="cell-sub">
+      <span class="icon icon-money"></span> {{ rev }}
+    </div>
+  </td>
+{% endfor %}
+
+<td class="num mini-total">
+  <div class="cell-main">
+     {{ r.total_mf }} <span class="unit">произв.</span>
+  </div>
+  <div class="cell-sub">
+     {{ r.total_rev_disp }}
+  </div>
+</td>
+
       </tr>
     {% endfor %}
   </tbody>

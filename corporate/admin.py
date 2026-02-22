@@ -38,7 +38,7 @@ from collections import defaultdict
 from corporate.reports.manufacturers_revenue import get_manufacturers_net_by_year
 from corporate.reports.manufacturers_lost_chart import build_lost_manufacturers_svg
 from corporate.reports.manufacturers_revenue_summary import build_manufacturers_brief
-from corporate.reports.manufacturers_by_rootcat import get_rootcat_manufacturers_count_by_year
+from corporate.reports.manufacturers_by_rootcat import get_rootcat_manufacturers_metrics_by_year
 from corporate.reports.manufacturers_wordstrip_chart import build_manufacturers_wordstrip_svg
 
 
@@ -274,13 +274,18 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
             ids=ids
         )
         
-        root_years, rootcat_rows = get_rootcat_manufacturers_count_by_year(
+        # root_years, rootcat_rows = get_rootcat_manufacturers_count_by_year(
+        #     start_year=2022,
+        #     manufacturer_ids=ids,
+        # )
+
+        # for r in rootcat_rows:
+        #     r["counts_list"] = [r["counts"].get(y, 0) for y in root_years]
+        
+        root_years, rootcat_rows = get_rootcat_manufacturers_metrics_by_year(
             start_year=2022,
             manufacturer_ids=ids,
         )
-
-        for r in rootcat_rows:
-            r["counts_list"] = [r["counts"].get(y, 0) for y in root_years]
             
         manufacturers_brief = build_manufacturers_brief(
             years=years,
