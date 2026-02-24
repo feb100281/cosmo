@@ -13,6 +13,8 @@ from ..formatters import fmt_money, fmt_int, fmt_pct
 from ..trends.trend_block import build_trends_context
 from .categories_period_data import get_categories_for_period
 from .categories_period_chart import build_categories_pareto_svg
+from .manufacturers_period_data import get_manufacturers_for_period
+from .manufacturers_period_chart import build_manufacturers_pareto_svg
 
 
 def _to_decimal(x) -> Decimal:
@@ -50,6 +52,30 @@ def build_kpi_context(
             share = (float(r["amount"]) / total_amount) if total_amount else 0.0
             categories_table.append({
                 "cat": str(r["cat_name"]),
+                "amount": fmt_money(r["amount"]),
+                "share": fmt_pct(share * 100),
+            })
+    
+    
+    # --- производители за период (Pareto + таблица) ---
+    mf_df = get_manufacturers_for_period(period_start, period_end)
+
+    manufacturers_pareto_svg = build_manufacturers_pareto_svg(
+        mf_df,
+        title=f"Производители: чистая выручка за период ({period_start:%d.%m.%Y}–{period_end:%d.%m.%Y})",
+        top_n=10,
+    )
+
+    manufacturers_table = []
+    if mf_df is not None and not mf_df.empty:
+        tmp = mf_df.sort_values("amount", ascending=False).copy()
+        total_amount = float(tmp["amount"].sum()) or 0.0
+        top = tmp.head(10).copy()
+
+        for _, r in top.iterrows():
+            share = (float(r["amount"]) / total_amount) if total_amount else 0.0
+            manufacturers_table.append({
+                "manufacturer": str(r["manufacturer_name"] or "Производитель не указан"),
                 "amount": fmt_money(r["amount"]),
                 "share": fmt_pct(share * 100),
             })
@@ -152,6 +178,8 @@ def build_kpi_context(
         
         "categories_pareto_svg": categories_pareto_svg,
         "categories_table": categories_table,
+        "manufacturers_pareto_svg": manufacturers_pareto_svg,
+        "manufacturers_table": manufacturers_table,
 
         "compare": compare,
         **trends_ctx,

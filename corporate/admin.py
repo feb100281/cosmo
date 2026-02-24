@@ -205,7 +205,7 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
         )
         return render(request, "admin/corporate/manufacturer/subcats_list.html", context)
 
-    @admin.action(description="🖨️ Печать: категории → производители, затем алфавит (HTML)")
+    @admin.action(description="🖨️ Печать")
     def print_manufacturers_action(self, request, queryset):
         ids = list(queryset.values_list("id", flat=True))
         if not ids:
@@ -680,7 +680,7 @@ class ItemsAdmin(admin.ModelAdmin):
         ]
         return custom + urls
 
-    @admin.action(description="🖨️ Печать списка (по группам) (HTML → PDF)")
+    @admin.action(description="🖨️ Печать")
     def print_items_action(self, request, queryset):
         ids = list(queryset.values_list("id", flat=True))
         if not ids:
@@ -741,7 +741,7 @@ class ItemsAdmin(admin.ModelAdmin):
 
         context = dict(
             self.admin_site.each_context(request),
-            title="Печать номенклатуры",
+            title="Номенклатура",
             generated_at=timezone.now(),
             rows=rows,
         )
@@ -1090,7 +1090,7 @@ class CatTreeAdmin(DraggableMPTTAdmin):
         return custom + urls
 
     # ---------- action ----------
-    @admin.action(description="🖨️ Печать дерева (HTML → PDF)")
+    @admin.action(description="🖨️ Печать каталога")
     def print_tree_action(self, request, queryset):
         ids = list(queryset.values_list("id", flat=True))
         if not ids:
@@ -1197,7 +1197,7 @@ class CatTreeAdmin(DraggableMPTTAdmin):
 
         context = dict(
             self.admin_site.each_context(request),
-            title="Печать категорий",
+            title="Каталог",
             generated_at=timezone.now(),
             rows=rows,
             chart_png=chart_png,

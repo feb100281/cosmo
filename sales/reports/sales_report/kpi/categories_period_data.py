@@ -1,3 +1,5 @@
+# sales/reports/sales_report/kpi/categories_period_data.py
+
 from __future__ import annotations
 
 from datetime import date
