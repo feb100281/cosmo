@@ -60,7 +60,7 @@ def _money_formatter(_):
 def build_categories_pareto_svg(
     df: pd.DataFrame,
     title: str,
-    top_n: int = 10,
+    top_n: int = 7,
 ) -> Optional[str]:
     """
     Категории за период (понятно собственнику + полезно операционщикам):

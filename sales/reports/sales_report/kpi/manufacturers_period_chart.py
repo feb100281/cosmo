@@ -44,7 +44,7 @@ def _money_formatter(_):
 def build_manufacturers_pareto_svg(
     df: pd.DataFrame,
     title: str,
-    top_n: int = 10,
+    top_n: int = 7,
 ) -> Optional[str]:
     """
     Производители за период:

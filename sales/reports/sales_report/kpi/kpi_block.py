@@ -39,7 +39,7 @@ def build_kpi_context(
     categories_pareto_svg = build_categories_pareto_svg(
         cat_df,
         title=f"Категории: чистая выручка за период ({period_start:%d.%m.%Y}–{period_end:%d.%m.%Y})",
-        top_n=10,
+        top_n=7,
     )
 
     categories_table = []
@@ -63,7 +63,7 @@ def build_kpi_context(
     manufacturers_pareto_svg = build_manufacturers_pareto_svg(
         mf_df,
         title=f"Производители: чистая выручка за период ({period_start:%d.%m.%Y}–{period_end:%d.%m.%Y})",
-        top_n=10,
+        top_n=7,
     )
 
     manufacturers_table = []
