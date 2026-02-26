@@ -33,7 +33,8 @@ FILE_COLUMNS = {
     "Дата документа":'date',    
     "Заказ клиента":'client_order',
     "Номер Заказа клиента":'client_order_number',
-    "Дата Заказа клиента":'client_order_date',
+    # "Дата Заказа клиента":'client_order_date',
+    "Дата Заказ клиента":'client_order_date',
     "Менеджер":'manager',
     "Подразделение":'store_name',
     "Агент":'agent',
@@ -533,7 +534,7 @@ def set_data(d:dict):
             AND (
                 client_order IS NULL OR client_order = '<Продажи без заказа>'
                 OR client_order_date IS NULL
-            );        
+            );     
         """
         with connection.cursor() as cursor:
             cursor.execute(q)
