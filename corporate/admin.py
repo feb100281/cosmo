@@ -47,6 +47,11 @@ from corporate.reports.manufacturers_top_by_year_svg import build_top_by_year_sv
 from corporate.reports.manufacturers_rootcat_mix_svg import build_rootcat_mix_svg
 from corporate.reports.manufacturers_revenue_by_rootcat import get_manufacturer_net_by_rootcat_total
 
+from datetime import date, datetime
+
+
+from corporate.reports.agents.agents_revenue import get_agents_metrics
+from corporate.reports.agents.utils import fmt_money_ru, fmt_int
 from decimal import Decimal
 from datetime import date
 
@@ -432,7 +437,8 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
         context = dict(
             self.admin_site.each_context(request),
             title="Производители",
-            generated_at=timezone.now(),
+            generated_at=datetime.now(),
+            
             cats_blocks=cats_blocks,
             rows=rows,
             total_cats=len(all_cats),
@@ -462,17 +468,11 @@ class ItemBrendAdmin(admin.ModelAdmin):
     search_fields = ("name",)
 
 
-
-
-
-
 class SubCategoryInline(admin.StackedInline):
     model = SubCategory
     extra = 0
     fields = ("name",)
     show_change_link = True
-
-
 
 
 class AssignCategoryForm(forms.Form):
@@ -489,10 +489,6 @@ class CatTreeForm(forms.ModelForm):
         }
     class Media:
         css = {"all": ("css/admin_overrides.css",)}
-
-
-
-
 
 
 class ItemsAdminForm(forms.ModelForm):
@@ -845,10 +841,6 @@ class StoreGroupAdmin(admin.ModelAdmin):
         css = {"all": ("css/admin_overrides.css",)}
 
 
-
-        
-        
-
 class SubCatAdmin(admin.ModelAdmin):
     list_display = ('name','category','items_count_link','icon_preview',)
     search_fields = ("name", "category__name")
@@ -877,11 +869,7 @@ class SubCatAdmin(admin.ModelAdmin):
     class Media:
         css = {"all": ("css/admin_overrides.css",)}
         
-        
-
-    
-    
-
+   
 class CatTreeForm(forms.ModelForm):
     class Meta:
         model = CatTree
@@ -1339,14 +1327,180 @@ class ManagersAdmin(admin.ModelAdmin):
         return format_html(" ".join(cells))
 
 
+#####-----АГЕНТЫ-----#####
+
+
+class HasPhoneFilter(admin.SimpleListFilter):
+    title = "Телефон"
+    parameter_name = "has_phone"
+
+    def lookups(self, request, model_admin):
+        return (("1", "есть"), ("0", "нет"))
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v == "1":
+            return queryset.exclude(tel__isnull=True).exclude(tel__exact="")
+        if v == "0":
+            return queryset.filter(Q(tel__isnull=True) | Q(tel__exact=""))
+        return queryset
+
+
+class HasEmailFilter(admin.SimpleListFilter):
+    title = "Почта"
+    parameter_name = "has_email"
+
+    def lookups(self, request, model_admin):
+        return (("1", "есть"), ("0", "нет"))
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v == "1":
+            return queryset.exclude(email__isnull=True).exclude(email__exact="")
+        if v == "0":
+            return queryset.filter(Q(email__isnull=True) | Q(email__exact=""))
+        return queryset
 
 
 
+@admin.register(Agents)
+class AgentsAdmin(admin.ModelAdmin):
+    # форма
+    fields = ("name", "report_name", "tel", "email", "contacts_preview", "completeness")
+    readonly_fields = ("contacts_preview", "completeness")
+
+    # список
+    list_display = ("name", "report_name", "tel_link", "email_link")
+    list_display_links = ("name", "report_name")
+    ordering = ("name",)
+
+    # поиск / фильтры
+    search_fields = ("name", "report_name", "tel", "email")
+    list_filter = (HasPhoneFilter, HasEmailFilter)
+    list_per_page = 50
+    actions = ("print_agents_action",)
+    
+
+    # ---------- кликабельные контакты ----------
+    @admin.display(description="Телефон", ordering="tel")
+    def tel_link(self, obj: Agents):
+        if not obj.tel:
+            return "—"
+        tel = str(obj.tel).strip()
+        href = tel.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+        return format_html('<a href="tel:{0}">{1}</a>', href, tel)
+
+    @admin.display(description="Почта", ordering="email")
+    def email_link(self, obj: Agents):
+        if not obj.email:
+            return "—"
+        return format_html('<a href="mailto:{0}">{0}</a>', obj.email)
+
+    # ---------- полезные readonly блоки ----------
+    @admin.display(description="Контакты")
+    def contacts_preview(self, obj: Agents):
+        parts = []
+        if obj.tel:
+            parts.append(f"📞 {obj.tel}")
+        if obj.email:
+            parts.append(f"✉️ {obj.email}")
+        return mark_safe("<br>".join(parts)) if parts else "Контакты не заполнены"
+
+    @admin.display(description="Заполненность")
+    def completeness(self, obj: Agents):
+        score = 0
+        total = 4
+        if obj.name:
+            score += 1
+        if obj.report_name:
+            score += 1
+        if obj.tel:
+            score += 1
+        if obj.email:
+            score += 1
+        return f"{score}/{total}"
+    
+    
 
 
+    @admin.action(description="🖨️ Печать")
+    def print_agents_action(self, request, queryset):
+        ids = list(queryset.values_list("id", flat=True))
+        # если ничего не выбрано — печатать всех
+        if not ids:
+            return redirect("print-agents/")
+        return redirect(f"print-agents/?ids={','.join(map(str, ids))}")
 
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "print-agents/",
+                self.admin_site.admin_view(self.print_agents_view),
+                name="corporate_agents_print",
+            ),
+        ]
+        return custom + urls
 
+    def print_agents_view(self, request):
+        # ids
+        ids_raw = (request.GET.get("ids") or "").strip()
+        ids = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
 
+        # период: по умолчанию YTD (без timezone)
+        today = date.today()
+        date_from_s = (request.GET.get("from") or "").strip()
+        date_to_s = (request.GET.get("to") or "").strip()
+
+        def parse_ymd(s: str) -> date | None:
+            try:
+                return datetime.strptime(s, "%Y-%m-%d").date()
+            except Exception:
+                return None
+
+        date_from = parse_ymd(date_from_s) or date(today.year, 1, 1)
+        date_to = parse_ymd(date_to_s) or today
+
+        rows_raw, totals = get_agents_metrics(
+            date_from=date_from,
+            date_to=date_to,
+            ids=ids if ids else None,
+        )
+
+        # готовим “плоские” строки под шаблон
+        rows = []
+        for r in rows_raw:
+            title = r.report_name or r.name or "—"
+            subtitle = r.name if r.report_name and r.name and r.report_name != r.name else ""
+            rows.append(
+                {
+                    "title": title,
+                    "subtitle": subtitle,
+                    "tel": r.tel,
+                    "email": r.email,
+                    "dt_disp": fmt_money_ru(r.dt),
+                    "cr_disp": fmt_money_ru(r.cr),
+                    "net_disp": fmt_money_ru(r.net),
+                    "orders": fmt_int(r.orders),
+                    "lines": fmt_int(r.lines),
+                }
+            )
+
+        # ВАЖНО: строка, не datetime (чтобы Django не делал localtime())
+        generated_at_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        context = dict(
+            self.admin_site.each_context(request),
+            generated_at_str=generated_at_str,
+            date_from=str(date_from),
+            date_to=str(date_to),
+            ids_raw=ids_raw,
+            totals_agents=fmt_int(totals.agents),
+            totals_net=fmt_money_ru(totals.net),
+            totals_orders=fmt_int(totals.orders),
+            rows=rows,
+        )
+        return render(request, "admin/corporate/agents/print_agents.html", context)
 
 
 
@@ -1366,7 +1520,7 @@ admin.site.register(ItemMaterial)
 admin.site.register(ItemZones)
 admin.site.register(SubCategory,SubCatAdmin)
 admin.site.register(Managers, ManagersAdmin) 
-admin.site.register(Agents)
+# admin.site.register(Agents)
 
 
 

@@ -1,3 +1,4 @@
+# sales/models.py
 from django.db import models
 from corporate.models import Items, Stores, Managers, Agents, Barcode
 from utils.choices import OPERATION_TYPES
@@ -35,7 +36,6 @@ class SalesOrders(models.Model):
         ]
 
 
-# Create your models here.
 class SalesData(models.Model):
     date = models.DateField(verbose_name="Дата")
     client_order_date = models.DateField(

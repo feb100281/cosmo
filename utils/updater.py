@@ -533,7 +533,7 @@ def set_data(d:dict):
             AND (
                 client_order IS NULL OR client_order = '<Продажи без заказа>'
                 OR client_order_date IS NULL
-            );     
+            );
         """
         with connection.cursor() as cursor:
             cursor.execute(q)
