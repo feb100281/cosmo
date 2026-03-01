@@ -4,7 +4,10 @@
 
 {% include "reports/sales_report/sections/trends/_trend_table.html" with trend=kpi_ctx.trend trend_meta=kpi_ctx.trend_meta %}
 
-{% include "reports/sales_report/sections/trends/_mtd_cum_chart.html" with svg=kpi_ctx.mtd_cum_chart_svg %}
+
+
+    {% include "reports/sales_report/sections/trends/_trend_chart.html" with trend_chart_svg=kpi_ctx.trend_chart_svg %}
+
   </div>
 </section>
 
