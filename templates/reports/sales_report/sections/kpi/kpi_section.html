@@ -2,13 +2,24 @@
 
 <section id="kpi">
   <div class="section">
+        <div class="kpi-first-page">
     <h2 class="section-title">{{ summary.title }}</h2>
 
     {% include "reports/sales_report/sections/kpi/_cards.html" with cards=kpi_ctx.cards %}
 
+    {% include "reports/sales_report/sections/kpi/_accum_cards.html" with accum_cards=kpi_ctx.accum_cards %}
+    {% include "reports/sales_report/sections/kpi/_period_text.html" with mtd_text=period_text.mtd_text ytd_text=period_text.ytd_text %}
+        </div>
+            <div class="page-break"></div>
+
     {% include "reports/sales_report/sections/kpi/_categories_period.html" %}
 
     {% include "reports/sales_report/sections/kpi/_manufacturers_period.html" %}
+    <div class="page-break"></div>
+
+    {% include "reports/sales_report/sections/kpi/_subcategories_ytd.html" with subcats_ytd=subcats_ytd %}
+    <div class="page-break"></div>
+
 
     <div class="page-break"></div>
 

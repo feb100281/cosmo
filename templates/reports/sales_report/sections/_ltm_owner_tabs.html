@@ -47,9 +47,78 @@
         <div class="m-s">закрытие {{ ltm_prophet.eom|date:"d.m.Y" }}</div>
 
         <div class="m-subnote">
-          Осталось добрать:
-          <b>{{ ltm_prophet.gap }}</b>
-          <span class="m-subnote__pct">{{ ltm_prophet.gap_pct }}</span>
+
+          {% if ltm_prophet.is_month_closed %}
+
+            {% if ltm_prophet.eom_accuracy and ltm_prophet.eom_accuracy.start %}
+              <div class="prophet-qa">
+                <div class="prophet-qa__head">
+                  <div class="prophet-qa__title">МЕСЯЦ ЗАКРЫТ — ОЦЕНКА ТОЧНОСТИ ПРОГНОЗА</div>
+                  <div class="prophet-qa__asof">
+                    Прогноз на {{ ltm_prophet.eom_accuracy.target_month }}, рассчитан {{ ltm_prophet.eom_accuracy.calc_date|date:"d.m.Y" }}
+                  </div>
+                </div>
+
+                <div class="prophet-qa__row">
+
+                  <div class="prophet-qa__cell">
+                    <div class="prophet-qa__k">Факт</div>
+                    <div class="prophet-qa__v">{{ ltm_prophet.eom_accuracy.fact }}</div>
+                  </div>
+
+                  <div class="prophet-qa__cell">
+                    <div class="prophet-qa__k">Прогноз</div>
+                    <div class="prophet-qa__v">{{ ltm_prophet.eom_accuracy.start.forecast }}</div>
+                  </div>
+
+                  {% with e=ltm_prophet.eom_accuracy.start %}
+                    {% if e.err_abs_raw > 0 %}
+                      {% with sign_class="positive" %}
+                        <div class="prophet-qa__cell">
+                          <div class="prophet-qa__k">Отклонение</div>
+                          <div class="prophet-qa__v prophet-qa__v--delta {{ sign_class }}">{{ e.err_abs }}</div>
+                        </div>
+
+                        <div class="prophet-qa__cell">
+                          <div class="prophet-qa__k">%</div>
+                          <div class="prophet-qa__v prophet-qa__v--delta {{ sign_class }}">{{ e.err_pct }}</div>
+                        </div>
+                      {% endwith %}
+                    {% else %}
+                      {% with sign_class="negative" %}
+                        <div class="prophet-qa__cell">
+                          <div class="prophet-qa__k">Отклонение</div>
+                          <div class="prophet-qa__v prophet-qa__v--delta {{ sign_class }}">{{ e.err_abs }}</div>
+                        </div>
+
+                        <div class="prophet-qa__cell">
+                          <div class="prophet-qa__k">%</div>
+                          <div class="prophet-qa__v prophet-qa__v--delta {{ sign_class }}">{{ e.err_pct }}</div>
+                        </div>
+                      {% endwith %}
+                    {% endif %}
+                  {% endwith %}
+
+                </div>
+
+                <div class="prophet-qa__foot">
+                  Знак отклонения: “+” — завышение прогноза, “−” — занижение.
+                </div>
+
+                <div class="prophet-qa__note">
+                  Прогноз был сформирован до начала месяца и не учитывал фактические данные текущего месяца.
+                </div>
+              </div>
+            {% endif %}
+
+          {% else %}
+
+            Осталось добрать:
+            <b>{{ ltm_prophet.gap }}</b>
+            <span class="m-subnote__pct">{{ ltm_prophet.gap_pct }}</span>
+
+          {% endif %}
+
         </div>
       </div>
 

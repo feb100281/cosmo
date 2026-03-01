@@ -8,6 +8,7 @@ from .trend_meta import trend_meta
 from .trend_chart import build_trend_chart_svg
 
 
+
 def build_trends_context(
     report_type: str,
     report_date: date,
@@ -19,4 +20,6 @@ def build_trends_context(
         "trend": trend,
         "trend_meta": trend_meta(report_type, report_date, points=points),
         "trend_chart_svg": build_trend_chart_svg(trend, metric="amount_raw"),
+        
+        
     }

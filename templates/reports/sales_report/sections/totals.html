@@ -10,7 +10,7 @@
 
       <div class="section-title section-sub">
         {% if report_type == "monthly" %}
-          III.1 Итог за месяц (к прошлому году)
+          III.1 MTD Итог за месяц (к прошлому году)
         {% else %}
           III.1 MTD (месяц, к прошлому году)
         {% endif %}
@@ -26,10 +26,25 @@
         {% endif %}
       </p>
 
-      {# ✅ ВЕСЬ MTD-блок (таблица + график + методика) — в один пакет для печати #}
-      <div class="mtd-pack">
+
 
         {{ table_mtd_html|safe }}
+
+{% if mtd_cum_svg %}
+  <div class="chart-block chart-block--mtd-cum avoid-break">
+    {{ mtd_cum_svg|safe }}
+  </div>
+{% endif %}
+
+
+{% if mtd_cat_waterfall_svg %}
+  <div class="chart-block chart-block--mtd avoid-break">
+    {{ mtd_cat_waterfall_svg|safe }}
+  </div>
+{% endif %}
+
+      {# ✅ ВЕСЬ MTD-блок (таблица + график + методика) — в один пакет для печати #}
+      <div class="mtd-pack">
 
         {% if mtd_waterfall_svg %}
           <div class="chart-block chart-block--mtd">
@@ -144,10 +159,22 @@
 
   {{ table_ytd_html|safe }}
 
+
+      {% if ytd_cat_waterfall_svg %}
+  <div class="chart-block chart-block--ytd avoid-break">
+    {{ ytd_cat_waterfall_svg|safe }}
+  </div>
+{% endif %}
+
+
   {% if ytd_cum_svg %}
     <div class="chart-block chart-block--ytd">
       {{ ytd_cum_svg|safe }}
     </div>
+
+
+
+
 
     {% if ytd_driver and ytd_driver.has %}
       {# ✅ тот же визуальный язык, что и MTD-методика #}

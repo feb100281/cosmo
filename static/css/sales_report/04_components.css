@@ -141,6 +141,7 @@
   text-decoration: none;
 
   transition: color .15s ease;
+  
 }
 
 .toc-item:hover{
@@ -806,6 +807,9 @@
 
 
 
-
+.avoid-break {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
 
 

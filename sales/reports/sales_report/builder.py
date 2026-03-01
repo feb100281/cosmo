@@ -37,6 +37,17 @@ from .orders.orders_lifecycle.lifecycle_block import build_orders_lifecycle_cont
 from .ltm_forecast_prophet_year import build_prophet_fy_vector
 from .prophet_fy_chart import build_prophet_fy_bar_svg
 
+from .kpi.period_text_block import build_period_text_context
+from .trends.mtd_cum_data import build_mtd_cum_series
+from .trends.mtd_cum_chart import build_mtd_cum_chart_svg
+
+from .categories_data import get_mtd_categories_raw
+from .categories_waterfall_mtd import build_mtd_categories_waterfall_svg
+from .categories_data import get_ytd_categories_raw
+from .categories_waterfall_ytd import build_ytd_categories_waterfall_svg
+
+from .kpi.subcategories_ytd_block import build_subcategories_ytd_context
+
 
 
 from .formatters import (
@@ -219,6 +230,7 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         period_end=period_end,
         trend_points=12,
     )
+    period_text = build_period_text_context(d)
     
     total_dt = fmt_money(kpi.get("dt"))        # оборот по всем
     total_cr = fmt_money(kpi.get("cr"))        # возвраты по всем
@@ -375,6 +387,15 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
     # --- MTD/YTD ---
     df_mtd_raw = get_month_data(d)
     df_ytd_raw = get_ytd_data(d)
+    mtd_cum_ctx = build_mtd_cum_series(df_mtd_raw, d)
+    mtd_cum_svg = build_mtd_cum_chart_svg(mtd_cum_ctx)
+    df_mtd_cat_raw = get_mtd_categories_raw(d)
+    mtd_cat_waterfall_svg = build_mtd_categories_waterfall_svg(df_mtd_cat_raw, top_n=10)
+    df_ytd_cat_raw = get_ytd_categories_raw(d)
+    ytd_cat_waterfall_svg = build_ytd_categories_waterfall_svg(df_ytd_cat_raw, top_n=10)
+    subcats_ytd = build_subcategories_ytd_context(d)
+
+    
 
     ytd_driver = build_ytd_driver_context(df_ytd_raw)
 
@@ -528,6 +549,7 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         "total_cr": total_cr,
         "total_amount": total_amount,
         "total_dt_fmt": fmt_money(kpi.get("dt")),
+        "period_text": period_text,
 
         # ✅ managers
         "managers": managers,
@@ -539,6 +561,10 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         "mtd_method": mtd_method,
         "ytd_cum_svg": ytd_cum_svg,
         "ytd_driver": ytd_driver,
+        "mtd_cum_svg": mtd_cum_svg,
+        "mtd_cat_waterfall_svg": mtd_cat_waterfall_svg,
+        "ytd_cat_waterfall_svg": ytd_cat_waterfall_svg,
+        "subcats_ytd": subcats_ytd,
 
         # ✅ 13m / LTM
         "revenue_13m_svg": revenue_13m_svg,

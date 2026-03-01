@@ -1,0 +1,73 @@
+/* =========================
+   PROPHET QA BLOCK (compact KPI)
+========================= */
+
+.prophet-qa{
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid #E3E6ED;
+  background: #FAFBFD;
+}
+
+.prophet-qa__head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.prophet-qa__title{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: #2E3440;
+}
+
+.prophet-qa__asof{
+  font-size: 12px;
+  color:#6B7280;
+  white-space: nowrap;
+}
+
+.prophet-qa__row{
+  display:grid;
+  grid-template-columns: 1.2fr 1.2fr 1fr .8fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.prophet-qa__cell{
+  padding: 10px 12px;
+  background:#fff;
+  border:1px solid #E5E9F2;
+}
+
+.prophet-qa__k{
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color:#6B7280;
+  margin-bottom: 6px;
+}
+
+.prophet-qa__v{
+  font-size: 16px;
+  font-weight: 700;
+  color:#111827;
+}
+
+.prophet-qa__v--delta{
+  font-variant-numeric: tabular-nums;
+}
+
+.prophet-qa__foot{
+  margin-top: 10px;
+  font-size: 12px;
+  color:#6B7280;
+}
+
+/* как ты и хотела: красный = завышение, зелёный = занижение */
+.prophet-qa__v--delta.positive{ color:#B91C1C; }
+.prophet-qa__v--delta.negative{ color:#065F46; }

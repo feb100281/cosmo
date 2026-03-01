@@ -45,9 +45,11 @@
 
 
 @page{
-  size: A4;
+  size: A4; margin: 0; 
   margin: 12mm 10mm;
 }
+
+
 
 /* на всякий: wkhtmltopdf любит распирать блоки */
 .section, .store-chart-card, .store-chart-wrap{
