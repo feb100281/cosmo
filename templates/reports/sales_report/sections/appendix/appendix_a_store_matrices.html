@@ -1,0 +1,50 @@
+{% load l10n %}
+
+<section id="appendix-a">
+  <div class="section">
+
+    <h2 class="section-title">
+      Приложение A. Матрицы изменений выручки (магазин × категории)
+    </h2>
+
+    <p class="section-note">
+      В приложении приведены детализированные матрицы изменений выручки (Δ₽)
+      по магазинам и категориям.
+      Матрицы используются как справочный материал к разделу
+      Анализ снижения выручки по категориям в разрезе магазинов».
+    </p>
+
+    {# ===================== YTD ===================== #}
+    {% if stores_cat_diag_ytd.has %}
+      <div class="page-break"></div>
+
+      <h3 class="section-subtitle">
+        YTD ({{ stores_cat_diag_ytd.y_curr|unlocalize }} vs {{ stores_cat_diag_ytd.y_prev|unlocalize }})
+      </h3>
+
+      <div class="diag-block">
+        {{ stores_cat_diag_ytd.matrix_html|safe }}
+      </div>
+
+      <div class="page-break"></div>
+
+      <div class="diag-block">
+        {{ stores_cat_diag_ytd.matrix_qty_html|safe }}
+      </div>
+    {% endif %}
+
+    {# ===================== MTD ===================== #}
+    {% if stores_cat_diag_mtd.has %}
+      <div class="page-break"></div>
+
+      <h3 class="section-subtitle">
+        MTD ({{ stores_cat_diag_mtd.y_curr|unlocalize }} vs {{ stores_cat_diag_mtd.y_prev|unlocalize }})
+      </h3>
+
+      <div class="diag-block">
+        {{ stores_cat_diag_mtd.matrix_html|safe }}
+      </div>
+    {% endif %}
+
+  </div>
+</section>

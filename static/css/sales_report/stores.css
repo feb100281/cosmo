@@ -1,0 +1,557 @@
+/* =====================================================================
+   STORES DIAGNOSTICS — LIGHT THEME (business)
+   Полный пакет стилей: top-table + matrices + print (PDF из браузера)
+   ===================================================================== */
+
+/* ===== base tokens ===== */
+:root{
+  --diag-border: #E7ECF4;
+  --diag-border-2: #D9E2F1;
+  --diag-muted: #6B7280;
+  --diag-text: #111827;
+  --diag-title: #0F172A;
+
+  --diag-pill-neg-bg: #FEE2E2;
+  --diag-pill-neg-br: #FCA5A5;
+  --diag-pill-neg-tx: #991B1B;
+
+  --diag-pill-pos-bg: #DCFCE7;
+  --diag-pill-pos-br: #86EFAC;
+  --diag-pill-pos-tx: #166534;
+
+  --diag-zebra: #F7F9FC;
+  --diag-card-bg: #FFFFFF;
+
+  --diag-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+
+  /* matrix — more “expensive” look */
+  --matrix-header-bg: #F3F6FF;
+  --matrix-sticky-bg: #FFFFFF;
+  --matrix-grid: #DCE3EF;
+
+  /* heatmap — not pastel */
+  --heat-neg: 185, 28, 28;  /* red-700 */
+  --heat-pos: 21, 128, 61;  /* green-700 */
+  --heat-alpha-min: 0.18;   /* was 0.08 */
+  --heat-alpha-max: 0.92;   /* was 0.62 */
+}
+
+/* ===== container ===== */
+.diag-block{ width: 100%; }
+
+/* ===== card ===== */
+.diag-card{
+  width: 100%;
+  background: var(--diag-card-bg);
+  overflow: hidden;
+  box-shadow: var(--diag-shadow);
+  margin-bottom: 14px;
+}
+
+/* header */
+.diag-card-header{
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FBFCFF 100%);
+  border-bottom: 1px solid var(--diag-border);
+  color: var(--diag-title);
+  font-size: 14px;
+  letter-spacing: .2px;
+}
+.diag-card-header strong{ font-weight: 800; }
+
+/* ===== tables base ===== */
+.diag-table{
+  width: 100% !important;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* IMPORTANT: prevent ugly wraps of numbers in browser->PDF */
+.diag-table th,
+.diag-table td{
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+/* header base */
+.diag-table th{
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: #334155;
+  background: #F1F5FF;
+  border-bottom: 1px solid var(--diag-border);
+  white-space: nowrap; /* no wraps in headers */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* body base */
+.diag-table td{
+  vertical-align: middle;
+  font-size: 13px;
+  color: var(--diag-text);
+  font-weight: 500;
+  border-top: 1px solid var(--diag-border);
+}
+
+/* muted */
+.diag-table .text-muted{ color: var(--diag-muted) !important; }
+
+/* truncate helper */
+.diag-table .text-truncate{
+  max-width: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* numeric alignment */
+.diag-table .num{
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;         /* ключ: цифры не переносятся */
+}
+
+/* ===== top table zebra ===== */
+.diag-top{ width: 100%; }
+.diag-top tbody tr:nth-child(2n){ background: var(--diag-zebra); }
+
+/* ===== delta pill ===== */
+.pill{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 2px;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: .2px;
+  border: 1px solid var(--diag-border-2);
+  font-variant-numeric: tabular-nums;
+  background: #F8FAFC;
+  color: #0F172A;
+  white-space: nowrap;         /* ключ: pill не ломается */
+}
+.pill-neg{
+  background: var(--diag-pill-neg-bg);
+  border-color: var(--diag-pill-neg-br);
+  color: var(--diag-pill-neg-tx);
+}
+.pill-pos{
+  background: var(--diag-pill-pos-bg);
+  border-color: var(--diag-pill-pos-br);
+  color: var(--diag-pill-pos-tx);
+}
+
+/* ===== values (₽ + шт) ===== */
+.val-main{
+  font-weight: 600;
+  line-height: 1.05;
+  white-space: nowrap;         /* ключ: число в строке не переносится */
+}
+.val-sub{
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.05;
+  color: #6B7280;
+  font-weight: 500;
+  white-space: nowrap;         /* ключ: “1,2 тыс шт” не ломается */
+}
+
+/* ===========================================================
+   ВАЖНО: "раскарточиваем" ТОЛЬКО ТОП-таблицу (без рамки/карточки)
+   =========================================================== */
+/* раскарточиваем только ТОП-таблицу — стабильно в PDF */
+.diag-card-top{
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+.diag-card-top .diag-card-header{
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+/* note */
+.section-note{
+  margin-top: 6px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: #6B7280;
+  line-height: 1.4;
+  max-width: 900px;
+}
+
+/* =====================================================================
+   MATRIX — strict business heatmap (no pastel, clean grid)
+   ===================================================================== */
+
+/* wrapper */
+.diag-matrix-wrap{ padding: 0; }
+
+/* matrix table itself */
+.diag-table.diag-matrix{
+  width: 100% !important;
+  table-layout: fixed;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+
+  /* tighter, more “report” feel */
+  border-top: 1px solid var(--matrix-grid);
+}
+
+/* IMPORTANT: prevent Bootstrap .table-dark from overriding matrix head */
+.diag-table.diag-matrix thead{ background: var(--matrix-header-bg) !important; }
+.diag-table.diag-matrix thead.table-dark{ background: var(--matrix-header-bg) !important; }
+
+/* header cells */
+.diag-table.diag-matrix thead th{
+  background: var(--matrix-header-bg) !important;
+  color: #0F172A !important;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 800;
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--matrix-grid);
+  border-top: 1px solid var(--matrix-grid);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* column heads truncation */
+.diag-matrix th.diag-colhead{
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* body cells (grid) */
+.diag-table.diag-matrix tbody td{
+  padding: 10px 10px;
+  height: 44px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--matrix-grid);
+  border-right: 1px solid var(--matrix-grid);
+  background: #FFFFFF;
+}
+
+/* first column (group names) */
+.diag-table.diag-matrix tbody td.diag-sticky-col{
+  background: var(--matrix-sticky-bg);
+  color: #6B7280;
+  font-weight: 650;
+  border-left: 1px solid var(--matrix-grid);
+  border-right: 1px solid var(--matrix-grid);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* heatmap value cells */
+.diag-matrix td.diag-cell{
+  font-weight: 850;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  white-space: nowrap;         /* ключ: значения не переносятся */
+}
+
+/* zebra on rows for readability */
+.diag-table.diag-matrix tbody tr:nth-child(2n) td{
+  background-color: var(--diag-zebra);
+}
+
+/* but keep zebra away from heatmap-painted cells */
+.diag-table.diag-matrix tbody tr:nth-child(2n) td.diag-cell{
+  background-color: transparent;
+}
+
+/* zero cells = “as if no cell” */
+.diag-matrix td.diag-cell.is-zero{
+  background: transparent !important;
+  color: transparent !important;
+}
+.diag-matrix td.diag-cell.is-zero::after{ content: " "; }
+
+/* sticky */
+.diag-sticky-col{
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+/* header sticky */
+.diag-table.diag-matrix thead th.diag-sticky-col{
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--matrix-header-bg) !important;
+  border-right: 1px solid var(--matrix-grid);
+}
+
+/* =====================================================================
+   PRINT / PDF (Browser “Save as PDF”)
+   - keeps numbers on one line
+   - keeps colors in PDF
+   - prevents rows splitting badly
+   ===================================================================== */
+@media print{
+  /* make browsers print heatmap colors */
+  *{
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* remove sticky weirdness in print */
+  .diag-sticky-col{
+    position: static !important;
+  }
+
+  /* prevent tables from breaking mid-row */
+  table, thead, tbody, tr, td, th{
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* ensure numbers never wrap in PDF */
+  .diag-table td,
+  .diag-table th,
+  .num,
+  .pill,
+  .val-main,
+  .val-sub,
+  .diag-cell{
+    white-space: nowrap !important;
+  }
+
+  /* slightly denser for PDF */
+  .diag-card{ box-shadow: none !important; }
+  .diag-card-header{ padding: 10px 12px !important; }
+
+  .diag-table.diag-matrix tbody td{
+    height: 38px !important;
+    padding: 7px 8px !important;
+  }
+  .diag-table.diag-matrix thead th{
+    padding: 8px 8px !important;
+  }
+}
+
+
+
+/* =========================================================
+   MATRIX CLEAN v2 — аккуратная деловая матрица
+   (только стили, без правок Python)
+   Вставить в САМЫЙ КОНЕЦ CSS
+   ========================================================= */
+
+/* 1) Единый шрифт в блоке диагностики (если Manrope подключён — будет Manrope) */
+.diag-block,
+.diag-card,
+.diag-table{
+  font-family: Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* 2) Матрица: тоньше сетка, меньше воздуха, аккуратные размеры */
+table.diag-table.diag-matrix{
+  border-top: 1px solid #DCE3EF !important;
+  border-left: 1px solid #DCE3EF !important;
+  border-right: 1px solid #DCE3EF !important;
+  border-bottom: 1px solid #DCE3EF !important;
+}
+
+/* 3) Убираем влияние Bootstrap table-dark на матрицу */
+table.diag-table.diag-matrix thead,
+table.diag-table.diag-matrix thead.table-dark{
+  background: #F3F6FF !important;
+}
+table.diag-table.diag-matrix thead th{
+  background: #F3F6FF !important;
+  color: #0F172A !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase !important;
+  padding: 8px 8px !important;     /* было жирно — делаем тоньше */
+  border-bottom: 1px solid #DCE3EF !important;
+  border-top: 1px solid #DCE3EF !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* sticky header cell */
+table.diag-table.diag-matrix thead th.diag-sticky-col{
+  background: #F3F6FF !important;
+  border-right: 1px solid #DCE3EF !important;
+}
+
+/* 4) Тело матрицы: компактнее и “табличнее” */
+table.diag-table.diag-matrix tbody td{
+  padding: 6px 8px !important;      /* меньше воздуха */
+  height: 34px !important;          /* тоньше строки */
+  border-bottom: 1px solid #DCE3EF !important;
+  border-right: 1px solid #DCE3EF !important;
+  font-size: 12px !important;
+  line-height: 1.1 !important;
+}
+
+/* Первая колонка (группы) — как аккуратная таблица */
+table.diag-table.diag-matrix tbody td.diag-sticky-col{
+  background: #FFFFFF !important;
+  color: #6B7280 !important;
+  font-weight: 650 !important;
+  border-left: 1px solid #DCE3EF !important;
+  border-right: 1px solid #DCE3EF !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* 5) Ячейки значений: один стиль, один цвет текста (убиваем inline color) */
+table.diag-table.diag-matrix td.diag-cell{
+  font-weight: 750 !important;
+  color: #0F172A !important;     /* ВАЖНО: всегда тёмный текст */
+  white-space: nowrap !important;
+}
+
+/* 6) Нули — реально пустые */
+table.diag-table.diag-matrix td.diag-cell.is-zero{
+  background: transparent !important;
+  color: transparent !important;
+}
+table.diag-table.diag-matrix td.diag-cell.is-zero::after{
+  content: " ";
+}
+
+/* 7) Зебра — очень мягкая (чтобы не “грязнила” heatmap) */
+table.diag-table.diag-matrix tbody tr:nth-child(2n) td{
+  background: #FAFCFF !important;
+}
+table.diag-table.diag-matrix tbody tr:nth-child(2n) td.diag-cell{
+  background-color: transparent !important; /* heatmap главнее */
+}
+
+/* 8) Визуально “сжимаем” table-responsive, чтобы не добавлял лишний воздух */
+.diag-matrix-wrap{
+  padding: 0 !important;
+}
+
+
+/* Выделение названия категории в заголовке матрицы */
+.matrix-root{
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: #0F172A;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #EEF2FF;   /* лёгкий холодный фон */
+}
+
+
+
+/* 9) Печать/PDF: цифры не переносятся, цвета печатаются, строки не рвутся */
+@media print{
+  *{
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* sticky в печати иногда ломает ширины */
+  .diag-sticky-col{ position: static !important; }
+
+  table, thead, tbody, tr, td, th{
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* запрет переносов в цифрах/ячейках */
+  table.diag-table.diag-matrix td,
+  table.diag-table.diag-matrix th,
+  .diag-table .num,
+  .diag-cell{
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+}
+
+
+@media print{
+  /* 1) фиксируем формат страницы */
+  @page{
+    size: A4 landscape;      /* если печатаешь в альбомной */
+    margin: 10mm 8mm;
+  }
+
+  /* 2) делаем топ-таблицу чуть компактнее, чтобы всё влезало */
+  .diag-top th, .diag-top td{
+    padding: 6px 8px !important;
+  }
+  .diag-top th{
+    font-size: 10px !important;
+  }
+  .diag-top td{
+    font-size: 12px !important;
+  }
+
+  /* 3) важное: даём текстовым колонкам право сжиматься корректно */
+  .diag-top td:nth-child(1),
+  .diag-top td:nth-child(2){
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
+
+
+
+/* ===== TOP table: print-safe ===== */
+@media print {
+
+  @page{
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  /* главное: позволяем браузеру нормально раздать ширины */
+  table.diag-top{
+    table-layout: auto !important;  /* <-- ключ */
+  }
+
+  /* убираем глобальные nowrap в печати именно для top-таблицы */
+  table.diag-top td.num{
+    white-space: normal !important; /* можно переносить */
+  }
+
+  /* но цифры внутри "Было/Стало" пусть остаются в строку */
+  table.diag-top .val-main,
+  table.diag-top .val-sub,
+  table.diag-top .pill{
+    white-space: nowrap !important;
+  }
+
+  /* Δ%: гарантируем что оно не обрежется */
+  table.diag-top th:last-child,
+  table.diag-top td:last-child{
+    min-width: 60px !important;
+  }
+
+  /* чуть компактнее, чтобы всё влезало */
+  table.diag-top th{ font-size: 10px !important; }
+  table.diag-top td{ font-size: 11px !important; }
+  table.diag-top .pill{ padding: 3px 6px !important; }
+}
+
+
+
+a,
+a:visited {
+  color: #6f42c1;
+}

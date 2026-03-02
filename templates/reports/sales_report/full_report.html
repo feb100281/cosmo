@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="{% static 'css/sales_report/logo.css' %}">
 <link rel="stylesheet" href="{% static 'css/sales_report/order.css' %}">
 <link rel="stylesheet" href="{% static 'css/sales_report/prophet_qa.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/stores.css' %}">
 
 
 {% endblock %}
@@ -50,4 +51,11 @@
 
   {% include "reports/sales_report/sections/stores.html" %}
   <div class="page-break"></div>
+
+  {% include "reports/sales_report/sections/appendix/appendix_a_store_matrices.html" %}
+<div class="page-break"></div>
+
+{% include "reports/sales_report/sections/appendix/appendix_b_subcategories_ytd.html" %}
+<div class="page-break"></div>
+
 {% endblock %}

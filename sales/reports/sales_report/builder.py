@@ -16,7 +16,7 @@ from .kpi.summary import build_summary
 from .kpi.kpi_data import build_kpi_for_range
 from .kpi.kpi_block import build_kpi_context
 
-from .stores import get_store_sales_for_range
+from .stores.store_sales import get_store_sales_for_range
 from .store_chart import build_store_amount_bar_svg
 from .store_logos import attach_store_logos
 
@@ -47,6 +47,7 @@ from .categories_data import get_ytd_categories_raw
 from .categories_waterfall_ytd import build_ytd_categories_waterfall_svg
 
 from .kpi.subcategories_ytd_block import build_subcategories_ytd_context
+from .stores.storegroup_category_block import build_storegroup_category_diagnostics_block
 
 
 
@@ -523,6 +524,9 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         period_end=period_end,
         generated_dt=None,
     )
+    
+    stores_cat_diag_ytd = build_storegroup_category_diagnostics_block(d, mode="ytd")
+    stores_cat_diag_mtd = build_storegroup_category_diagnostics_block(d, mode="mtd")
 
     return {
         "obj": obj,
@@ -592,4 +596,8 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         "orders": orders,
         "orders_flow": orders_flow,
         "orders_lifecycle": orders_lifecycle,
+        
+        # ✅ shops
+        "stores_cat_diag_ytd": stores_cat_diag_ytd,
+        "stores_cat_diag_mtd": stores_cat_diag_mtd,
     }

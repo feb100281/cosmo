@@ -207,6 +207,7 @@ class StoreGroups(models.Model):
     name = models.CharField(max_length=250,verbose_name='Наименование группы')
     region = models.CharField(max_length=250,choices=REGION_CHOICES, default='г. Москва')
     pict = models.ImageField(upload_to='storelogos/', blank=True, null=True,verbose_name='Логотип')
+    is_active = models.BooleanField(default=True, verbose_name="Активная группа")
     
     class Meta:
         verbose_name = "Группа магазина"
