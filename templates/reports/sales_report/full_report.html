@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="{% static 'css/sales_report/order.css' %}">
 <link rel="stylesheet" href="{% static 'css/sales_report/prophet_qa.css' %}">
 <link rel="stylesheet" href="{% static 'css/sales_report/stores.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/managers.css' %}">
 
 
 {% endblock %}
@@ -37,6 +38,10 @@
 
   {% include "reports/sales_report/sections/totals.html" %}
   <div class="page-break"></div>
+
+
+  {% include "reports/sales_report/sections/managers/managers_section.html" %}
+<div class="page-break"></div>
 
 
   {% include "reports/sales_report/sections/orders/orders_section.html" %}

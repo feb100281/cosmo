@@ -1,0 +1,219 @@
+/* =========================================
+   MANAGERS SECTION
+   ========================================= */
+
+#managers {
+  --mgr-text: #182033;
+  --mgr-muted: #6f7892;
+  --mgr-line: #c8d2f0;
+  --mgr-line-strong: #6a84d9;
+  --mgr-bg-soft: #f6f8ff;
+  --mgr-bg-card: #ffffff;
+  --mgr-shadow: 0 10px 26px rgba(28, 45, 94, 0.08);
+  --mgr-shadow-soft: 0 6px 18px rgba(28, 45, 94, 0.06);
+
+  --mgr-accent: #2347b6;
+  --mgr-accent-soft: #edf2ff;
+
+  --mgr-ok-bg: #edf8f0;
+  --mgr-ok-text: #2b6e3f;
+
+  --mgr-warn-bg: #fff7e8;
+  --mgr-warn-text: #9a6700;
+
+  --mgr-crit-bg: #fff0f0;
+  --mgr-crit-text: #b42318;
+}
+
+
+/* =========================================
+   LEAD / SUMMARY
+   ========================================= */
+
+#managers .kpi-footnote {
+  max-width: 980px;
+  line-height: 1.55;
+  color: var(--mgr-muted);
+  font-size: 13px;
+}
+
+#managers .compare-title {
+  margin-bottom: 14px;
+}
+
+#managers .insights-block {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+
+#managers .insight-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  border: 1px solid #dbe3fb;
+  border-radius: 10px;
+  padding: 12px 16px 10px 16px;
+  box-shadow: 0 4px 12px rgba(28, 45, 94, 0.04);
+  break-inside: avoid;
+  page-break-inside: avoid;
+  position: relative;
+}
+
+#managers .insight-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 3px;
+  background: #2f55c7;
+}
+
+#managers .insight-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4562c6;
+  margin: 0 0 8px 12px;
+  line-height: 1.2;
+}
+
+#managers .insight-list {
+  margin: 0;
+  padding-left: 26px;
+}
+
+#managers .insight-list li {
+  margin: 3px 0;
+  color: #22304d;
+  line-height: 1.45;
+  font-size: 13px;
+}
+
+#managers .insight-list b,
+#managers .insight-list strong {
+  font-weight: 700;
+  color: #10182b;
+}
+
+/* =========================================
+   RISK STATES
+   ========================================= */
+
+#managers .compare-table tbody tr.row-warn {
+  background: #fffaf0;
+}
+
+#managers .compare-table tbody tr.row-warn:nth-child(even) {
+  background: #fff7ea;
+}
+
+#managers .compare-table tbody tr.row-crit {
+  background: #fff3f3;
+}
+
+#managers .compare-table tbody tr.row-crit:nth-child(even) {
+  background: #ffefef;
+}
+
+
+/* =========================================
+   RETURN RATE BADGES
+   ========================================= */
+
+#managers .rr-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+#managers .rr-badge--ok {
+  color: var(--mgr-ok-text);
+
+}
+
+#managers .rr-badge--warn {
+  color: var(--mgr-warn-text);
+
+}
+
+#managers .rr-badge--crit {
+  color: var(--mgr-crit-text);
+
+}
+
+#managers .rr-badge--na {
+  color: #667085;
+}
+
+
+
+
+/* =========================================
+   TABLE HEADER
+   ========================================= */
+
+#managers .table-section-header{
+  margin: 26px 0 12px 0;
+}
+
+#managers .table-title{
+  font-size:18px;
+  font-weight:800;
+  color:#182033;
+  letter-spacing:0.01em;
+}
+
+#managers .table-subtitle{
+  margin-top:4px;
+  font-size:13px;
+  color:#6f7892;
+}
+
+#managers .table-section-header{
+  page-break-after: avoid;
+}
+
+#managers .compare-table{
+  page-break-inside: auto;
+}
+
+
+/* =========================================
+   NOTES
+   ========================================= */
+
+
+#managers .managers-note{
+    font-size:13px;
+    line-height:1.5;
+    color:#6f7892;
+    max-width:900px;
+}
+
+
+/* =========================================
+   PRINT
+   ========================================= */
+
+@media print {
+  #managers .insight-card {
+    box-shadow: none;
+  }
+
+  #managers .compare-table {
+    box-shadow: none;
+  }
+
+  #managers .compare-table tbody tr:hover {
+    background: inherit;
+  }
+}

@@ -49,6 +49,8 @@ from .categories_waterfall_ytd import build_ytd_categories_waterfall_svg
 from .kpi.subcategories_ytd_block import build_subcategories_ytd_context
 from .stores.storegroup_category_block import build_storegroup_category_diagnostics_block
 
+from .managers.block import build_managers_shipments_context
+
 
 
 from .formatters import (
@@ -447,12 +449,19 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
     ).get("html", "")
 
     # --- MANAGERS ---
-    managers = build_managers_context(
-        d,
-        big_order_threshold=100_000,
-        return_warn_pct=5.5,
-        return_crit_pct=8.0,
-    )
+    # managers = build_managers_context(
+    #     d,
+    #     big_order_threshold=100_000,
+    #     return_warn_pct=5.5,
+    #     return_crit_pct=8.0,
+    # )
+    
+    managers = build_managers_shipments_context(
+    d,
+    big_order_threshold=100_000,
+    return_warn_pct=5.5,
+    return_crit_pct=8.0,
+)
 
     # --- 13M / LTM ---
     ltm_start, ltm_end = last_13m_range(d)
