@@ -1,3 +1,4 @@
+# sales/reports/sales_report/managers/block.py
 import pandas as pd
 from datetime import timedelta
 
@@ -80,12 +81,14 @@ def _fmt_money_mln2(v: float) -> str:
 def _rr_class(rr: float | None, warn: float, crit: float) -> str:
     """
     Для подсветки возвратного % (бейдж).
+    rr хранится в доле: 0.055 = 5.5%
+    warn / crit приходят в процентах: 5.5 / 8.0
     """
     if rr is None:
         return "rr-na"
-    if rr >= crit:
+    if rr >= crit / 100:
         return "rr-crit"
-    if rr >= warn:
+    if rr >= warn / 100:
         return "rr-warn"
     return "rr-ok"
 
@@ -109,13 +112,17 @@ def _build_rows(
 
     pm_map = _index_by(pm)
 
-    total_amount = float(cur["amount"].sum()) or 0.0
+    total_amount = float(cur["amount"].sum()) or 0.0   # чистая выручка
     total_dt = float(cur["dt"].sum()) or 0.0
-    total_cr = float(cur["cr"].sum()) or 0.0
+    total_cr = float(cur["cr"].sum()) or 0.0           # возвраты
     total_orders = float(cur["orders_with_shipments"].sum()) or 0.0
 
     total_aov = _safe_div(total_dt, total_orders)
-    total_rr = (_safe_div(total_cr, total_dt) * 100) if total_dt else None
+
+    # валовая выручка = чистая выручка + возвраты
+    gross_total = total_amount + total_cr
+    # total_rr = (_safe_div(total_cr, gross_total) * 100) if gross_total else None
+    total_rr = _safe_div(total_cr, gross_total) if gross_total else None
 
     rows = []
 
@@ -129,29 +136,34 @@ def _build_rows(
         prev = pm_map.get(key)
 
         name = r["manager_name"]
-        curr_amount = float(r["amount"])
+        curr_amount = float(r["amount"])   # чистая выручка
         curr_dt = float(r["dt"])
-        curr_cr = float(r["cr"])
+        curr_cr = float(r["cr"])           # возвраты
         curr_orders = float(r["orders_with_shipments"]) or 0.0
 
-        # средний чек (по обороту)
+        # средняя отгрузка на заказ (по обороту dt, как и было)
         aov = _safe_div(curr_dt, curr_orders)
 
         # прошлый месяц (по тем же дням)
-        aov_prev = _safe_div(float(prev["dt"]), float(prev["orders_with_shipments"])) if prev is not None else None
+        aov_prev = _safe_div(
+            float(prev["dt"]),
+            float(prev["orders_with_shipments"])
+        ) if prev is not None else None
 
         # MoM абсолют
         d_aov_abs = (aov - aov_prev) if (aov is not None and aov_prev is not None) else None
 
-        # возвратный %
-        rr = (_safe_div(curr_cr, curr_dt) * 100) if curr_dt else None
+        # возвратный % = возвраты / валовая выручка
+        gross_sales = curr_amount + curr_cr
+        # rr = (_safe_div(curr_cr, gross_sales) * 100) if gross_sales else None
+        rr = _safe_div(curr_cr, gross_sales) if gross_sales else None
         rr_cls = _rr_class(rr, return_warn_pct, return_crit_pct)
 
         row_flag = ""
         if rr is not None:
-            if rr >= return_crit_pct:
+            if rr >= return_crit_pct / 100:
                 row_flag = "crit"
-            elif rr >= return_warn_pct:
+            elif rr >= return_warn_pct / 100:
                 row_flag = "warn"
 
         nm = _split_manager_name(name)
@@ -182,7 +194,7 @@ def _build_rows(
         })
 
         if rr is not None:
-            rr_list.append((name, rr, curr_dt, curr_cr))
+            rr_list.append((name, rr, gross_sales, curr_cr))
 
         if aov is not None:
             aov_list.append((name, aov))
@@ -221,7 +233,7 @@ def _build_rows(
 
     if total_rr is not None:
         quality_items = [
-            f"Средний возвратный процент: <b>{fmt_pct(total_rr)}</b> (возвраты / оборот).",
+            f"Средний возвратный процент: <b>{fmt_pct(total_rr)}</b> (возвраты / валовая выручка).",
         ]
 
         if rr_list:
@@ -270,10 +282,10 @@ def build_managers_shipments_context(
     )
 
     mtd_block["chart_svg"] = build_managers_bar_svg(
-    mtd_block["rows"],
-    title="MTD: ТОП менеджеров по чистой выручке",
-    top_n=10,
-)
+        mtd_block["rows"],
+        title="MTD: ТОП менеджеров по чистой выручке",
+        top_n=10,
+    )
 
     ytd_block["chart_svg"] = build_managers_bar_svg(
         ytd_block["rows"],
