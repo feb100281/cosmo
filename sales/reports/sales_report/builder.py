@@ -49,6 +49,8 @@ from .categories_waterfall_ytd import build_ytd_categories_waterfall_svg
 from .kpi.subcategories_ytd_block import build_subcategories_ytd_context
 from .stores.storegroup_category_block import build_storegroup_category_diagnostics_block
 
+from .stores.performance import build_store_performance_html_block
+
 from .managers.block import build_managers_shipments_context
 
 
@@ -536,6 +538,8 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
     
     stores_cat_diag_ytd = build_storegroup_category_diagnostics_block(d, mode="ytd")
     stores_cat_diag_mtd = build_storegroup_category_diagnostics_block(d, mode="mtd")
+    
+    stores_perf = build_store_performance_html_block(d)
 
     return {
         "obj": obj,
@@ -609,4 +613,5 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         # ✅ shops
         "stores_cat_diag_ytd": stores_cat_diag_ytd,
         "stores_cat_diag_mtd": stores_cat_diag_mtd,
+        "stores_perf": stores_perf,
     }

@@ -54,8 +54,13 @@
   {% include "reports/sales_report/sections/categories.html" %}
   <div class="page-break"></div>
 
-  {% include "reports/sales_report/sections/stores.html" %}
+  {% comment %} {% include "reports/sales_report/sections/stores.html" %}
+  <div class="page-break"></div> {% endcomment %}
+
+  {% include "reports/sales_report/sections/stores/_performance.html" %}
+  {% include "reports/sales_report/sections/stores/_diag_categories.html" %}
   <div class="page-break"></div>
+
 
   {% include "reports/sales_report/sections/appendix/appendix_a_store_matrices.html" %}
 <div class="page-break"></div>

@@ -1,3 +1,4 @@
+# sales/reports/sales_report/stores/storegroup_category_block.py
 from __future__ import annotations
 from datetime import date
 import pandas as pd

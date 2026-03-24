@@ -1,3 +1,4 @@
+# sales/reports/sales_report/stores/storegroup_categories_data.py
 from django.db import connection
 import pandas as pd
 from dateutil.relativedelta import relativedelta

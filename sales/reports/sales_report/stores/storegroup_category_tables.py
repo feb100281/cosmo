@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 import pandas as pd
+import html
 
 from ..formatters import fmt_money, fmt_delta_short, fmt_delta_pct
 
@@ -55,85 +56,188 @@ def _fmt_qty(v: float) -> str:
         return f"{a/1000:.1f} тыс шт".replace(".", ",")
     return f"{int(round(a))} шт"
 
+# def render_top_drops_table(df: pd.DataFrame, title: str) -> str:
+#     """
+#     Таблица ТОП падений (group × category).
+#     + добавлена колонка Δшт.
+#     """
+#     if df is None or df.empty:
+#         return ""
+
+#     rows = []
+#     for _, r in df.iterrows():
+#         d = float(r.get("delta", 0.0))
+#         pct = _safe_pct(r.get("delta_pct"))
+
+#         dq = float(r.get("delta_qty", 0.0))
+
+#         pill = "pill pill-pos" if d >= 0 else "pill pill-neg"
+
+#         sg = str(r.get("storegroup_name", "") or "Без группы")
+#         cat = str(r.get("cat_name", "") or "Без категории")
+        
+#         prev_qty = float(r.get("prev_qty", 0.0))
+#         curr_qty = float(r.get("curr_qty", 0.0))
+
+#         rows.append(
+#             f"""
+#             <tr>
+#               <td class="text-muted text-truncate" title="{sg}">{sg}</td>
+#               <td class="text-truncate" title="{cat}">{cat}</td>
+#             <td class="text-end num">
+#             <div class="val-main">{fmt_money(r.get("prev"))}</div>
+#             <div class="val-sub">{_fmt_qty(prev_qty)}</div>
+#             </td>
+#             <td class="text-end num">
+#             <div class="val-main">{fmt_money(r.get("curr"))}</div>
+#             <div class="val-sub">{_fmt_qty(curr_qty)}</div>
+#             </td>
+#               <td class="text-end"><span class="{pill}">{fmt_delta_short(d)}</span></td>
+#               <td class="text-end num">{_fmt_qty_delta(dq)}</td>
+#               <td class="text-end text-muted num">{fmt_delta_pct(pct)}</td>
+#             </tr>
+#             """
+#         )
+
+#     return f"""
+
+#     <div class="card mb-3 diag-card diag-card-top">
+#       <div class="card-header diag-card-header">
+#         <strong>{title}</strong>
+#       </div>
+#       <div class="card-body p-0">
+#         <table class="table table-sm mb-0 diag-table diag-top">
+#           <colgroup>
+#             <col style="width: 22%">
+#             <col style="width: 26%">
+#             <col style="width: 13%">
+#             <col style="width: 13%">
+#             <col style="width: 12%">
+#             <col style="width: 8%">
+#             <col style="width: 6%">
+#           </colgroup>
+#           <thead class="table-dark">
+#             <tr>
+#               <th>Магазин</th>
+#               <th>Категория</th>
+#               <th class="text-end">Было</th>
+#               <th class="text-end">Стало</th>
+#               <th class="text-end">Δ₽</th>
+#               <th class="text-end">Δшт</th>
+#               <th class="text-end">Δ%</th>
+#             </tr>
+#           </thead>
+#           <tbody>
+#             {''.join(rows)}
+#           </tbody>
+#         </table>
+#       </div>
+#     </div>
+#     """.strip()
+
+
+def _safe_float(v):
+    try:
+        if v is None:
+            return None
+        val = float(v)
+        if not math.isfinite(val):
+            return None
+        return val
+    except Exception:
+        return None
+
+
+def _delta_text_class(v) -> str:
+    val = _safe_float(v)
+    if val is None:
+        return "delta-neutral"
+    if val > 0:
+        return "delta-pos"
+    if val < 0:
+        return "delta-neg"
+    return "delta-neutral"
+
+
+def _render_table_header(title: str, subtitle: str = "") -> str:
+    return f"""
+    <h3 class="section-subtitle">{html.escape(title)}</h3>
+    """.strip()
+
+
 def render_top_drops_table(df: pd.DataFrame, title: str) -> str:
     """
-    Таблица ТОП падений (group × category).
-    + добавлена колонка Δшт.
+    Таблица ТОП падений (магазин × категория)
+    в том же стиле, что и compare-table.
     """
     if df is None or df.empty:
         return ""
 
     rows = []
     for _, r in df.iterrows():
-        d = float(r.get("delta", 0.0))
-        pct = _safe_pct(r.get("delta_pct"))
+        delta_val = r.get("delta")
+        delta_pct = _safe_pct(r.get("delta_pct"))
+        delta_qty = r.get("delta_qty")
 
-        dq = float(r.get("delta_qty", 0.0))
-
-        pill = "pill pill-pos" if d >= 0 else "pill pill-neg"
-
-        sg = str(r.get("storegroup_name", "") or "Без группы")
+        store = str(r.get("storegroup_name", "") or "Без магазина")
         cat = str(r.get("cat_name", "") or "Без категории")
-        
-        prev_qty = float(r.get("prev_qty", 0.0))
-        curr_qty = float(r.get("curr_qty", 0.0))
 
-        rows.append(
-            f"""
-            <tr>
-              <td class="text-muted text-truncate" title="{sg}">{sg}</td>
-              <td class="text-truncate" title="{cat}">{cat}</td>
-            <td class="text-end num">
-            <div class="val-main">{fmt_money(r.get("prev"))}</div>
-            <div class="val-sub">{_fmt_qty(prev_qty)}</div>
-            </td>
-            <td class="text-end num">
-            <div class="val-main">{fmt_money(r.get("curr"))}</div>
-            <div class="val-sub">{_fmt_qty(curr_qty)}</div>
-            </td>
-              <td class="text-end"><span class="{pill}">{fmt_delta_short(d)}</span></td>
-              <td class="text-end num">{_fmt_qty_delta(dq)}</td>
-              <td class="text-end text-muted num">{fmt_delta_pct(pct)}</td>
-            </tr>
-            """
-        )
+        prev_val = r.get("prev")
+        curr_val = r.get("curr")
+        prev_qty = r.get("prev_qty", 0.0)
+        curr_qty = r.get("curr_qty", 0.0)
+
+        rows.append(f"""
+        <tr>
+          <td>
+            <div class="manager-name">
+              <span class="manager-name__last">{store}</span>
+            </div>
+          </td>
+          <td>{cat}</td>
+          <td class="text-end">
+            <div>{fmt_money(prev_val)}</div>
+            <div class="cell-subtext">{_fmt_qty(prev_qty)}</div>
+          </td>
+          <td class="text-end">
+            <div>{fmt_money(curr_val)}</div>
+            <div class="cell-subtext">{_fmt_qty(curr_qty)}</div>
+          </td>
+          <td class="text-end">
+            <span class="{_delta_text_class(delta_val)}">{fmt_delta_short(delta_val)}</span>
+          </td>
+          <td class="text-end">
+            <span class="{_delta_text_class(delta_qty)}">{_fmt_qty_delta(delta_qty)}</span>
+          </td>
+          <td class="text-end">
+            <span class="{_delta_text_class(delta_pct)}">{fmt_delta_pct(delta_pct)}</span>
+          </td>
+        </tr>
+        """)
 
     return f"""
+    {_render_table_header(title, "Категории с наибольшим снижением выручки по магазинам")}
 
-    <div class="card mb-3 diag-card diag-card-top">
-      <div class="card-header diag-card-header">
-        <strong>{title}</strong>
-      </div>
-      <div class="card-body p-0">
-        <table class="table table-sm mb-0 diag-table diag-top">
-          <colgroup>
-            <col style="width: 22%">
-            <col style="width: 26%">
-            <col style="width: 13%">
-            <col style="width: 13%">
-            <col style="width: 12%">
-            <col style="width: 8%">
-            <col style="width: 6%">
-          </colgroup>
-          <thead class="table-dark">
-            <tr>
-              <th>Магазин</th>
-              <th>Категория</th>
-              <th class="text-end">Было</th>
-              <th class="text-end">Стало</th>
-              <th class="text-end">Δ₽</th>
-              <th class="text-end">Δшт</th>
-              <th class="text-end">Δ%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {''.join(rows)}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <table class="compare-table compare-table--diag">
+      <thead>
+        <tr>
+          <th>Магазин</th>
+          <th>Категория</th>
+          <th class="text-end">Было</th>
+          <th class="text-end">Стало</th>
+          <th class="text-end">Δ₽</th>
+          <th class="text-end">Δшт</th>
+          <th class="text-end">Δ%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {''.join(rows)}
+      </tbody>
+    </table>
     """.strip()
-
+    
+    
+    
 
 def render_delta_matrix_table(mat: pd.DataFrame, title: str, max_cols: int = 12) -> str:
     """

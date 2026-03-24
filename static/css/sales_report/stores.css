@@ -555,3 +555,88 @@ a,
 a:visited {
   color: #6f42c1;
 }
+
+
+
+
+#stores .delta-pos {
+  color: #2e7d57;
+  font-weight: 600;
+}
+
+#stores .delta-neg {
+  color: #b24a4a;
+  font-weight: 600;
+}
+
+#stores .delta-neutral {
+  color: #8a94a6;
+  font-weight: 500;
+}
+
+
+
+
+#stores .compare-table--monthly .group-separator-row td {
+  padding: 0 !important;
+  height: 8px;
+  border: none !important;
+  background: transparent !important;
+}
+
+#stores .compare-table--monthly .monthly-row--group-start td {
+  border-top: 2px solid #dbe3f3 !important;
+}
+
+#stores .compare-table--monthly .monthly-row--group-start td:first-child {
+  padding-top: 14px;
+}
+
+#stores .compare-table--monthly .store-repeat-empty {
+  background: rgba(0, 0, 0, 0.01);
+}
+
+#stores .compare-table--monthly .manager-name__last {
+  font-weight: 650;
+}
+
+#stores .store-cell-group {
+  vertical-align: top;
+  padding-top: 14px !important;
+  font-weight: 700;
+  color: #172033;
+  line-height: 1.25;
+}
+
+
+
+
+
+
+#stores-diag .compare-table .cell-subtext {
+  color: #8a94a6;
+  line-height: 1.2;
+}
+
+#stores-diag .compare-table .manager-name__last {
+  font-weight: 650;
+}
+
+#stores-diag .compare-table .delta-pos {
+  color: #3f845f;
+  font-weight: 650;
+}
+
+#stores-diag .compare-table .delta-neg {
+  color: #b2554d;
+  font-weight: 650;
+}
+
+#stores-diag .compare-table .delta-neutral {
+  color: #7b8798;
+  font-weight: 600;
+}
+
+
+
+

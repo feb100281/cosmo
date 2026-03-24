@@ -17,9 +17,9 @@
     {% include "reports/sales_report/sections/kpi/_shops.html" with rows=kpi_ctx.sales_by_shop total_amount=summary.values.amount total_cr=summary.values.cr %}
     <div class="page-break"></div>
 
-
+{% comment %} 
     {% include "reports/sales_report/sections/stores/_diag_categories.html" %}
-        <div class="page-break"></div>
+        <div class="page-break"></div> {% endcomment %}
 
 
 

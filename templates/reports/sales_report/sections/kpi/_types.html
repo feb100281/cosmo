@@ -1,12 +1,12 @@
 <h3 class="compare-title" style="margin-top:32px;">
-  Разрез заказов: New vs Carryover
+  Разрез заказов: Новые vs Переходящие заказы
 </h3>
 
 {% if orders.orders_by_type_html %}
   {{ orders.orders_by_type_html|safe }}
 
   <div class="kpi-footnote" style="border-top: 1px solid #dbe3ff; margin-top:10px;">
-    * Carryover — заказы, созданные до начала отчетного периода, отгруженные (частично или полностью) в текущем периоде.
+    * Переходящие заказы — заказы, созданные до начала отчетного периода, отгруженные (частично или полностью) в текущем периоде.
   </div>
 {% else %}
   <div class="kpi-footnote">Нет данных по типам заказов</div>

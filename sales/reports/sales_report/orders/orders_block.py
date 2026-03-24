@@ -209,9 +209,9 @@ def build_orders_context(
         "Возвраты": by_type["cr"].map(fmt_money),
         "Чистая выручка": by_type["amount"].map(fmt_money),
         "New (выручка)": by_type["new_amount"].map(fmt_money),
-        "Carryover (выручка)": by_type["carry_amount"].map(fmt_money),
+        "Переходящие заказы (выручка)": by_type["carry_amount"].map(fmt_money),
         "Доля New": by_type["new_share"].map(lambda x: fmt_pct(float(x))),
-        "Доля Carryover": by_type["carry_share"].map(lambda x: fmt_pct(float(x))),
+        "Доля перех. заказов": by_type["carry_share"].map(lambda x: fmt_pct(float(x))),
         "Доля возвратов": by_type["rtr_ratio"].map(lambda x: fmt_pct(float(x))),
     })
 
@@ -222,7 +222,7 @@ def build_orders_context(
     top = df.sort_values("amount_period", ascending=False).head(top_n_orders).copy()
 
     # Русский статус: Новый / Хвост (для собственника понятнее)
-    top["status_ru"] = np.where(top["is_new"], "New", "Carryover")
+    top["status_ru"] = np.where(top["is_new"], "Новые", "Переходящие")
 
     # HTML-бейджи
     top["status_badge"] = top["status_ru"].map(

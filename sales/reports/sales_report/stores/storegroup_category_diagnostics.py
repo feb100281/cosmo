@@ -1,3 +1,4 @@
+# sales/reports/sales_report/stores/storegroup_category_diagnostics.py
 from __future__ import annotations
 import pandas as pd
 

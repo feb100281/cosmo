@@ -241,7 +241,7 @@ def build_orders_carryover_by_type_svg(
     ax.barh(
         y,
         carry_vals,
-        label="Carryover (заказы до периода)",
+        label="Переходящие заказы",
         color=COLOR_CARRY,
         edgecolor="white",
         linewidth=0.8,
@@ -250,14 +250,14 @@ def build_orders_carryover_by_type_svg(
         y,
         new_vals,
         left=carry_vals,
-        label="New (заказы периода)",
+        label="Новые заказы",
         color=COLOR_NEW,
         edgecolor="white",
         linewidth=0.8,
     )
 
     # заголовок
-    title = "Отгрузка периода по типам заказов: New + Carryover"
+    title = "Отгрузка периода по типам заказов: Новые + Переходящие заказы"
     subtitle = f"Период: {period_start.strftime('%d.%m.%Y')} – {period_end.strftime('%d.%m.%Y')}"
     ax.set_title(f"{title}\n{subtitle}", loc="left", pad=12, fontsize=13, fontweight="bold")
 
