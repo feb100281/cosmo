@@ -638,5 +638,32 @@ a:visited {
 }
 
 
+@media print {
+  #stores .delta-pos,
+  #stores-diag .compare-table .delta-pos {
+    color: #2e7d57 !important;
+    -webkit-text-fill-color: #2e7d57 !important;
+    font-weight: 650 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 
+  #stores .delta-neg,
+  #stores-diag .compare-table .delta-neg {
+    color: #b24a4a !important;
+    -webkit-text-fill-color: #b24a4a !important;
+    font-weight: 650 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #stores .delta-neutral,
+  #stores-diag .compare-table .delta-neutral {
+    color: #7b8798 !important;
+    -webkit-text-fill-color: #7b8798 !important;
+    font-weight: 600 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
 
