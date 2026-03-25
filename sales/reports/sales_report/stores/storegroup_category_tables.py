@@ -56,84 +56,7 @@ def _fmt_qty(v: float) -> str:
         return f"{a/1000:.1f} тыс шт".replace(".", ",")
     return f"{int(round(a))} шт"
 
-# def render_top_drops_table(df: pd.DataFrame, title: str) -> str:
-#     """
-#     Таблица ТОП падений (group × category).
-#     + добавлена колонка Δшт.
-#     """
-#     if df is None or df.empty:
-#         return ""
 
-#     rows = []
-#     for _, r in df.iterrows():
-#         d = float(r.get("delta", 0.0))
-#         pct = _safe_pct(r.get("delta_pct"))
-
-#         dq = float(r.get("delta_qty", 0.0))
-
-#         pill = "pill pill-pos" if d >= 0 else "pill pill-neg"
-
-#         sg = str(r.get("storegroup_name", "") or "Без группы")
-#         cat = str(r.get("cat_name", "") or "Без категории")
-        
-#         prev_qty = float(r.get("prev_qty", 0.0))
-#         curr_qty = float(r.get("curr_qty", 0.0))
-
-#         rows.append(
-#             f"""
-#             <tr>
-#               <td class="text-muted text-truncate" title="{sg}">{sg}</td>
-#               <td class="text-truncate" title="{cat}">{cat}</td>
-#             <td class="text-end num">
-#             <div class="val-main">{fmt_money(r.get("prev"))}</div>
-#             <div class="val-sub">{_fmt_qty(prev_qty)}</div>
-#             </td>
-#             <td class="text-end num">
-#             <div class="val-main">{fmt_money(r.get("curr"))}</div>
-#             <div class="val-sub">{_fmt_qty(curr_qty)}</div>
-#             </td>
-#               <td class="text-end"><span class="{pill}">{fmt_delta_short(d)}</span></td>
-#               <td class="text-end num">{_fmt_qty_delta(dq)}</td>
-#               <td class="text-end text-muted num">{fmt_delta_pct(pct)}</td>
-#             </tr>
-#             """
-#         )
-
-#     return f"""
-
-#     <div class="card mb-3 diag-card diag-card-top">
-#       <div class="card-header diag-card-header">
-#         <strong>{title}</strong>
-#       </div>
-#       <div class="card-body p-0">
-#         <table class="table table-sm mb-0 diag-table diag-top">
-#           <colgroup>
-#             <col style="width: 22%">
-#             <col style="width: 26%">
-#             <col style="width: 13%">
-#             <col style="width: 13%">
-#             <col style="width: 12%">
-#             <col style="width: 8%">
-#             <col style="width: 6%">
-#           </colgroup>
-#           <thead class="table-dark">
-#             <tr>
-#               <th>Магазин</th>
-#               <th>Категория</th>
-#               <th class="text-end">Было</th>
-#               <th class="text-end">Стало</th>
-#               <th class="text-end">Δ₽</th>
-#               <th class="text-end">Δшт</th>
-#               <th class="text-end">Δ%</th>
-#             </tr>
-#           </thead>
-#           <tbody>
-#             {''.join(rows)}
-#           </tbody>
-#         </table>
-#       </div>
-#     </div>
-#     """.strip()
 
 
 def _safe_float(v):
@@ -239,9 +162,169 @@ def render_top_drops_table(df: pd.DataFrame, title: str) -> str:
     
     
 
+# def render_delta_matrix_table(mat: pd.DataFrame, title: str, max_cols: int = 12) -> str:
+#     """
+#     Матрица Δ₽ (магазин × категории).
+#     """
+#     if mat is None or mat.empty:
+#         return ""
+
+#     cols = list(mat.columns)[:max_cols]
+#     mat = mat[cols].copy()
+
+#     vmax = float(mat.abs().max().max()) if not mat.empty else 0.0
+#     vmax = vmax or 1.0
+
+#     def cell_style(v: float) -> str:
+#         a = min(1.0, abs(v) / vmax)
+
+#         # более контрастно: 0.08..0.62
+#         alpha = 0.08 + a * 0.54
+
+#         if v < 0:
+#             # строгий красный, не "пастель"
+#             return f"background: rgba(220, 38, 38, {alpha:.2f});"
+#         if v > 0:
+#             # строгий зелёный
+#             return f"background: rgba(22, 163, 74, {alpha:.2f});"
+#         return "background: transparent;"
+
+#     thead = (
+#         "<th class='diag-sticky-col'>Магазин \\ Категория</th>"
+#         + "".join([f"<th class='text-end diag-colhead'>{c}</th>" for c in cols])
+#     )
+
+#     body_rows = []
+#     for idx, row in mat.iterrows():
+#         sg = str(idx)
+#         tds = [f"<td class='text-muted diag-sticky-col text-truncate' title='{sg}'>{sg}</td>"]
+
+#         for c in cols:
+#             v = float(row[c])
+
+#             cls_extra = []
+#             if abs(v) < 1e-9:
+#                 cls_extra.append("is-zero")
+#             elif abs(v) / vmax < 0.18:
+#                 cls_extra.append("is-low")
+
+#             cls = "text-end diag-cell num " + " ".join(cls_extra)
+
+#             txt_color = "#ffffff" if abs(v) / vmax >= 0.35 else "inherit"
+
+#             # текст для нуля — пусто
+#             cell_text = "" if abs(v) < 1e-9 else fmt_delta_short(v)
+
+#             tds.append(
+#                 f"<td class='{cls}' style='{cell_style(v)} color: {txt_color};'>"
+#                 f"{cell_text}"
+#                 f"</td>"
+#             )
+
+#         body_rows.append("<tr>" + "".join(tds) + "</tr>")
+
+#     return f"""
+
+#     <div class="card mb-3 diag-card diag-card-top">
+#       <div class="card-header diag-card-header">
+#         <strong>{title}</strong>
+#       </div>
+#       <div class="card-body p-0">
+#         <div class="table-responsive diag-matrix-wrap">
+#           <table class="table table-sm mb-0 diag-table diag-matrix">
+#             <thead class="table-dark">
+#               <tr>{thead}</tr>
+#             </thead>
+#             <tbody>
+#               {''.join(body_rows)}
+#             </tbody>
+#           </table>
+#         </div>
+#       </div>
+#     </div>
+#     """.strip()
+    
+
+# def render_delta_qty_matrix_table(mat: pd.DataFrame, title: str, max_cols: int = 12) -> str:
+#     """
+#     Матрица Δшт (группы × категории).
+#     """
+#     if mat is None or mat.empty:
+#         return ""
+
+#     cols = list(mat.columns)[:max_cols]
+#     mat = mat[cols].copy()
+
+#     vmax = float(mat.abs().max().max()) if not mat.empty else 0.0
+#     vmax = vmax or 1.0
+
+#     def cell_style(v: float) -> str:
+#         a = min(1.0, abs(v) / vmax)
+#         alpha = 0.08 + a * 0.54  # можешь потом подкрутить
+
+#         if v < 0:
+#             return f"background: rgba(220, 38, 38, {alpha:.2f});"
+#         if v > 0:
+#             return f"background: rgba(22, 163, 74, {alpha:.2f});"
+#         return "background: transparent;"
+
+#     thead = (
+#         "<th class='diag-sticky-col'>Группа \\ Категория</th>"
+#         + "".join([f"<th class='text-end diag-colhead'>{c}</th>" for c in cols])
+#     )
+
+#     body_rows = []
+#     for idx, row in mat.iterrows():
+#         sg = str(idx)
+#         tds = [f"<td class='text-muted diag-sticky-col text-truncate' title='{sg}'>{sg}</td>"]
+
+#         for c in cols:
+#             v = float(row[c])
+
+#             cls_extra = []
+#             if abs(v) < 1e-9:
+#                 cls_extra.append("is-zero")
+
+#             cls = "text-end diag-cell num " + " ".join(cls_extra)
+
+#             # ВАЖНО: всегда тёмный текст (у тебя CSS это и так добивает)
+#             cell_text = "" if abs(v) < 1e-9 else _fmt_qty_delta(v)
+
+#             tds.append(
+#                 f"<td class='{cls}' style='{cell_style(v)}'>"
+#                 f"{cell_text}"
+#                 f"</td>"
+#             )
+
+#         body_rows.append("<tr>" + "".join(tds) + "</tr>")
+
+#     return f"""
+ 
+#     <div class="card mb-3 diag-card diag-card-top">
+#       <div class="card-header diag-card-header">
+#         <strong>{title}</strong>
+#       </div>
+#       <div class="card-body p-0">
+#         <div class="table-responsive diag-matrix-wrap">
+#           <table class="table table-sm mb-0 diag-table diag-matrix">
+#             <thead class="table-dark">
+#               <tr>{thead}</tr>
+#             </thead>
+#             <tbody>
+#               {''.join(body_rows)}
+#             </tbody>
+#           </table>
+#         </div>
+#       </div>
+#     </div>
+#     """.strip()   
+    
+    
+
 def render_delta_matrix_table(mat: pd.DataFrame, title: str, max_cols: int = 12) -> str:
     """
     Матрица Δ₽ (магазин × категории).
+    Стилистически приведена к compare-table, heatmap — как деликатный акцент.
     """
     if mat is None or mat.empty:
         return ""
@@ -254,27 +337,28 @@ def render_delta_matrix_table(mat: pd.DataFrame, title: str, max_cols: int = 12)
 
     def cell_style(v: float) -> str:
         a = min(1.0, abs(v) / vmax)
-
-        # более контрастно: 0.08..0.62
-        alpha = 0.08 + a * 0.54
+        alpha = 0.06 + a * 0.28
 
         if v < 0:
-            # строгий красный, не "пастель"
-            return f"background: rgba(220, 38, 38, {alpha:.2f});"
+            return f"background: rgba(191, 65, 65, {alpha:.2f});"
         if v > 0:
-            # строгий зелёный
-            return f"background: rgba(22, 163, 74, {alpha:.2f});"
+            return f"background: rgba(46, 125, 87, {alpha:.2f});"
         return "background: transparent;"
 
     thead = (
-        "<th class='diag-sticky-col'>Магазин \\ Категория</th>"
-        + "".join([f"<th class='text-end diag-colhead'>{c}</th>" for c in cols])
+        "<th class='matrix-col-store'>Магазин</th>"
+        + "".join(
+            [
+                f"<th class='text-end matrix-col-head' title='{html.escape(str(c))}'>{html.escape(str(c))}</th>"
+                for c in cols
+            ]
+        )
     )
 
     body_rows = []
     for idx, row in mat.iterrows():
         sg = str(idx)
-        tds = [f"<td class='text-muted diag-sticky-col text-truncate' title='{sg}'>{sg}</td>"]
+        tds = [f"<td class='matrix-store-cell' title='{html.escape(sg)}'>{html.escape(sg)}</td>"]
 
         for c in cols:
             v = float(row[c])
@@ -285,15 +369,11 @@ def render_delta_matrix_table(mat: pd.DataFrame, title: str, max_cols: int = 12)
             elif abs(v) / vmax < 0.18:
                 cls_extra.append("is-low")
 
-            cls = "text-end diag-cell num " + " ".join(cls_extra)
-
-            txt_color = "#ffffff" if abs(v) / vmax >= 0.35 else "inherit"
-
-            # текст для нуля — пусто
+            cls = "text-end matrix-cell num " + " ".join(cls_extra)
             cell_text = "" if abs(v) < 1e-9 else fmt_delta_short(v)
 
             tds.append(
-                f"<td class='{cls}' style='{cell_style(v)} color: {txt_color};'>"
+                f"<td class='{cls}' style='{cell_style(v)}'>"
                 f"{cell_text}"
                 f"</td>"
             )
@@ -301,30 +381,26 @@ def render_delta_matrix_table(mat: pd.DataFrame, title: str, max_cols: int = 12)
         body_rows.append("<tr>" + "".join(tds) + "</tr>")
 
     return f"""
-
-    <div class="card mb-3 diag-card diag-card-top">
-      <div class="card-header diag-card-header">
-        <strong>{title}</strong>
-      </div>
-      <div class="card-body p-0">
-        <div class="table-responsive diag-matrix-wrap">
-          <table class="table table-sm mb-0 diag-table diag-matrix">
-            <thead class="table-dark">
-              <tr>{thead}</tr>
-            </thead>
-            <tbody>
-              {''.join(body_rows)}
-            </tbody>
-          </table>
-        </div>
+    <div class="stores-matrix-block mb-3">
+      <div class="stores-matrix-title">{title}</div>
+      <div class="table-responsive">
+        <table class="compare-table compare-table--matrix">
+          <thead>
+            <tr>{thead}</tr>
+          </thead>
+          <tbody>
+            {''.join(body_rows)}
+          </tbody>
+        </table>
       </div>
     </div>
     """.strip()
-    
+
 
 def render_delta_qty_matrix_table(mat: pd.DataFrame, title: str, max_cols: int = 12) -> str:
     """
-    Матрица Δшт (группы × категории).
+    Матрица Δшт (магазин × категории).
+    Стилистически приведена к compare-table, heatmap — как деликатный акцент.
     """
     if mat is None or mat.empty:
         return ""
@@ -337,23 +413,28 @@ def render_delta_qty_matrix_table(mat: pd.DataFrame, title: str, max_cols: int =
 
     def cell_style(v: float) -> str:
         a = min(1.0, abs(v) / vmax)
-        alpha = 0.08 + a * 0.54  # можешь потом подкрутить
+        alpha = 0.05 + a * 0.24
 
         if v < 0:
-            return f"background: rgba(220, 38, 38, {alpha:.2f});"
+            return f"background: rgba(191, 65, 65, {alpha:.2f});"
         if v > 0:
-            return f"background: rgba(22, 163, 74, {alpha:.2f});"
+            return f"background: rgba(46, 125, 87, {alpha:.2f});"
         return "background: transparent;"
 
     thead = (
-        "<th class='diag-sticky-col'>Группа \\ Категория</th>"
-        + "".join([f"<th class='text-end diag-colhead'>{c}</th>" for c in cols])
+        "<th class='matrix-col-store'>Магазин</th>"
+        + "".join(
+            [
+                f"<th class='text-end matrix-col-head' title='{html.escape(str(c))}'>{html.escape(str(c))}</th>"
+                for c in cols
+            ]
+        )
     )
 
     body_rows = []
     for idx, row in mat.iterrows():
         sg = str(idx)
-        tds = [f"<td class='text-muted diag-sticky-col text-truncate' title='{sg}'>{sg}</td>"]
+        tds = [f"<td class='matrix-store-cell' title='{html.escape(sg)}'>{html.escape(sg)}</td>"]
 
         for c in cols:
             v = float(row[c])
@@ -361,10 +442,10 @@ def render_delta_qty_matrix_table(mat: pd.DataFrame, title: str, max_cols: int =
             cls_extra = []
             if abs(v) < 1e-9:
                 cls_extra.append("is-zero")
+            elif abs(v) / vmax < 0.18:
+                cls_extra.append("is-low")
 
-            cls = "text-end diag-cell num " + " ".join(cls_extra)
-
-            # ВАЖНО: всегда тёмный текст (у тебя CSS это и так добивает)
+            cls = "text-end matrix-cell num " + " ".join(cls_extra)
             cell_text = "" if abs(v) < 1e-9 else _fmt_qty_delta(v)
 
             tds.append(
@@ -376,25 +457,21 @@ def render_delta_qty_matrix_table(mat: pd.DataFrame, title: str, max_cols: int =
         body_rows.append("<tr>" + "".join(tds) + "</tr>")
 
     return f"""
- 
-    <div class="card mb-3 diag-card diag-card-top">
-      <div class="card-header diag-card-header">
-        <strong>{title}</strong>
-      </div>
-      <div class="card-body p-0">
-        <div class="table-responsive diag-matrix-wrap">
-          <table class="table table-sm mb-0 diag-table diag-matrix">
-            <thead class="table-dark">
-              <tr>{thead}</tr>
-            </thead>
-            <tbody>
-              {''.join(body_rows)}
-            </tbody>
-          </table>
-        </div>
+    <div class="stores-matrix-block mb-3">
+      <div class="stores-matrix-title">{title}</div>
+      <div class="table-responsive">
+        <table class="compare-table compare-table--matrix">
+          <thead>
+            <tr>{thead}</tr>
+          </thead>
+          <tbody>
+            {''.join(body_rows)}
+          </tbody>
+        </table>
       </div>
     </div>
-    """.strip()   
+    """.strip()
+    
     
     
 def render_delta_matrices_by_root_html(

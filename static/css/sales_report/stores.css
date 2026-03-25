@@ -579,9 +579,9 @@ a:visited {
 
 #stores .compare-table--monthly .group-separator-row td {
   padding: 0 !important;
-  height: 8px;
+  height: 10px;
   border: none !important;
-  background: transparent !important;
+  background: #f3f7ff !important;
 }
 
 #stores .compare-table--monthly .monthly-row--group-start td {
@@ -666,4 +666,107 @@ a:visited {
     print-color-adjust: exact !important;
   }
 }
+
+
+
+
+/* ===== MATRIX IN COMPARE-TABLE STYLE ===== */
+
+.stores-matrix-block{
+  margin-bottom: 18px;
+}
+
+.stores-matrix-title{
+  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #172033;
+  line-height: 1.35;
+}
+
+.stores-matrix-title .matrix-root{
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 10px;
+  border-radius: 8px;
+  background: #eef3ff;
+  color: #172033;
+  font-weight: 800;
+  font-size: 0.95em;
+}
+
+#appendix-a .compare-table--matrix{
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+#appendix-a .compare-table--matrix th,
+#appendix-a .compare-table--matrix td{
+  border: 1px solid #dbe3f3;
+  padding: 10px 12px;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+#appendix-a .compare-table--matrix thead th{
+  background: #f4f7fc;
+  color: #172033;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#appendix-a .compare-table--matrix .matrix-col-store{
+  width: 180px;
+  text-align: left;
+}
+
+#appendix-a .compare-table--matrix thead th{
+  background: #f4f7fc;
+  color: #172033;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#appendix-a .compare-table--matrix .matrix-cell{
+  font-weight: 650;
+  font-size: 11px;
+  color: #172033 !important;
+  white-space: nowrap;
+}
+
+#appendix-a .compare-table--matrix .matrix-cell.is-zero{
+  background: #fbfcff !important;
+  color: transparent !important;
+}
+
+#appendix-a .compare-table--matrix tbody tr:nth-child(even) td{
+  background-color: #fcfdff;
+}
+
+#appendix-a .compare-table--matrix tbody tr:nth-child(even) .matrix-cell{
+  background-clip: padding-box;
+}
+
+#appendix-a .compare-table--matrix .matrix-store-cell{
+  color: #6b7280;
+  font-weight: 650;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #fbfcff;
+}
+
+
+
 

@@ -1,3 +1,4 @@
+# sales/reports/sales_report/stores/performance/block.py
 from __future__ import annotations
 
 from datetime import date
