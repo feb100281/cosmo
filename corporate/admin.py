@@ -49,6 +49,8 @@ from corporate.reports.manufacturers_revenue_by_rootcat import get_manufacturer_
 
 from datetime import date, datetime
 
+from django.http import HttpResponse
+from corporate.reports.excel_report import build_manufacturers_excel_report
 
 from corporate.reports.agents.agents_revenue import get_agents_metrics
 from corporate.reports.agents.utils import fmt_money_ru, fmt_int
@@ -84,7 +86,8 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
     empty_value_display = "—"
     fields = ("name", "report_name", "country")
 
-    actions = ("print_manufacturers_action",)
+    # actions = ("print_manufacturers_action",)
+    actions = ("print_manufacturers_action", "export_manufacturers_excel_action",)
 
     class Media:
         css = {"all": ("css/admin_overrides.css",)}
@@ -461,6 +464,28 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
         )
 
         return render(request, "admin/corporate/manufacturer/print_manufacturers.html", context)
+    
+    
+    
+    @admin.action(description="Excel-отчет")
+    def export_manufacturers_excel_action(self, request, queryset):
+        ids = list(queryset.values_list("id", flat=True))
+
+        excel_file = build_manufacturers_excel_report(
+            start_year=2022,
+            manufacturer_ids=ids if ids else None,
+        )
+
+        response = HttpResponse(
+            excel_file.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response["Content-Disposition"] = 'attachment; filename="manufacturers_report.xlsx"'
+        return response
+    
+    
+    
+    
 
 
 @admin.register(ItemBrend)

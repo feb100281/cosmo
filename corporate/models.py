@@ -1,3 +1,4 @@
+# corporate/models.py
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey # type: ignore
 from utils.choices import CHANNEL_CHOICES,REGION_CHOICES,FURNITURE_ZONES
