@@ -256,12 +256,15 @@ def clear_column(ws, col_idx, row_start, row_end):
 def style_sub_data_row(ws, row, values, start_col=1, number_formats=None):
     for i, value in enumerate(values, start=start_col):
         cell = ws.cell(row=row, column=i, value=value)
-        cell.font = FONTS["normal"]
-        cell.alignment = ALIGNMENTS["left"] if i == start_col else ALIGNMENTS["right"]
         cell.border = BORDERS["thin"]
-
-        # светло-серый фон
         cell.fill = FILLS["alt"]
+
+        if i == start_col:
+            cell.font = FONTS["normal"]
+            cell.alignment = ALIGNMENTS["left"]
+        else:
+            cell.font = FONTS["normal"]
+            cell.alignment = ALIGNMENTS["right"]
 
         if number_formats and i in number_formats:
             cell.number_format = number_formats[i]

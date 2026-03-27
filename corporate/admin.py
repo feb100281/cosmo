@@ -467,7 +467,7 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
     
     
     
-    @admin.action(description="Excel-отчет")
+    @admin.action(description="🧮 Excel-отчет")
     def export_manufacturers_excel_action(self, request, queryset):
         ids = list(queryset.values_list("id", flat=True))
 

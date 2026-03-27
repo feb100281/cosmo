@@ -1,7 +1,5 @@
 # corporate/reports/excel_report/sheets/sheet_assortment_vs_revenue.py
 
-# corporate/reports/excel_report/sheets/sheet_assortment_vs_revenue.py
-
 from collections import defaultdict
 
 from ..styles.theme import FILLS, FONTS, ALIGNMENTS, FORMATS, BORDERS

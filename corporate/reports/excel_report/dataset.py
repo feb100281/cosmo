@@ -449,86 +449,6 @@ def get_manufacturer_share_by_year(start_year: int = 2022, manufacturer_ids: lis
     return fetch_all_dict(q, params)
 
 
-# def get_manufacturer_category_dependence(start_year: int = 2022, manufacturer_ids: list[int] | None = None):
-#     """
-#     Для каждого производителя:
-#     - общая выручка
-#     - крупнейшая категория
-#     - выручка крупнейшей категории
-#     - доля крупнейшей категории в выручке производителя
-#     """
-#     params = {"start_year": start_year}
-#     mf_filter = ""
-
-#     if manufacturer_ids:
-#         ph = []
-#         for i, v in enumerate(manufacturer_ids):
-#             k = f"mf{i}"
-#             params[k] = int(v)
-#             ph.append(f"%({k})s")
-#         mf_filter = f" AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL) "
-
-#     q = f"""
-#         SELECT
-#             z.manufacturer,
-#             z.category,
-#             z.cat_revenue,
-#             z.total_revenue,
-#             CASE
-#                 WHEN z.total_revenue = 0 OR z.total_revenue IS NULL THEN 0
-#                 ELSE z.cat_revenue / z.total_revenue
-#             END AS dependence_share
-#         FROM (
-#             SELECT
-#                 x.manufacturer,
-#                 x.category,
-#                 x.cat_revenue,
-#                 y.total_revenue,
-#                 ROW_NUMBER() OVER (
-#                     PARTITION BY x.manufacturer
-#                     ORDER BY x.cat_revenue DESC, x.category
-#                 ) AS rn
-#             FROM (
-#                 SELECT
-#                     CASE
-#                         WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
-#                         ELSE COALESCE(m.report_name, m.name, '—')
-#                     END AS manufacturer,
-#                     COALESCE(c.name, '—') AS category,
-#                     SUM(s.dt - s.cr) AS cat_revenue
-#                 FROM sales_salesdata s
-#                 JOIN corporate_items it ON it.id = s.item_id
-#                 LEFT JOIN corporate_itemmanufacturer m ON m.id = it.manufacturer_id
-#                 LEFT JOIN corporate_cattree c ON c.id = it.cat_id
-#                 WHERE YEAR(s.`date`) >= %(start_year)s
-#                 {mf_filter}
-#                 GROUP BY manufacturer, category
-#             ) x
-#             JOIN (
-#                 SELECT
-#                     CASE
-#                         WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
-#                         ELSE COALESCE(m.report_name, m.name, '—')
-#                     END AS manufacturer,
-#                     SUM(s.dt - s.cr) AS total_revenue
-#                 FROM sales_salesdata s
-#                 JOIN corporate_items it ON it.id = s.item_id
-#                 LEFT JOIN corporate_itemmanufacturer m ON m.id = it.manufacturer_id
-#                 WHERE YEAR(s.`date`) >= %(start_year)s
-#                 {mf_filter}
-#                 GROUP BY manufacturer
-#             ) y ON y.manufacturer = x.manufacturer
-#         ) z
-#         WHERE z.rn = 1
-#         ORDER BY
-#             CASE
-#                 WHEN z.total_revenue = 0 OR z.total_revenue IS NULL THEN 0
-#                 ELSE z.cat_revenue / z.total_revenue
-#             END DESC,
-#             z.total_revenue DESC
-#     """
-#     return fetch_all_dict(q, params)
-
 
 
 
@@ -612,6 +532,104 @@ def get_category_manufacturer_dependence(start_year: int = 2022, manufacturer_id
             END DESC,
             z.total_category_revenue DESC,
             z.category
+    """
+    return fetch_all_dict(q, params)
+
+
+
+
+def get_subcategory_manufacturer_dependence(start_year: int = 2022, manufacturer_ids: list[int] | None = None):
+    """
+    Для каждой подкатегории:
+    - общая выручка подкатегории
+    - крупнейший производитель
+    - выручка крупнейшего производителя в этой подкатегории
+    - доля крупнейшего производителя в выручке подкатегории
+    """
+    params = {"start_year": start_year}
+    mf_filter = ""
+
+    if manufacturer_ids:
+        ph = []
+        for i, v in enumerate(manufacturer_ids):
+            k = f"mf{i}"
+            params[k] = int(v)
+            ph.append(f"%({k})s")
+        mf_filter = f" AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL) "
+
+    q = f"""
+        SELECT
+            z.category,
+            z.subcategory,
+            z.manufacturer,
+            z.manufacturer_revenue,
+            z.total_subcategory_revenue,
+            CASE
+                WHEN z.total_subcategory_revenue = 0 OR z.total_subcategory_revenue IS NULL THEN 0
+                ELSE z.manufacturer_revenue / z.total_subcategory_revenue
+            END AS dependence_share
+        FROM (
+            SELECT
+                x.category,
+                x.subcategory,
+                x.manufacturer,
+                x.manufacturer_revenue,
+                y.total_subcategory_revenue,
+                ROW_NUMBER() OVER (
+                    PARTITION BY x.category, x.subcategory
+                    ORDER BY x.manufacturer_revenue DESC, x.manufacturer
+                ) AS rn
+            FROM (
+                SELECT
+                    COALESCE(c.name, 'Без категории') AS category,
+                    COALESCE(sc.name, 'Нет подкатегории') AS subcategory,
+                    CASE
+                        WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
+                        ELSE COALESCE(m.report_name, m.name, '—')
+                    END AS manufacturer,
+                    SUM(s.dt - s.cr) AS manufacturer_revenue
+                FROM sales_salesdata s
+                JOIN corporate_items it ON it.id = s.item_id
+                LEFT JOIN corporate_itemmanufacturer m ON m.id = it.manufacturer_id
+                LEFT JOIN corporate_cattree c ON c.id = it.cat_id
+                LEFT JOIN corporate_subcategory sc ON sc.id = it.subcat_id
+                WHERE YEAR(s.`date`) >= %(start_year)s
+                {mf_filter}
+                GROUP BY
+                    COALESCE(c.name, 'Без категории'),
+                    COALESCE(sc.name, 'Нет подкатегории'),
+                    CASE
+                        WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
+                        ELSE COALESCE(m.report_name, m.name, '—')
+                    END
+            ) x
+            JOIN (
+                SELECT
+                    COALESCE(c.name, 'Без категории') AS category,
+                    COALESCE(sc.name, 'Нет подкатегории') AS subcategory,
+                    SUM(s.dt - s.cr) AS total_subcategory_revenue
+                FROM sales_salesdata s
+                JOIN corporate_items it ON it.id = s.item_id
+                LEFT JOIN corporate_cattree c ON c.id = it.cat_id
+                LEFT JOIN corporate_subcategory sc ON sc.id = it.subcat_id
+                WHERE YEAR(s.`date`) >= %(start_year)s
+                {mf_filter}
+                GROUP BY
+                    COALESCE(c.name, 'Без категории'),
+                    COALESCE(sc.name, 'Нет подкатегории')
+            ) y
+              ON y.category = x.category
+             AND y.subcategory = x.subcategory
+        ) z
+        WHERE z.rn = 1
+        ORDER BY
+            CASE
+                WHEN z.total_subcategory_revenue = 0 OR z.total_subcategory_revenue IS NULL THEN 0
+                ELSE z.manufacturer_revenue / z.total_subcategory_revenue
+            END DESC,
+            z.total_subcategory_revenue DESC,
+            z.category,
+            z.subcategory
     """
     return fetch_all_dict(q, params)
 
@@ -1582,6 +1600,68 @@ def get_anti_top_categories(
     
     
     
+# def get_categories_yoy_yearly(start_year: int = 2022, manufacturer_ids: list[int] | None = None):
+#     """
+#     Данные для листа Categories с поддержкой YTD для последнего незакрытого года.
+
+#     Возвращает по каждой категории и году:
+#     - full_amount
+#     - ytd_amount
+#     - cutoff_year / cutoff_month / cutoff_day
+#     """
+#     params = {"start_year": start_year}
+#     mf_filter = ""
+
+#     if manufacturer_ids:
+#         ph = []
+#         for i, v in enumerate(manufacturer_ids):
+#             k = f"mf{i}"
+#             params[k] = int(v)
+#             ph.append(f"%({k})s")
+#         mf_filter = f" AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL) "
+
+#     cutoff_q = """
+#         SELECT MAX(`date`) AS cutoff_date
+#         FROM sales_salesdata
+#         WHERE YEAR(`date`) >= %(start_year)s
+#     """
+#     cutoff_rows = fetch_all_dict(cutoff_q, params)
+#     cutoff_date = cutoff_rows[0]["cutoff_date"] if cutoff_rows else None
+
+#     if not cutoff_date:
+#         return []
+
+#     params["cutoff_year"] = int(cutoff_date.year)
+#     params["cutoff_month"] = int(cutoff_date.month)
+#     params["cutoff_day"] = int(cutoff_date.day)
+
+#     q = f"""
+#         SELECT
+#             COALESCE(c.name, '—') AS category,
+#             YEAR(s.`date`) AS year,
+#             SUM(s.dt - s.cr) AS full_amount,
+#             SUM(
+#                 CASE
+#                     WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.dt - s.cr)
+#                     WHEN MONTH(s.`date`) = %(cutoff_month)s AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.dt - s.cr)
+#                     ELSE 0
+#                 END
+#             ) AS ytd_amount,
+#             %(cutoff_year)s AS cutoff_year,
+#             %(cutoff_month)s AS cutoff_month,
+#             %(cutoff_day)s AS cutoff_day
+#         FROM sales_salesdata s
+#         JOIN corporate_items it ON it.id = s.item_id
+#         LEFT JOIN corporate_cattree c ON c.id = it.cat_id
+#         WHERE YEAR(s.`date`) >= %(start_year)s
+#         {mf_filter}
+#         GROUP BY COALESCE(c.name, '—'), YEAR(s.`date`)
+#         ORDER BY category, year
+#     """
+#     return fetch_all_dict(q, params)
+
+
+
 def get_categories_yoy_yearly(start_year: int = 2022, manufacturer_ids: list[int] | None = None):
     """
     Данные для листа Categories с поддержкой YTD для последнего незакрытого года.
@@ -1589,6 +1669,9 @@ def get_categories_yoy_yearly(start_year: int = 2022, manufacturer_ids: list[int
     Возвращает по каждой категории и году:
     - full_amount
     - ytd_amount
+    - full_qty
+    - ytd_qty
+    - sku_count
     - cutoff_year / cutoff_month / cutoff_day
     """
     params = {"start_year": start_year}
@@ -1629,6 +1712,15 @@ def get_categories_yoy_yearly(start_year: int = 2022, manufacturer_ids: list[int
                     ELSE 0
                 END
             ) AS ytd_amount,
+            SUM(s.quant_dt - s.quant_cr) AS full_qty,
+            SUM(
+                CASE
+                    WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.quant_dt - s.quant_cr)
+                    WHEN MONTH(s.`date`) = %(cutoff_month)s AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.quant_dt - s.quant_cr)
+                    ELSE 0
+                END
+            ) AS ytd_qty,
+            COUNT(DISTINCT it.id) AS sku_count,
             %(cutoff_year)s AS cutoff_year,
             %(cutoff_month)s AS cutoff_month,
             %(cutoff_day)s AS cutoff_day
@@ -1643,7 +1735,70 @@ def get_categories_yoy_yearly(start_year: int = 2022, manufacturer_ids: list[int
     return fetch_all_dict(q, params)
 
 
+def get_subcategories_yoy_yearly(start_year: int = 2022, manufacturer_ids: list[int] | None = None):
+    """
+    Данные для листа Subcategories с поддержкой YTD для последнего незакрытого года.
 
+    Возвращает по каждой категории / подкатегории и году:
+    - full_amount
+    - ytd_amount
+    - cutoff_year / cutoff_month / cutoff_day
+    """
+    params = {"start_year": start_year}
+    mf_filter = ""
+
+    if manufacturer_ids:
+        ph = []
+        for i, v in enumerate(manufacturer_ids):
+            k = f"mf{i}"
+            params[k] = int(v)
+            ph.append(f"%({k})s")
+        mf_filter = f" AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL) "
+
+    cutoff_q = """
+        SELECT MAX(`date`) AS cutoff_date
+        FROM sales_salesdata
+        WHERE YEAR(`date`) >= %(start_year)s
+    """
+    cutoff_rows = fetch_all_dict(cutoff_q, params)
+    cutoff_date = cutoff_rows[0]["cutoff_date"] if cutoff_rows else None
+
+    if not cutoff_date:
+        return []
+
+    params["cutoff_year"] = int(cutoff_date.year)
+    params["cutoff_month"] = int(cutoff_date.month)
+    params["cutoff_day"] = int(cutoff_date.day)
+
+    q = f"""
+        SELECT
+            COALESCE(c.name, 'Без категории') AS category,
+            COALESCE(sc.name, 'Нет подкатегории') AS subcategory,
+            YEAR(s.`date`) AS year,
+            SUM(s.dt - s.cr) AS full_amount,
+            SUM(
+                CASE
+                    WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.dt - s.cr)
+                    WHEN MONTH(s.`date`) = %(cutoff_month)s AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.dt - s.cr)
+                    ELSE 0
+                END
+            ) AS ytd_amount,
+            %(cutoff_year)s AS cutoff_year,
+            %(cutoff_month)s AS cutoff_month,
+            %(cutoff_day)s AS cutoff_day
+        FROM sales_salesdata s
+        JOIN corporate_items it ON it.id = s.item_id
+        LEFT JOIN corporate_cattree c ON c.id = it.cat_id
+        LEFT JOIN corporate_subcategory sc ON sc.id = it.subcat_id
+        WHERE YEAR(s.`date`) >= %(start_year)s
+        {mf_filter}
+        GROUP BY
+            COALESCE(c.name, 'Без категории'),
+            COALESCE(sc.name, 'Нет подкатегории'),
+            YEAR(s.`date`)
+        ORDER BY category, subcategory, year
+    """
+    return fetch_all_dict(q, params)
 
 def get_root_categories_yoy_yearly(start_year: int = 2022, manufacturer_ids: list[int] | None = None):
     """
@@ -1748,4 +1903,743 @@ def get_manufacturer_category_item_counts(start_year: int = 2022, manufacturer_i
         GROUP BY manufacturer, category
         ORDER BY manufacturer, net_amount DESC, category
     """
+    return fetch_all_dict(q, params)
+
+
+
+
+
+
+
+
+def get_assortment_width_by_manufacturer(
+    start_year: int = 2022,
+    manufacturer_ids: list[int] | None = None,
+):
+    """
+    Анализ ширины ассортимента по производителям.
+
+    Возвращает:
+    - sku_count: количество уникальных SKU с ненулевым qty в периоде
+    - qty_sold: количество проданных штук
+    - net_amount: выручка
+    по каждому производителю и году
+
+    Если последний год не закрыт, в sheet будем сравнивать:
+    YTD последнего года vs YTD предыдущего года на ту же дату.
+    """
+    params = {"start_year": start_year}
+    mf_filter = ""
+
+    if manufacturer_ids:
+        ph = []
+        for i, v in enumerate(manufacturer_ids):
+            k = f"mf{i}"
+            params[k] = int(v)
+            ph.append(f"%({k})s")
+        mf_filter = f" AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL) "
+
+    cutoff_q = """
+        SELECT MAX(`date`) AS cutoff_date
+        FROM sales_salesdata
+        WHERE YEAR(`date`) >= %(start_year)s
+    """
+    cutoff_rows = fetch_all_dict(cutoff_q, params)
+    cutoff_date = cutoff_rows[0]["cutoff_date"] if cutoff_rows else None
+
+    if not cutoff_date:
+        return []
+
+    params["cutoff_year"] = int(cutoff_date.year)
+    params["cutoff_month"] = int(cutoff_date.month)
+    params["cutoff_day"] = int(cutoff_date.day)
+
+    q = f"""
+        SELECT
+            x.manufacturer,
+            x.year,
+            COUNT(DISTINCT CASE WHEN x.full_qty <> 0 THEN x.item_id END) AS full_sku_count,
+            COUNT(DISTINCT CASE WHEN x.ytd_qty <> 0 THEN x.item_id END) AS ytd_sku_count,
+            SUM(x.full_qty) AS full_qty,
+            SUM(x.ytd_qty) AS ytd_qty,
+            SUM(x.full_amount) AS full_amount,
+            SUM(x.ytd_amount) AS ytd_amount,
+            %(cutoff_year)s AS cutoff_year,
+            %(cutoff_month)s AS cutoff_month,
+            %(cutoff_day)s AS cutoff_day
+        FROM (
+            SELECT
+                CASE
+                    WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
+                    ELSE COALESCE(m.report_name, m.name, '—')
+                END AS manufacturer,
+                it.id AS item_id,
+                YEAR(s.`date`) AS year,
+                SUM(s.quant_dt - s.quant_cr) AS full_qty,
+                SUM(
+                    CASE
+                        WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.quant_dt - s.quant_cr)
+                        WHEN MONTH(s.`date`) = %(cutoff_month)s AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.quant_dt - s.quant_cr)
+                        ELSE 0
+                    END
+                ) AS ytd_qty,
+                SUM(s.dt - s.cr) AS full_amount,
+                SUM(
+                    CASE
+                        WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.dt - s.cr)
+                        WHEN MONTH(s.`date`) = %(cutoff_month)s AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.dt - s.cr)
+                        ELSE 0
+                    END
+                ) AS ytd_amount
+            FROM sales_salesdata s
+            JOIN corporate_items it ON it.id = s.item_id
+            LEFT JOIN corporate_itemmanufacturer m ON m.id = it.manufacturer_id
+            WHERE YEAR(s.`date`) >= %(start_year)s
+            {mf_filter}
+            GROUP BY
+                CASE
+                    WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
+                    ELSE COALESCE(m.report_name, m.name, '—')
+                END,
+                it.id,
+                YEAR(s.`date`)
+        ) x
+        GROUP BY x.manufacturer, x.year
+        ORDER BY x.manufacturer, x.year
+    """
+    return fetch_all_dict(q, params)
+
+
+
+
+def get_assortment_width_by_subcategory(
+    start_year: int = 2022,
+    manufacturer_ids: list[int] | None = None,
+):
+    """
+    Анализ ширины ассортимента по категориям / подкатегориям.
+
+    Возвращает:
+    - sku_count: количество уникальных SKU с ненулевым qty в периоде
+    - qty_sold: количество проданных штук
+    - net_amount: выручка
+    по каждой категории / подкатегории и году
+
+    Если последний год не закрыт, в sheet сравниваем:
+    YTD последнего года vs YTD предыдущего года на ту же дату.
+    """
+    params = {"start_year": start_year}
+    mf_filter = ""
+
+    if manufacturer_ids:
+        ph = []
+        for i, v in enumerate(manufacturer_ids):
+            k = f"mf{i}"
+            params[k] = int(v)
+            ph.append(f"%({k})s")
+        mf_filter = f" AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL) "
+
+    cutoff_q = """
+        SELECT MAX(`date`) AS cutoff_date
+        FROM sales_salesdata
+        WHERE YEAR(`date`) >= %(start_year)s
+    """
+    cutoff_rows = fetch_all_dict(cutoff_q, params)
+    cutoff_date = cutoff_rows[0]["cutoff_date"] if cutoff_rows else None
+
+    if not cutoff_date:
+        return []
+
+    params["cutoff_year"] = int(cutoff_date.year)
+    params["cutoff_month"] = int(cutoff_date.month)
+    params["cutoff_day"] = int(cutoff_date.day)
+
+    q = f"""
+        SELECT
+            x.category,
+            x.subcategory,
+            x.year,
+            COUNT(DISTINCT CASE WHEN x.full_qty <> 0 THEN x.item_id END) AS full_sku_count,
+            COUNT(DISTINCT CASE WHEN x.ytd_qty <> 0 THEN x.item_id END) AS ytd_sku_count,
+            SUM(x.full_qty) AS full_qty,
+            SUM(x.ytd_qty) AS ytd_qty,
+            SUM(x.full_amount) AS full_amount,
+            SUM(x.ytd_amount) AS ytd_amount,
+            %(cutoff_year)s AS cutoff_year,
+            %(cutoff_month)s AS cutoff_month,
+            %(cutoff_day)s AS cutoff_day
+        FROM (
+            SELECT
+                COALESCE(c.name, 'Без категории') AS category,
+                COALESCE(sc.name, 'Нет подкатегории') AS subcategory,
+                it.id AS item_id,
+                YEAR(s.`date`) AS year,
+                SUM(s.quant_dt - s.quant_cr) AS full_qty,
+                SUM(
+                    CASE
+                        WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.quant_dt - s.quant_cr)
+                        WHEN MONTH(s.`date`) = %(cutoff_month)s AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.quant_dt - s.quant_cr)
+                        ELSE 0
+                    END
+                ) AS ytd_qty,
+                SUM(s.dt - s.cr) AS full_amount,
+                SUM(
+                    CASE
+                        WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.dt - s.cr)
+                        WHEN MONTH(s.`date`) = %(cutoff_month)s AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.dt - s.cr)
+                        ELSE 0
+                    END
+                ) AS ytd_amount
+            FROM sales_salesdata s
+            JOIN corporate_items it ON it.id = s.item_id
+            LEFT JOIN corporate_cattree c ON c.id = it.cat_id
+            LEFT JOIN corporate_subcategory sc ON sc.id = it.subcat_id
+            WHERE YEAR(s.`date`) >= %(start_year)s
+            {mf_filter}
+            GROUP BY
+                COALESCE(c.name, 'Без категории'),
+                COALESCE(sc.name, 'Нет подкатегории'),
+                it.id,
+                YEAR(s.`date`)
+        ) x
+        GROUP BY x.category, x.subcategory, x.year
+        ORDER BY x.category, x.subcategory, x.year
+    """
+    return fetch_all_dict(q, params)
+
+
+
+
+
+
+
+
+def get_new_lost_sku_by_manufacturer(
+    start_year: int = 2022,
+    manufacturer_ids: list[int] | None = None,
+):
+    """
+    New / Lost SKU по производителям.
+
+    Сравниваем:
+    - предыдущий год (или YTD)
+    - текущий год (или YTD)
+    """
+
+    years = get_years(start_year=start_year)
+    if len(years) < 2:
+        return []
+
+    prev_year = years[-2]
+    last_year = years[-1]
+
+    params = {
+        "start_year": start_year,
+        "prev_year": prev_year,
+        "last_year": last_year,
+    }
+
+    mf_filter = ""
+
+    if manufacturer_ids:
+        ph = []
+        for i, v in enumerate(manufacturer_ids):
+            k = f"mf{i}"
+            params[k] = int(v)
+            ph.append(f"%({k})s")
+        mf_filter = f" AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL) "
+
+    q = f"""
+        WITH base AS (
+            SELECT
+                CASE
+                    WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
+                    ELSE COALESCE(m.report_name, m.name, '—')
+                END AS manufacturer,
+                it.id AS item_id,
+                YEAR(s.`date`) AS year,
+                SUM(s.quant_dt - s.quant_cr) AS qty
+            FROM sales_salesdata s
+            JOIN corporate_items it ON it.id = s.item_id
+            LEFT JOIN corporate_itemmanufacturer m ON m.id = it.manufacturer_id
+            WHERE YEAR(s.`date`) IN (%(prev_year)s, %(last_year)s)
+            {mf_filter}
+            GROUP BY manufacturer, it.id, YEAR(s.`date`)
+        )
+
+        SELECT
+            manufacturer,
+
+            COUNT(DISTINCT CASE
+                WHEN year = %(last_year)s AND qty <> 0 THEN item_id
+            END) AS sku_last,
+
+            COUNT(DISTINCT CASE
+                WHEN year = %(prev_year)s AND qty <> 0 THEN item_id
+            END) AS sku_prev,
+
+            COUNT(DISTINCT CASE
+                WHEN year = %(last_year)s AND qty <> 0
+                     AND item_id NOT IN (
+                         SELECT item_id FROM base b2
+                         WHERE b2.year = %(prev_year)s AND b2.qty <> 0
+                     )
+                THEN item_id
+            END) AS new_sku,
+
+            COUNT(DISTINCT CASE
+                WHEN year = %(prev_year)s AND qty <> 0
+                     AND item_id NOT IN (
+                         SELECT item_id FROM base b2
+                         WHERE b2.year = %(last_year)s AND b2.qty <> 0
+                     )
+                THEN item_id
+            END) AS lost_sku
+
+        FROM base
+        GROUP BY manufacturer
+        ORDER BY manufacturer
+    """
+
+    return fetch_all_dict(q, params)
+
+
+
+
+def get_new_lost_sku_by_manufacturer(
+    start_year: int = 2022,
+    manufacturer_ids: list[int] | None = None,
+):
+    """
+    New / Lost SKU по производителям.
+
+    Логика:
+    - определяем два последних года в данных
+    - если последний год не закрыт, сравниваем YTD vs YTD
+    - SKU считается активным, если qty != 0
+    """
+    years = get_years(start_year=start_year)
+    if len(years) < 2:
+        return {
+            "rows": [],
+            "compare_prev_year": None,
+            "compare_last_year": None,
+            "is_ytd_comparison": False,
+            "cutoff_year": None,
+            "cutoff_month": None,
+            "cutoff_day": None,
+        }
+
+    compare_prev_year = years[-2]
+    compare_last_year = years[-1]
+
+    params = {
+        "start_year": start_year,
+        "prev_year": compare_prev_year,
+        "last_year": compare_last_year,
+    }
+
+    mf_filter = ""
+
+    if manufacturer_ids:
+        ph = []
+        for i, v in enumerate(manufacturer_ids):
+            k = f"mf{i}"
+            params[k] = int(v)
+            ph.append(f"%({k})s")
+        mf_filter = f" AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL) "
+
+    cutoff_q = """
+        SELECT MAX(`date`) AS cutoff_date
+        FROM sales_salesdata
+        WHERE YEAR(`date`) >= %(start_year)s
+    """
+    cutoff_rows = fetch_all_dict(cutoff_q, params)
+    cutoff_date = cutoff_rows[0]["cutoff_date"] if cutoff_rows else None
+
+    if not cutoff_date:
+        return {
+            "rows": [],
+            "compare_prev_year": compare_prev_year,
+            "compare_last_year": compare_last_year,
+            "is_ytd_comparison": False,
+            "cutoff_year": None,
+            "cutoff_month": None,
+            "cutoff_day": None,
+        }
+
+    cutoff_year = int(cutoff_date.year)
+    cutoff_month = int(cutoff_date.month)
+    cutoff_day = int(cutoff_date.day)
+
+    is_ytd_comparison = bool(
+        compare_last_year == cutoff_year and (cutoff_month < 12 or cutoff_day < 31)
+    )
+
+    params["cutoff_month"] = cutoff_month
+    params["cutoff_day"] = cutoff_day
+
+    q = f"""
+        WITH item_years AS (
+            SELECT
+                CASE
+                    WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
+                    ELSE COALESCE(m.report_name, m.name, '—')
+                END AS manufacturer,
+                it.id AS item_id,
+                YEAR(s.`date`) AS year_num,
+                SUM(s.quant_dt - s.quant_cr) AS full_qty,
+                SUM(
+                    CASE
+                        WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.quant_dt - s.quant_cr)
+                        WHEN MONTH(s.`date`) = %(cutoff_month)s AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.quant_dt - s.quant_cr)
+                        ELSE 0
+                    END
+                ) AS ytd_qty
+            FROM sales_salesdata s
+            JOIN corporate_items it ON it.id = s.item_id
+            LEFT JOIN corporate_itemmanufacturer m ON m.id = it.manufacturer_id
+            WHERE YEAR(s.`date`) IN (%(prev_year)s, %(last_year)s)
+            {mf_filter}
+            GROUP BY
+                CASE
+                    WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
+                    ELSE COALESCE(m.report_name, m.name, '—')
+                END,
+                it.id,
+                YEAR(s.`date`)
+        ),
+        flags AS (
+            SELECT
+                manufacturer,
+                item_id,
+                MAX(
+                    CASE
+                        WHEN year_num = %(prev_year)s
+                             AND (
+                                 CASE WHEN %(last_year)s = %(cutoff_year)s AND (%(cutoff_month)s < 12 OR %(cutoff_day)s < 31)
+                                      THEN ytd_qty
+                                      ELSE full_qty
+                                 END
+                             ) <> 0
+                        THEN 1 ELSE 0
+                    END
+                ) AS in_prev,
+                MAX(
+                    CASE
+                        WHEN year_num = %(last_year)s
+                             AND (
+                                 CASE WHEN %(last_year)s = %(cutoff_year)s AND (%(cutoff_month)s < 12 OR %(cutoff_day)s < 31)
+                                      THEN ytd_qty
+                                      ELSE full_qty
+                                 END
+                             ) <> 0
+                        THEN 1 ELSE 0
+                    END
+                ) AS in_last
+            FROM item_years
+            CROSS JOIN (
+                SELECT
+                    %(cutoff_year)s AS cutoff_year,
+                    %(cutoff_month)s AS cutoff_month,
+                    %(cutoff_day)s AS cutoff_day
+            ) c
+            GROUP BY manufacturer, item_id
+        )
+        SELECT
+            manufacturer,
+            SUM(in_prev) AS sku_prev,
+            SUM(in_last) AS sku_last,
+            SUM(CASE WHEN in_prev = 0 AND in_last = 1 THEN 1 ELSE 0 END) AS new_sku,
+            SUM(CASE WHEN in_prev = 1 AND in_last = 0 THEN 1 ELSE 0 END) AS lost_sku
+        FROM flags
+        GROUP BY manufacturer
+        ORDER BY sku_last DESC, manufacturer
+    """
+    rows = fetch_all_dict(q, {**params, "cutoff_year": cutoff_year})
+
+    return {
+        "rows": rows,
+        "compare_prev_year": compare_prev_year,
+        "compare_last_year": compare_last_year,
+        "is_ytd_comparison": is_ytd_comparison,
+        "cutoff_year": cutoff_year,
+        "cutoff_month": cutoff_month,
+        "cutoff_day": cutoff_day,
+    }
+
+
+def get_new_lost_sku_by_manufacturer_subcategory(
+    start_year: int = 2022,
+    manufacturer_ids: list[int] | None = None,
+):
+    """
+    Детализация New / Lost SKU по производителю и подкатегории.
+    """
+    years = get_years(start_year=start_year)
+    if len(years) < 2:
+        return {
+            "rows": [],
+            "compare_prev_year": None,
+            "compare_last_year": None,
+            "is_ytd_comparison": False,
+            "cutoff_year": None,
+            "cutoff_month": None,
+            "cutoff_day": None,
+        }
+
+    compare_prev_year = years[-2]
+    compare_last_year = years[-1]
+
+    params = {
+        "start_year": start_year,
+        "prev_year": compare_prev_year,
+        "last_year": compare_last_year,
+    }
+
+    mf_filter = ""
+
+    if manufacturer_ids:
+        ph = []
+        for i, v in enumerate(manufacturer_ids):
+            k = f"mf{i}"
+            params[k] = int(v)
+            ph.append(f"%({k})s")
+        mf_filter = f" AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL) "
+
+    cutoff_q = """
+        SELECT MAX(`date`) AS cutoff_date
+        FROM sales_salesdata
+        WHERE YEAR(`date`) >= %(start_year)s
+    """
+    cutoff_rows = fetch_all_dict(cutoff_q, params)
+    cutoff_date = cutoff_rows[0]["cutoff_date"] if cutoff_rows else None
+
+    if not cutoff_date:
+        return {
+            "rows": [],
+            "compare_prev_year": compare_prev_year,
+            "compare_last_year": compare_last_year,
+            "is_ytd_comparison": False,
+            "cutoff_year": None,
+            "cutoff_month": None,
+            "cutoff_day": None,
+        }
+
+    cutoff_year = int(cutoff_date.year)
+    cutoff_month = int(cutoff_date.month)
+    cutoff_day = int(cutoff_date.day)
+
+    is_ytd_comparison = bool(
+        compare_last_year == cutoff_year and (cutoff_month < 12 or cutoff_day < 31)
+    )
+
+    params["cutoff_month"] = cutoff_month
+    params["cutoff_day"] = cutoff_day
+
+    q = f"""
+        WITH item_years AS (
+            SELECT
+                CASE
+                    WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
+                    ELSE COALESCE(m.report_name, m.name, '—')
+                END AS manufacturer,
+                COALESCE(sc.name, 'Нет подкатегории') AS subcategory,
+                it.id AS item_id,
+                YEAR(s.`date`) AS year_num,
+                SUM(s.quant_dt - s.quant_cr) AS full_qty,
+                SUM(
+                    CASE
+                        WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.quant_dt - s.quant_cr)
+                        WHEN MONTH(s.`date`) = %(cutoff_month)s AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.quant_dt - s.quant_cr)
+                        ELSE 0
+                    END
+                ) AS ytd_qty
+            FROM sales_salesdata s
+            JOIN corporate_items it ON it.id = s.item_id
+            LEFT JOIN corporate_itemmanufacturer m ON m.id = it.manufacturer_id
+            LEFT JOIN corporate_subcategory sc ON sc.id = it.subcat_id
+            WHERE YEAR(s.`date`) IN (%(prev_year)s, %(last_year)s)
+            {mf_filter}
+            GROUP BY
+                CASE
+                    WHEN it.manufacturer_id IS NULL THEN '!Производитель не указан'
+                    ELSE COALESCE(m.report_name, m.name, '—')
+                END,
+                COALESCE(sc.name, 'Нет подкатегории'),
+                it.id,
+                YEAR(s.`date`)
+        ),
+        flags AS (
+            SELECT
+                manufacturer,
+                subcategory,
+                item_id,
+                MAX(
+                    CASE
+                        WHEN year_num = %(prev_year)s
+                             AND (
+                                 CASE WHEN %(last_year)s = %(cutoff_year)s AND (%(cutoff_month)s < 12 OR %(cutoff_day)s < 31)
+                                      THEN ytd_qty
+                                      ELSE full_qty
+                                 END
+                             ) <> 0
+                        THEN 1 ELSE 0
+                    END
+                ) AS in_prev,
+                MAX(
+                    CASE
+                        WHEN year_num = %(last_year)s
+                             AND (
+                                 CASE WHEN %(last_year)s = %(cutoff_year)s AND (%(cutoff_month)s < 12 OR %(cutoff_day)s < 31)
+                                      THEN ytd_qty
+                                      ELSE full_qty
+                                 END
+                             ) <> 0
+                        THEN 1 ELSE 0
+                    END
+                ) AS in_last
+            FROM item_years
+            CROSS JOIN (
+                SELECT
+                    %(cutoff_year)s AS cutoff_year,
+                    %(cutoff_month)s AS cutoff_month,
+                    %(cutoff_day)s AS cutoff_day
+            ) c
+            GROUP BY manufacturer, subcategory, item_id
+        )
+        SELECT
+            manufacturer,
+            subcategory,
+            SUM(in_prev) AS sku_prev,
+            SUM(in_last) AS sku_last,
+            SUM(CASE WHEN in_prev = 0 AND in_last = 1 THEN 1 ELSE 0 END) AS new_sku,
+            SUM(CASE WHEN in_prev = 1 AND in_last = 0 THEN 1 ELSE 0 END) AS lost_sku
+        FROM flags
+        GROUP BY manufacturer, subcategory
+        HAVING SUM(in_prev) <> 0 OR SUM(in_last) <> 0
+        ORDER BY manufacturer, sku_last DESC, subcategory
+    """
+    rows = fetch_all_dict(q, {**params, "cutoff_year": cutoff_year})
+
+    return {
+        "rows": rows,
+        "compare_prev_year": compare_prev_year,
+        "compare_last_year": compare_last_year,
+        "is_ytd_comparison": is_ytd_comparison,
+        "cutoff_year": cutoff_year,
+        "cutoff_month": cutoff_month,
+        "cutoff_day": cutoff_day,
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+def get_sku_productivity_by_subcategory(
+    start_year: int = 2022,
+    manufacturer_ids: list[int] | None = None,
+):
+    """
+    Эффективность SKU по категории / подкатегории и году.
+
+    Логика SKU должна совпадать с листом
+    'Ширина SKU по подкатегориям':
+    - full_sku_count: количество SKU с full_qty != 0
+    - ytd_sku_count: количество SKU с ytd_qty != 0
+    - full_amount
+    - ytd_amount
+    """
+
+    params = {"start_year": start_year}
+    mf_filter = ""
+
+    if manufacturer_ids:
+        ph = []
+        for i, v in enumerate(manufacturer_ids):
+            k = f"mf{i}"
+            params[k] = int(v)
+            ph.append(f"%({k})s")
+        mf_filter = f"""
+            AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL)
+        """
+
+    cutoff_q = """
+        SELECT MAX(`date`) AS cutoff_date
+        FROM sales_salesdata
+        WHERE YEAR(`date`) >= %(start_year)s
+    """
+    cutoff_rows = fetch_all_dict(cutoff_q, params)
+    cutoff_date = cutoff_rows[0]["cutoff_date"] if cutoff_rows else None
+
+    if not cutoff_date:
+        return []
+
+    params["cutoff_year"] = int(cutoff_date.year)
+    params["cutoff_month"] = int(cutoff_date.month)
+    params["cutoff_day"] = int(cutoff_date.day)
+
+    q = f"""
+        SELECT
+            x.category,
+            x.subcategory,
+            x.year,
+            COUNT(DISTINCT CASE WHEN x.full_qty <> 0 THEN x.item_id END) AS full_sku_count,
+            COUNT(DISTINCT CASE WHEN x.ytd_qty <> 0 THEN x.item_id END) AS ytd_sku_count,
+            SUM(x.full_qty) AS full_qty,
+            SUM(x.ytd_qty) AS ytd_qty,
+            SUM(x.full_amount) AS full_amount,
+            SUM(x.ytd_amount) AS ytd_amount,
+            %(cutoff_year)s AS cutoff_year,
+            %(cutoff_month)s AS cutoff_month,
+            %(cutoff_day)s AS cutoff_day
+        FROM (
+            SELECT
+                COALESCE(c.name, 'Без категории') AS category,
+                COALESCE(sc.name, 'Нет подкатегории') AS subcategory,
+                it.id AS item_id,
+                YEAR(s.`date`) AS year,
+                SUM(s.quant_dt - s.quant_cr) AS full_qty,
+                SUM(
+                    CASE
+                        WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.quant_dt - s.quant_cr)
+                        WHEN MONTH(s.`date`) = %(cutoff_month)s
+                             AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.quant_dt - s.quant_cr)
+                        ELSE 0
+                    END
+                ) AS ytd_qty,
+                SUM(s.dt - s.cr) AS full_amount,
+                SUM(
+                    CASE
+                        WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.dt - s.cr)
+                        WHEN MONTH(s.`date`) = %(cutoff_month)s
+                             AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.dt - s.cr)
+                        ELSE 0
+                    END
+                ) AS ytd_amount
+            FROM sales_salesdata s
+            JOIN corporate_items it ON it.id = s.item_id
+            LEFT JOIN corporate_cattree c ON c.id = it.cat_id
+            LEFT JOIN corporate_subcategory sc ON sc.id = it.subcat_id
+            WHERE YEAR(s.`date`) >= %(start_year)s
+            {mf_filter}
+            GROUP BY
+                COALESCE(c.name, 'Без категории'),
+                COALESCE(sc.name, 'Нет подкатегории'),
+                it.id,
+                YEAR(s.`date`)
+        ) x
+        GROUP BY
+            x.category,
+            x.subcategory,
+            x.year
+        ORDER BY
+            x.category,
+            x.subcategory,
+            x.year
+    """
+
     return fetch_all_dict(q, params)
