@@ -268,3 +268,18 @@ def style_sub_data_row(ws, row, values, start_col=1, number_formats=None):
 
         if number_formats and i in number_formats:
             cell.number_format = number_formats[i]
+            
+            
+            
+
+def draw_subcategory_divider(ws, row, col_start=1, col_end=19, height=6):
+    """
+    Тонкий декоративный разделитель между логическими блоками таблицы.
+    """
+    ws.row_dimensions[row].height = height
+
+    for col in range(col_start, col_end + 1):
+        cell = ws.cell(row=row, column=col)
+        cell.value = None
+        cell.fill = FILLS["divider"]
+        cell.border = BORDERS["divider"]

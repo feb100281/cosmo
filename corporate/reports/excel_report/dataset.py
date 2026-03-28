@@ -2643,3 +2643,400 @@ def get_sku_productivity_by_subcategory(
     """
 
     return fetch_all_dict(q, params)
+
+
+
+
+
+# def get_price_segment_subcategory_yoy(
+#     start_year: int = 2022,
+#     manufacturer_ids: list[int] | None = None,
+# ):
+#     """
+#     Анализ спроса по автоматическим ценовым диапазонам внутри каждой подкатегории.
+
+#     Логика:
+#     1. Считаем SKU-метрики по году:
+#        - revenue
+#        - qty
+#        - avg_price = revenue / qty
+#     2. Внутри каждой подкатегории автоматически делим SKU по цене на 3 группы:
+#        - Низкий диапазон
+#        - Средний диапазон
+#        - Высокий диапазон
+#     3. Затем агрегируем до уровня:
+#        category / subcategory / price_band / year
+
+#     Важно:
+#     - "Без продаж" исключен
+#     - в сегментацию попадают только SKU с qty > 0
+#     """
+
+#     params = {"start_year": start_year}
+#     mf_filter = ""
+
+#     if manufacturer_ids:
+#         ph = []
+#         for i, v in enumerate(manufacturer_ids):
+#             k = f"mf{i}"
+#             params[k] = int(v)
+#             ph.append(f"%({k})s")
+#         mf_filter = f"""
+#             AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL)
+#         """
+
+#     cutoff_q = """
+#         SELECT MAX(`date`) AS cutoff_date
+#         FROM sales_salesdata
+#         WHERE YEAR(`date`) >= %(start_year)s
+#     """
+#     cutoff_rows = fetch_all_dict(cutoff_q, params)
+#     cutoff_date = cutoff_rows[0]["cutoff_date"] if cutoff_rows else None
+
+#     if not cutoff_date:
+#         return []
+
+#     params["cutoff_year"] = int(cutoff_date.year)
+#     params["cutoff_month"] = int(cutoff_date.month)
+#     params["cutoff_day"] = int(cutoff_date.day)
+
+#     q = f"""
+#         WITH sku_base AS (
+#             SELECT
+#                 COALESCE(c.name, 'Без категории') AS category,
+#                 COALESCE(sc.name, 'Нет подкатегории') AS subcategory,
+#                 it.id AS item_id,
+#                 YEAR(s.`date`) AS year,
+
+#                 SUM(s.dt - s.cr) AS revenue,
+#                 SUM(s.quant_dt - s.quant_cr) AS qty,
+
+#                 SUM(
+#                     CASE
+#                         WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.dt - s.cr)
+#                         WHEN MONTH(s.`date`) = %(cutoff_month)s
+#                              AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.dt - s.cr)
+#                         ELSE 0
+#                     END
+#                 ) AS revenue_ytd,
+
+#                 SUM(
+#                     CASE
+#                         WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.quant_dt - s.quant_cr)
+#                         WHEN MONTH(s.`date`) = %(cutoff_month)s
+#                              AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.quant_dt - s.quant_cr)
+#                         ELSE 0
+#                     END
+#                 ) AS qty_ytd
+#             FROM sales_salesdata s
+#             JOIN corporate_items it ON it.id = s.item_id
+#             LEFT JOIN corporate_cattree c ON c.id = it.cat_id
+#             LEFT JOIN corporate_subcategory sc ON sc.id = it.subcat_id
+#             WHERE YEAR(s.`date`) >= %(start_year)s
+#             {mf_filter}
+#             GROUP BY
+#                 COALESCE(c.name, 'Без категории'),
+#                 COALESCE(sc.name, 'Нет подкатегории'),
+#                 it.id,
+#                 YEAR(s.`date`)
+#         ),
+#         sku_priced AS (
+#             SELECT
+#                 category,
+#                 subcategory,
+#                 item_id,
+#                 year,
+#                 revenue,
+#                 qty,
+#                 revenue_ytd,
+#                 qty_ytd,
+#                 CASE
+#                     WHEN qty <> 0 THEN revenue / qty
+#                     ELSE NULL
+#                 END AS avg_price
+#             FROM sku_base
+#         ),
+#         sku_segmented AS (
+#             SELECT
+#                 category,
+#                 subcategory,
+#                 item_id,
+#                 year,
+#                 revenue,
+#                 qty,
+#                 revenue_ytd,
+#                 qty_ytd,
+#                 avg_price,
+#                 CASE
+#                     WHEN NTILE(3) OVER (
+#                         PARTITION BY category, subcategory, year
+#                         ORDER BY avg_price
+#                     ) = 1 THEN 'Низкий диапазон'
+#                     WHEN NTILE(3) OVER (
+#                         PARTITION BY category, subcategory, year
+#                         ORDER BY avg_price
+#                     ) = 2 THEN 'Средний диапазон'
+#                     ELSE 'Высокий диапазон'
+#                 END AS price_band
+#             FROM sku_priced
+#             WHERE avg_price IS NOT NULL
+#         )
+#         SELECT
+#             category,
+#             subcategory,
+#             price_band,
+#             year,
+#             SUM(revenue) AS revenue,
+#             SUM(qty) AS qty,
+#             SUM(revenue_ytd) AS revenue_ytd,
+#             SUM(qty_ytd) AS qty_ytd,
+#             MIN(avg_price) AS min_price,
+#             MAX(avg_price) AS max_price,
+#             %(cutoff_year)s AS cutoff_year,
+#             %(cutoff_month)s AS cutoff_month,
+#             %(cutoff_day)s AS cutoff_day
+#         FROM sku_segmented
+#         GROUP BY
+#             category,
+#             subcategory,
+#             price_band,
+#             year
+#         ORDER BY
+#             category,
+#             subcategory,
+#             FIELD(price_band, 'Низкий диапазон', 'Средний диапазон', 'Высокий диапазон'),
+#             year
+#     """
+
+#     return fetch_all_dict(q, params)
+
+
+
+def get_price_segment_subcategory_yoy(
+    start_year: int = 2022,
+    manufacturer_ids: list[int] | None = None,
+):
+    """
+    Управленческий анализ спроса по фиксированным ценовым сегментам внутри подкатегории.
+
+    Логика:
+    - если текущий год неполный -> режим YTD vs YTD
+    - если текущий год полный -> режим Full Year vs Full Year
+
+    В итоговую таблицу возвращаются period_revenue / period_qty:
+    - в YTD-режиме это YTD
+    - в full-year режиме это полный год
+
+    Сегменты low / mid / high фиксируются по тем же period-данным
+    последних 2 лет, чтобы сравнение было сопоставимым.
+    """
+
+    params = {"start_year": start_year}
+    mf_filter = ""
+
+    if manufacturer_ids:
+        ph = []
+        for i, v in enumerate(manufacturer_ids):
+            k = f"mf{i}"
+            params[k] = int(v)
+            ph.append(f"%({k})s")
+        mf_filter = f"""
+            AND (it.manufacturer_id IN ({', '.join(ph)}) OR it.manufacturer_id IS NULL)
+        """
+
+    cutoff_q = f"""
+        SELECT MAX(s.`date`) AS cutoff_date
+        FROM sales_salesdata s
+        JOIN corporate_items it ON it.id = s.item_id
+        WHERE YEAR(s.`date`) >= %(start_year)s
+        {mf_filter}
+    """
+    cutoff_rows = fetch_all_dict(cutoff_q, params)
+    cutoff_date = cutoff_rows[0]["cutoff_date"] if cutoff_rows else None
+
+    if not cutoff_date:
+        return []
+
+    params["cutoff_year"] = int(cutoff_date.year)
+    params["cutoff_month"] = int(cutoff_date.month)
+    params["cutoff_day"] = int(cutoff_date.day)
+
+    # Если год не закрыт, весь отчет работает в YTD-режиме
+    params["is_partial_year"] = int(
+        cutoff_date.month < 12 or cutoff_date.day < 31
+    )
+
+    q = f"""
+        WITH sku_base AS (
+            SELECT
+                COALESCE(c.name, 'Без категории') AS category,
+                COALESCE(sc.name, 'Нет подкатегории') AS subcategory,
+                it.id AS item_id,
+                YEAR(s.`date`) AS year,
+
+                SUM(s.dt - s.cr) AS revenue_full,
+                SUM(s.quant_dt - s.quant_cr) AS qty_full,
+
+                SUM(
+                    CASE
+                        WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.dt - s.cr)
+                        WHEN MONTH(s.`date`) = %(cutoff_month)s
+                             AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.dt - s.cr)
+                        ELSE 0
+                    END
+                ) AS revenue_ytd,
+
+                SUM(
+                    CASE
+                        WHEN MONTH(s.`date`) < %(cutoff_month)s THEN (s.quant_dt - s.quant_cr)
+                        WHEN MONTH(s.`date`) = %(cutoff_month)s
+                             AND DAY(s.`date`) <= %(cutoff_day)s THEN (s.quant_dt - s.quant_cr)
+                        ELSE 0
+                    END
+                ) AS qty_ytd
+            FROM sales_salesdata s
+            JOIN corporate_items it ON it.id = s.item_id
+            LEFT JOIN corporate_cattree c ON c.id = it.cat_id
+            LEFT JOIN corporate_subcategory sc ON sc.id = it.subcat_id
+            WHERE YEAR(s.`date`) >= %(start_year)s
+            {mf_filter}
+            GROUP BY
+                COALESCE(c.name, 'Без категории'),
+                COALESCE(sc.name, 'Нет подкатегории'),
+                it.id,
+                YEAR(s.`date`)
+        ),
+
+        years_ranked AS (
+            SELECT
+                year,
+                DENSE_RANK() OVER (ORDER BY year DESC) AS year_rank
+            FROM (
+                SELECT DISTINCT year
+                FROM sku_base
+            ) y
+        ),
+
+        comparison_years AS (
+            SELECT year
+            FROM years_ranked
+            WHERE year_rank <= 2
+        ),
+
+        sku_periodized AS (
+            SELECT
+                sb.category,
+                sb.subcategory,
+                sb.item_id,
+                sb.year,
+
+                CASE
+                    WHEN %(is_partial_year)s = 1 THEN sb.revenue_ytd
+                    ELSE sb.revenue_full
+                END AS period_revenue,
+
+                CASE
+                    WHEN %(is_partial_year)s = 1 THEN sb.qty_ytd
+                    ELSE sb.qty_full
+                END AS period_qty
+            FROM sku_base sb
+            JOIN comparison_years cy
+              ON cy.year = sb.year
+        ),
+
+        sku_reference AS (
+            SELECT
+                sp.category,
+                sp.subcategory,
+                sp.item_id,
+                CASE
+                    WHEN SUM(sp.period_qty) <> 0 THEN SUM(sp.period_revenue) / SUM(sp.period_qty)
+                    ELSE NULL
+                END AS ref_price
+            FROM sku_periodized sp
+            GROUP BY
+                sp.category,
+                sp.subcategory,
+                sp.item_id
+        ),
+
+        sku_reference_ranked AS (
+            SELECT
+                category,
+                subcategory,
+                item_id,
+                ref_price,
+                NTILE(3) OVER (
+                    PARTITION BY category, subcategory
+                    ORDER BY ref_price
+                ) AS ref_tile
+            FROM sku_reference
+            WHERE ref_price IS NOT NULL
+              AND ref_price > 0
+        ),
+
+        sku_reference_labeled AS (
+            SELECT
+                category,
+                subcategory,
+                item_id,
+                ref_price,
+                CASE
+                    WHEN ref_tile = 1 THEN 'Низкий диапазон'
+                    WHEN ref_tile = 2 THEN 'Средний диапазон'
+                    ELSE 'Высокий диапазон'
+                END AS price_band,
+                MIN(ref_price) OVER (
+                    PARTITION BY category, subcategory, ref_tile
+                ) AS segment_low_bound,
+                MAX(ref_price) OVER (
+                    PARTITION BY category, subcategory, ref_tile
+                ) AS segment_high_bound
+            FROM sku_reference_ranked
+        ),
+
+        sku_segmented AS (
+            SELECT
+                sp.category,
+                sp.subcategory,
+                srl.price_band,
+                sp.item_id,
+                sp.year,
+                sp.period_revenue,
+                sp.period_qty,
+                srl.segment_low_bound,
+                srl.segment_high_bound
+            FROM sku_periodized sp
+            JOIN sku_reference_labeled srl
+              ON srl.category = sp.category
+             AND srl.subcategory = sp.subcategory
+             AND srl.item_id = sp.item_id
+        )
+
+        SELECT
+            category,
+            subcategory,
+            price_band,
+            year,
+            SUM(period_revenue) AS period_revenue,
+            SUM(period_qty) AS period_qty,
+            MIN(segment_low_bound) AS segment_low_bound,
+            MAX(segment_high_bound) AS segment_high_bound,
+            %(cutoff_year)s AS cutoff_year,
+            %(cutoff_month)s AS cutoff_month,
+            %(cutoff_day)s AS cutoff_day,
+            %(is_partial_year)s AS is_partial_year
+        FROM sku_segmented
+        GROUP BY
+            category,
+            subcategory,
+            price_band,
+            year
+        ORDER BY
+            category,
+            subcategory,
+            FIELD(price_band, 'Низкий диапазон', 'Средний диапазон', 'Высокий диапазон'),
+            year
+    """
+
+    return fetch_all_dict(q, params)

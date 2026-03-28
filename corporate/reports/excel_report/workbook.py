@@ -33,6 +33,8 @@ from .dataset import (
     get_top_items_qty_by_year,
     get_subcategory_manufacturer_dependence,
     get_sku_productivity_by_subcategory,
+    get_price_segment_subcategory_yoy
+    
 )
 
 from .sheets.sheet_index import build_index_sheet
@@ -50,6 +52,7 @@ from .sheets.sheet_assortment_width import build_assortment_width_sheet
 from .sheets.sheet_assortment_width_subcategories import build_assortment_width_subcategories_sheet
 from .sheets.sheet_sku_productivity import build_sku_productivity_sheet
 from .sheets.sheet_new_lost_sku import build_new_lost_sku_sheet
+from .sheets.sheet_price_segmentation import build_price_segmentation_sheet
 from .sheets.sheet_assortment_vs_revenue import build_assortment_vs_revenue_sheet
 from .sheets.sheet_abc_manufacturers import build_abc_manufacturers_sheet
 from .sheets.sheet_abc_categories import build_abc_categories_sheet
@@ -159,6 +162,12 @@ def build_manufacturers_excel_report(
         start_year=start_year,
         manufacturer_ids=manufacturer_ids,
     )
+    
+    price_segmentation_rows = get_price_segment_subcategory_yoy(
+    start_year=start_year,
+    manufacturer_ids=manufacturer_ids,
+)
+
 
     manufacturer_item_counts = get_manufacturer_item_counts(
         start_year=start_year,
@@ -246,6 +255,8 @@ def build_manufacturers_excel_report(
         subcategory_data=new_lost_subcategories,
     )
     
+    build_price_segmentation_sheet(wb, price_segmentation_rows)
+    
 
  
 
@@ -284,11 +295,12 @@ def build_manufacturers_excel_report(
         "Ширина SKU по подкатегориям": "12",
         "SKU productivity": "13",
         "New vs Lost SKU": "14",
-        "Assortment vs revenue": "15",
-        "ABC manufacturers": "16",
-        "ABC categories": "17",
-        "Store x manufacturer": "18",
-        "Top Items": "19",
+        "Price segmentation": "15",
+        "Assortment vs revenue": "16",
+        "ABC manufacturers": "17",
+        "ABC categories": "18",
+        "Store x manufacturer": "19",
+        "Top Items": "20",
 
     }
 

@@ -15,7 +15,7 @@ COLORS = {
     "blue": "2F75B5",
     "back_text_green": "1F5E4E",
     "heat_light": "EEF6F2",
-    "divider_fill": "F3F6F5",
+    "divider_fill": "E7F1ED",
 }
 
 FILLS = {
@@ -43,12 +43,14 @@ FONTS = {
 
 thin = Side(style="thin", color=COLORS["border_gray"])
 medium_dark = Side(style="medium", color=COLORS["dark_green"])
+divider_side = Side(style="thin", color=COLORS["border_gray"])
 
 BORDERS = {
     "thin": Border(left=thin, right=thin, top=thin, bottom=thin),
     "bottom_thin": Border(bottom=thin),
     "bottom_medium": Border(bottom=medium_dark),
     "top_bottom_medium": Border(top=medium_dark, bottom=medium_dark),
+    "divider": Border(top=divider_side, bottom=divider_side),
     "none": Border(),
 }
 
