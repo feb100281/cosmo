@@ -1,3 +1,4 @@
+# sales/reports/sales_report/prophet_fy_chart.py
 from __future__ import annotations
 
 import io
@@ -97,15 +98,20 @@ def build_prophet_fy_bar_svg(
     plan_full_month = np.array([float(plan_map.get(m, 0.0)) for m in months], dtype=float)
 
     # --- split current month into MTD fact + remaining forecast ---
-    # MTD fact for current month:
     ms = report_ts.replace(day=1)
+    this_eom = (report_ts + pd.offsets.MonthEnd(0)).normalize()
+
+    # факт с начала месяца по report_date
     mtd_fact = float(df_f[(df_f["date"] >= ms) & (df_f["date"] <= report_ts)]["amount"].sum())
 
-    # Full-month forecast for current month (from prophet):
-    curr_month_forecast = float(plan_map.get(curr_month, 0.0))
+    # прогноз только на оставшиеся дни текущего месяца
+    rest_start = (report_ts + pd.Timedelta(days=1)).normalize()
+    remaining_forecast = float(
+        df_p[(df_p["ds"] >= rest_start) & (df_p["ds"] <= this_eom)]["yhat"].sum()
+    )
 
-    # Remaining forecast = max(forecast - mtd_fact, 0)
-    remaining_forecast = max(curr_month_forecast - mtd_fact, 0.0)
+    # полный прогноз закрытия месяца для высоты столбика
+    curr_month_forecast = mtd_fact + remaining_forecast
 
     # --- build plot series (what we actually draw) ---
     # Past months (strictly < current): fact
