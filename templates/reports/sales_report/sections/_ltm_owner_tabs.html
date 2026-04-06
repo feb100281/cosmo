@@ -4,6 +4,7 @@
 
 <div class="owner-block">
 
+  {# 1) ШАПКА: только заголовок + MAPE #}
   <div class="owner-block__head">
     <div class="owner-block__title">Прогноз (Prophet)</div>
 
@@ -14,6 +15,28 @@
     {% endif %}
   </div>
 
+  {# 2) Справка о Prophet — сразу после шапки #}
+  <div class="owner-prophet-note">
+    <div class="owner-prophet-note__head">
+      <img
+        class="owner-prophet-note__logo"
+        src="{% static 'img/sales_report/prophet_logo.svg' %}"
+        alt="Prophet"
+      />
+      <div class="owner-prophet-note__title">** О модели Prophet</div>
+    </div>
+
+    <div class="owner-prophet-note__text">
+      Prophet — библиотека прогнозирования временных рядов. Модель описывает динамику как сумму
+      <b>тренда</b> и <b>сезонностей</b> (годовой/недельной), с возможными точками изменения тренда.
+      В отчёте прогноз строится на ежедневном уровне и агрегируется до EOM, M+1 и M+2.
+      <span class="owner-prophet-note__muted">
+        Подходит для бизнес-метрик с выраженной сезонностью и изменениями тренда.
+      </span>
+    </div>
+  </div>
+
+  {# 3) Прогнозы #}
   {% if ltm_prophet and ltm_prophet.has_data %}
 
     <div class="owner-grid owner-grid--forecast">
@@ -24,9 +47,78 @@
         <div class="m-s">закрытие {{ ltm_prophet.eom|date:"d.m.Y" }}</div>
 
         <div class="m-subnote">
-          Осталось добрать:
-          <b>{{ ltm_prophet.gap }}</b>
-          <span class="m-subnote__pct">{{ ltm_prophet.gap_pct }}</span>
+
+          {% if ltm_prophet.is_month_closed %}
+
+            {% if ltm_prophet.eom_accuracy and ltm_prophet.eom_accuracy.start %}
+              <div class="prophet-qa">
+                <div class="prophet-qa__head">
+                  <div class="prophet-qa__title">МЕСЯЦ ЗАКРЫТ — ОЦЕНКА ТОЧНОСТИ ПРОГНОЗА</div>
+                  <div class="prophet-qa__asof">
+                    Прогноз на {{ ltm_prophet.eom_accuracy.target_month }}, рассчитан {{ ltm_prophet.eom_accuracy.calc_date|date:"d.m.Y" }}
+                  </div>
+                </div>
+
+                <div class="prophet-qa__row">
+
+                  <div class="prophet-qa__cell">
+                    <div class="prophet-qa__k">Факт</div>
+                    <div class="prophet-qa__v">{{ ltm_prophet.eom_accuracy.fact }}</div>
+                  </div>
+
+                  <div class="prophet-qa__cell">
+                    <div class="prophet-qa__k">Прогноз</div>
+                    <div class="prophet-qa__v">{{ ltm_prophet.eom_accuracy.start.forecast }}</div>
+                  </div>
+
+                  {% with e=ltm_prophet.eom_accuracy.start %}
+                    {% if e.err_abs_raw > 0 %}
+                      {% with sign_class="positive" %}
+                        <div class="prophet-qa__cell">
+                          <div class="prophet-qa__k">Отклонение</div>
+                          <div class="prophet-qa__v prophet-qa__v--delta {{ sign_class }}">{{ e.err_abs }}</div>
+                        </div>
+
+                        <div class="prophet-qa__cell">
+                          <div class="prophet-qa__k">%</div>
+                          <div class="prophet-qa__v prophet-qa__v--delta {{ sign_class }}">{{ e.err_pct }}</div>
+                        </div>
+                      {% endwith %}
+                    {% else %}
+                      {% with sign_class="negative" %}
+                        <div class="prophet-qa__cell">
+                          <div class="prophet-qa__k">Отклонение</div>
+                          <div class="prophet-qa__v prophet-qa__v--delta {{ sign_class }}">{{ e.err_abs }}</div>
+                        </div>
+
+                        <div class="prophet-qa__cell">
+                          <div class="prophet-qa__k">%</div>
+                          <div class="prophet-qa__v prophet-qa__v--delta {{ sign_class }}">{{ e.err_pct }}</div>
+                        </div>
+                      {% endwith %}
+                    {% endif %}
+                  {% endwith %}
+
+                </div>
+
+                <div class="prophet-qa__foot">
+                  Знак отклонения: “+” — завышение прогноза, “−” — занижение.
+                </div>
+
+                <div class="prophet-qa__note">
+                  Прогноз был сформирован до начала месяца и не учитывал фактические данные текущего месяца.
+                </div>
+              </div>
+            {% endif %}
+
+          {% else %}
+
+            Осталось добрать:
+            <b>{{ ltm_prophet.gap }}</b>
+            <span class="m-subnote__pct">{{ ltm_prophet.gap_pct }}</span>
+
+          {% endif %}
+
         </div>
       </div>
 
@@ -50,7 +142,7 @@
 
     </div>
 
-    {# === Методология MAPE (сноска *) === #}
+    {# 4) Методология MAPE #}
     <div class="owner-methodology">
       <div class="owner-methodology__text">
         <strong>* MAPE</strong> (Mean Absolute Percentage Error) — средняя абсолютная процентная ошибка прогноза.
@@ -66,27 +158,6 @@
 
       <div class="owner-methodology__formula">
         MAPE = (1 / n) × Σ |(Fact − Forecast) / Fact| × 100%
-      </div>
-    </div>
-
-    {# === Справка о модели Prophet (сноска **) — в конце секции === #}
-    <div class="owner-prophet-note">
-      <div class="owner-prophet-note__head">
-        <img
-          class="owner-prophet-note__logo"
-          src="{% static 'img/sales_report/prophet_logo.svg' %}"
-          alt="Prophet"
-        />
-        <div class="owner-prophet-note__title">** О модели Prophet</div>
-      </div>
-
-      <div class="owner-prophet-note__text">
-        Prophet — библиотека прогнозирования временных рядов. Модель описывает динамику как сумму
-        <b>тренда</b> и <b>сезонностей</b> (годовой/недельной), с возможными точками изменения тренда.
-        В отчёте прогноз строится на ежедневном уровне и агрегируется до EOM, M+1 и M+2.
-        <span class="owner-prophet-note__muted">
-          Подходит для бизнес-метрик с выраженной сезонностью и изменениями тренда.
-        </span>
       </div>
     </div>
 

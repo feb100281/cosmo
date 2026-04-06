@@ -1,0 +1,63 @@
+{# templates/reports/sales_report/sections/orders/_summary.html #}
+
+<section class="ordsum-panel" style="margin-top:12px;">
+  <!-- LEFT -->
+  <div class="ordsum-left">
+    <div class="ordsum-eyebrow">Итоги периода</div>
+
+    <div class="ordsum-net">
+      <div class="ordsum-label">Чистая выручка</div>
+      <div class="ordsum-net-value">{{ orders.summary.amount }}</div>
+
+      <div class="ordsum-chips">
+        <span class="ordsum-chip">Оборот: {{ orders.summary.dt }}</span>
+        <span class="ordsum-chip ordsum-chip--muted">Возвраты: {{ orders.summary.cr }}</span>
+      </div>
+    </div>
+
+    <div class="ordsum-minirow">
+      <div class="ordsum-mini">
+        <div class="ordsum-mini-title">Отгружено заказов</div>
+        <div class="ordsum-mini-value">{{ orders.summary.orders }}</div>
+      </div>
+
+      {# Если второй мини-блок не нужен — оставляем пустую "плитку", чтобы сетка не ломалась #}
+      <div class="ordsum-mini ordsum-mini--ghost" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="ordsum-right">
+    <div class="ordsum-metric">
+      <div class="ordsum-metric-head">
+        <div class="ordsum-metric-title">Доля возвратов</div>
+        <div class="ordsum-metric-value">{{ orders.summary.rtr_ratio }}</div>
+      </div>
+    </div>
+
+    <div class="ordsum-metric ordsum-metric--accent">
+      <div class="ordsum-metric-head">
+        <div class="ordsum-metric-title">Carryover доля</div>
+        <div class="ordsum-metric-value">{{ orders.summary.carry_share }}</div>
+      </div>
+
+      <div class="ordsum-bar" aria-hidden="true">
+        <div class="ordsum-bar-fill"
+             style="width: {{ orders.summary.carry_share_num|default:'0' }}%;"></div>
+      </div>
+
+      <div class="ordsum-metric-note muted">выручка по заказам, созданным до периода</div>
+    </div>
+
+    <div class="ordsum-metric">
+      <div class="ordsum-metric-head">
+        <div class="ordsum-metric-title">Медианная длительность</div>
+        <div class="ordsum-metric-value">
+          {{ orders.summary.med_duration }} <span class="ordsum-unit">дн.</span>
+        </div>
+      </div>
+      <div class="ordsum-metric-note muted">от заказа до отгрузки</div>
+    </div>
+  </div>
+</section>
+

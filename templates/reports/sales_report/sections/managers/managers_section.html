@@ -1,0 +1,15 @@
+{% load static %}
+
+<section id="managers" class="report-section">
+
+  <h2 class="section-title">IV. Анализ отгрузок по менеджерам</h2>
+
+  {% include "reports/sales_report/sections/managers/_summary.html" with managers=managers %}
+
+  {% include "reports/sales_report/sections/managers/_period_block.html" with block=managers.mtd block_title="IV.1 MTD — менеджеры по отгрузкам" anchor_id="managers-mtd" empty_text="Нет данных по менеджерам за MTD" %}
+
+  <div class="page-break"></div>
+
+  {% include "reports/sales_report/sections/managers/_period_block.html" with block=managers.ytd block_title="IV.2 YTD — менеджеры по отгрузкам" anchor_id="managers-ytd" empty_text="Нет данных по менеджерам за YTD" %}
+
+</section>

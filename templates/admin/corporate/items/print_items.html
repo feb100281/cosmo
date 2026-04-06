@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --text:#111827; --muted:#6b7280; --line:#e5e7eb; --head:#f8fafc;
+      --accent:#4f46e5; --group:#eef2ff; --group-line:#c7d2fe;
+    }
+    html,body{margin:0;padding:0;background:#fff;color:var(--text);
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    .wrap{max-width:1100px;margin:20px auto 40px;padding:0 16px;}
+    .dochead{padding-bottom:12px;border-bottom:2px solid var(--line);margin-bottom:14px;}
+    .kicker{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+    .title{font-size:20px;font-weight:700;margin:0;}
+    .meta{margin-top:6px;font-size:12px;color:var(--muted);}
+
+    .printbar{margin:12px 0 16px;display:flex;gap:10px;}
+    .printbar button{font-size:13px;padding:6px 14px;border:1px solid #d1d5db;background:#f3f4f6;cursor:pointer;border-radius:8px;}
+    .printbar button:hover{background:#e5e7eb;}
+
+    table{width:100%;border-collapse:collapse;border:1px solid var(--line);}
+    thead th{background:var(--head);color:#374151;text-align:left;font-size:12px;letter-spacing:.10em;text-transform:uppercase;
+      padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+    tbody td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13px;}
+    tbody tr:last-child td{border-bottom:none;}
+    .muted{color:var(--muted);}
+    .mono{font-variant-numeric:tabular-nums;white-space:nowrap;}
+
+    tr.group-row td{background:var(--group);border-bottom-color:var(--group-line);font-weight:700;}
+    tr.group-row td:first-child{border-left:6px solid var(--accent);}
+
+    .it-icon svg{width:16px;height:16px;vertical-align:-3px;margin-right:6px;}
+    .it-emoji{margin-right:6px;}
+
+    @media print{
+      .wrap{max-width:100%;margin:0;padding:0;}
+      .printbar{display:none;}
+      @page{size:A4;margin:12mm;}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="dochead">
+    <div class="kicker">Corporate · справочники</div>
+    <h1 class="title">Список номенклатуры (группы = корневые категории)</h1>
+    <div class="meta">Сформировано: {{ generated_at|date:"d.m.Y H:i" }}</div>
+  </div>
+
+  <div class="printbar">
+    <button onclick="window.print()">🖨️ Печать / PDF</button>
+    <button onclick="history.back()">↩ Назад</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:36%;">Номенклатура (1С)</th>
+        <th style="width:10%;">Артикль</th>
+        <th style="width:18%;">Категория</th>
+        <th style="width:18%;">Подкатегория</th>
+        <th style="width:18%;">Бренд / Производитель</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% regroup rows by group as grouped %}
+
+      {% for g in grouped %}
+        <tr class="group-row">
+          <td colspan="5">
+            {% if g.grouper %}{{ g.grouper }}{% else %}<span class="muted">Без группы</span>{% endif %}
+            <span class="muted"> · позиций: {{ g.list|length }}</span>
+          </td>
+        </tr>
+
+        {% for r in g.list %}
+          <tr>
+            <td>
+              <div style="font-weight:600;line-height:1.2;">{{ r.fullname }}</div>
+              {% if r.name %}<div class="muted" style="margin-top:3px;">{{ r.name }}</div>{% endif %}
+            </td>
+            <td class="mono">{% if r.article %}{{ r.article }}{% else %}—{% endif %}</td>
+            <td>{% if r.cat %}{{ r.cat }}{% else %}—{% endif %}</td>
+            <td>{% if r.subcat %}{{ r.subcat }}{% else %}—{% endif %}</td>
+            <td>
+              <div>{% if r.brend %}{{ r.brend }}{% else %}—{% endif %}</div>
+              <div class="muted" style="margin-top:3px;">{% if r.manufacturer %}{{ r.manufacturer }}{% else %}—{% endif %}</div>
+            </td>
+          </tr>
+        {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table>
+
+</div>
+</body>
+</html>

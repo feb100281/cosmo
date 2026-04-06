@@ -1,0 +1,190 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Агенты | Печать{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card: rgba(255,255,255,.06);
+      --line: rgba(148,163,184,.22);
+      --text:#e5e7eb;
+      --muted: rgba(229,231,235,.72);
+      --accent:#e91e63;
+    }
+    body{
+      background:
+        radial-gradient(1200px 800px at 20% -10%, rgba(233,30,99,.18), transparent 60%),
+        radial-gradient(1000px 700px at 95% 0%, rgba(14,165,233,.16), transparent 55%),
+        var(--bg);
+      color: var(--text);
+    }
+    #content{ padding: 0 !important; }
+    .wrap{ max-width: 1200px; margin: 0 auto; padding: 22px 18px 34px; }
+    .hero{
+      display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;
+      padding: 16px 16px 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      box-shadow: 0 30px 70px rgba(0,0,0,.35);
+    }
+    .badge{
+      width:48px;height:48px;border-radius:14px;
+      display:flex;align-items:center;justify-content:center;
+      background: rgba(233,30,99,.12);
+      border:1px solid rgba(233,30,99,.28);
+      font-size: 22px;
+    }
+    .title{ margin:0; font-size:20px; font-weight:700; }
+    .sub{ margin-top:4px; font-size:12px; color: var(--muted); }
+    .spacer{ flex:1; }
+    .chips{ display:flex; gap:10px; flex-wrap:wrap; }
+    .chip{
+      min-width: 210px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,.05);
+    }
+    .chip .k{ font-size:10px; color: var(--muted); letter-spacing:.14em; text-transform:uppercase; }
+    .chip .v{ margin-top:6px; font-size:18px; font-weight:800; }
+    .chip .s{ margin-top:3px; font-size:11px; color: var(--muted); }
+
+    .card{
+      margin-top: 12px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background: rgba(255,255,255,.04);
+      overflow:hidden;
+    }
+    .card-h{
+      padding: 12px 14px;
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      border-bottom:1px solid var(--line);
+      background: rgba(255,255,255,.05);
+    }
+    .card-h .t{ font-size:11px; color: var(--muted); letter-spacing:.14em; text-transform:uppercase; }
+    .hint{ font-size:12px; color: var(--muted); }
+
+    table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+    thead th{
+      text-align:left;
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      font-size:11px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color: rgba(229,231,235,.86);
+    }
+    tbody td{
+      padding: 10px 12px;
+      border-bottom:1px solid rgba(148,163,184,.16);
+      vertical-align:top;
+    }
+    tbody tr:hover td{ background: rgba(255,255,255,.03); }
+    .muted{ color: var(--muted); }
+    .right{ text-align:right; font-variant-numeric: tabular-nums; }
+    .mono{ font-variant-numeric: tabular-nums; }
+
+    .footer{
+      margin-top: 10px;
+      display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    @media print{
+      body{ background:#fff; color:#111; }
+      .hero,.card{ box-shadow:none; background:#fff; border-color:#e5e7eb; }
+      thead th{ background:#f9fafb; color:#111; border-bottom-color:#e5e7eb; }
+      tbody td{ border-bottom-color:#e5e7eb; }
+      .muted,.hint,.chip .k,.chip .s,.footer,.sub{ color:#6b7280; }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="hero">
+    <div class="badge">🤝</div>
+    <div>
+      <h1 class="title">Отчет по агентам</h1>
+      <div class="sub">
+        Период: <span class="mono">{{ date_from }}</span> — <span class="mono">{{ date_to }}</span>
+        · Обновлено: <span class="mono">{{ generated_at_str }}</span>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="chips">
+      <div class="chip">
+        <div class="k">Агентов</div>
+        <div class="v">{{ totals_agents }}</div>
+        <div class="s">в отчете</div>
+      </div>
+      <div class="chip">
+        <div class="k">Net выручка</div>
+        <div class="v">{{ totals_net }}</div>
+        <div class="s">Σ(Дт − Кр)</div>
+      </div>
+      <div class="chip">
+        <div class="k">Заказов</div>
+        <div class="v">{{ totals_orders }}</div>
+        <div class="s">distinct orders</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <div class="t">Список агентов</div>
+      <div class="hint">Сортировка: по Net (убывание)</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Агент</th>
+          <th>Контакты</th>
+          <th class="right">Дт</th>
+          <th class="right">Кр</th>
+          <th class="right">Net</th>
+          <th class="right">Заказы</th>
+          <th class="right">Строки</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>
+              <div style="font-weight:700">{{ r.title }}</div>
+              {% if r.subtitle %}<div class="muted" style="font-size:11px">{{ r.subtitle }}</div>{% endif %}
+            </td>
+            <td>
+              {% if r.tel %}<div class="mono">{{ r.tel }}</div>{% else %}<div class="muted">—</div>{% endif %}
+              {% if r.email %}<div class="mono">{{ r.email }}</div>{% endif %}
+            </td>
+            <td class="right mono">{{ r.dt_disp }}</td>
+            <td class="right mono">{{ r.cr_disp }}</td>
+            <td class="right mono" style="font-weight:800">{{ r.net_disp }}</td>
+            <td class="right mono">{{ r.orders }}</td>
+            <td class="right mono">{{ r.lines }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="muted">Нет данных</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <div>Примечание: Net = Дт − Кр</div>
+    <div class="mono">ids: {{ ids_raw|default:"ALL" }}</div>
+  </div>
+</div>
+{% endblock %}

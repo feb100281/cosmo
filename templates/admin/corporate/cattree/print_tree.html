@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root{
+      --text:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --head:#f8fafc;
+      --group:#eef2ff;
+      --group-line:#c7d2fe;
+      --accent:#4f46e5;
+    }
+
+    html, body{
+      margin:0;
+      padding:0;
+      background:#fff;
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    }
+
+    .wrap{
+      max-width: 980px;
+      margin: 20px auto 40px;
+      padding: 0 16px;
+    }
+
+    /* ---------- шапка документа ---------- */
+    .dochead{
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--line);
+      margin-bottom: 14px;
+    }
+
+    .kicker{
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .title{
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .meta{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ---------- декоративная "река" ---------- */
+    .river{
+      margin: 10px 0 14px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      overflow: hidden;
+    }
+    .river svg{ width:100%; height:48px; display:block; }
+    .river .hint{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background: var(--accent);
+      display:inline-block;
+    }
+
+    /* ---------- кнопки ---------- */
+    .printbar{
+      margin: 12px 0 16px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .printbar button{
+      font-size: 13px;
+      padding: 6px 14px;
+      border: 1px solid #d1d5db;
+      background: #f3f4f6;
+      cursor: pointer;
+    }
+
+    .printbar button:hover{
+      background: #e5e7eb;
+    }
+
+    /* ---------- график ---------- */
+    .chartbox{
+      margin: 14px 0 16px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+    .chartbox img{
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .chartnote{
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ---------- таблица ---------- */
+    table{
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+    }
+
+    thead th{
+      background: var(--head);
+      color: #374151;
+      text-align: left;
+      font-size: 12px;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    tbody td{
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      font-size: 13px;
+    }
+
+    tbody tr:last-child td{
+      border-bottom: none;
+    }
+
+    .num{
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    /* ---------- структура строки ---------- */
+    .catcell{
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .indent{
+      flex: 0 0 auto;
+      height: 1px;
+    }
+
+    .icon{
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+      flex: 0 0 18px;
+    }
+
+    .icon svg{
+      width: 18px;
+      height: 18px;
+    }
+
+    .name{
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .comment{
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
+    /* ---------- подкатегории (чипы) ---------- */
+    .subcats{
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .subchip{
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #374151;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    /* ---------- выделение верхних узлов (level 0) ---------- */
+    tr.is-top td{
+      background: var(--group);
+      border-bottom-color: var(--group-line);
+      font-weight: 800;
+    }
+    tr.is-top td:first-child{
+      border-left: 6px solid var(--accent);
+    }
+    tr.is-top .comment{
+      color: #4b5563;
+      font-weight: 400;
+    }
+    tr.is-top .subchip{
+      background: rgba(255,255,255,.7);
+    }
+
+    /* ---------- подчёркивание 1-го уровня (level 1) ---------- */
+    tr.is-l1 .name{
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+
+    /* ---------- печать ---------- */
+    @media print{
+      .wrap{ max-width: 100%; margin: 0; padding: 0; }
+      .printbar{ display: none; }
+      .chartbox{ break-inside: avoid; page-break-inside: avoid; }
+      @page{ size: A4; margin: 12mm; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="dochead">
+      <div class="kicker">Corporate · справочники</div>
+      <h1 class="title">Дерево категорий товаров</h1>
+      <div class="meta">Сформировано: {{ generated_at|date:"d.m.Y H:i" }}</div>
+    </div>
+
+
+    <!-- КНОПКИ -->
+    <div class="printbar">
+      <button onclick="window.print()">🖨️ Печать / PDF</button>
+      <button onclick="history.back()">↩ Назад</button>
+    </div>
+
+    <!-- ГРАФИК -->
+    {% if chart_png %}
+      <div class="chartbox">
+        <img src="{{ chart_png }}" alt="График структуры каталога">
+      </div>
+    {% endif %}
+
+
+    {% comment %} {% if weights_bar_png %}
+  <div class="chartbox">
+    <img src="{{ weights_bar_png }}" alt="Вес категорий (структура каталога)">
+    <div class="chartnote">
+      Ширина/вес отражает структурную насыщенность: количество веток (L1/L2) с учётом скрытых элементов.
+    </div>
+  </div>
+{% endif %} {% endcomment %}
+
+
+
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:80%;">Категория</th>
+          <th style="width:20%; text-align:right;">Подкатегорий</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for r in rows %}
+          <tr class="{% if r.is_top %}is-top{% endif %}{% if r.is_l1 %} is-l1{% endif %}">
+            <td>
+              <div class="catcell">
+                <div class="indent" style="width: calc({{ r.level }} * 18px);"></div>
+
+                <div class="icon">
+                  {% if r.icon and r.icon|slice:":4" == "<svg" %}
+                    {{ r.icon|safe }}
+                  {% endif %}
+                </div>
+
+                <div>
+                  <div class="name">{{ r.name }}</div>
+
+                  {% if r.comments %}
+                    <div class="comment">{{ r.comments }}</div>
+                  {% endif %}
+
+                  {% if r.subcat_names %}
+                    <div class="subcats">
+                      {% for s in r.subcat_names %}
+                        <span class="subchip">{{ s }}</span>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+
+            <td class="num">
+              {% if r.is_top %}
+                —
+              {% else %}
+                {{ r.subcat_names|length }}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{% if trend %}
+  <div id="trend" class="kpi-compare-section" style="margin-top: 14px;">
+    <h3 id="trend-series" class="compare-title">
+      {{ trend_meta.title }}
+      {# если хочешь, можно принудительно переопределять: #}
+      {# {% if report_type == "daily" %}Динамика за последние 14 дней{% elif report_type=="weekly" %}Динамика за 12 последних недель{% else %}Динамика за 12 месяцев{% endif %} #}
+    </h3>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Период</th>
+          <th>Выручка</th>
+          <th>Оборот</th>
+          <th>Возвраты</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in trend %}
+          <tr {% if t.is_current %}style="font-weight:700;"{% endif %}>
+            <td>{{ t.label }}</td>
+            <td class="td-bar" style="--pct: {{ t.amount_pct }};">
+              <span class="cell-text">{{ t.amount }}</span>
+            </td>
+            <td>{{ t.dt }}</td>
+            <td>{{ t.cr }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}

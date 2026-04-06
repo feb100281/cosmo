@@ -8,6 +8,14 @@
 <link rel="stylesheet" href="{% static 'css/sales_report/04_components.css' %}">
 <link rel="stylesheet" href="{% static 'css/sales_report/05_stores.css' %}">
 <link rel="stylesheet" href="{% static 'css/sales_report/90_print.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/kpi.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/logo.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/order.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/prophet_qa.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/stores.css' %}">
+<link rel="stylesheet" href="{% static 'css/sales_report/managers.css' %}">
+
+
 {% endblock %}
 
 
@@ -22,15 +30,43 @@
   {% include "reports/sales_report/toc.html" %}
   <div class="page-break"></div>
 
-  {% include "reports/sales_report/sections/kpi.html" %}
+  {% include "reports/sales_report/sections/kpi/kpi_section.html" %}
+  <div class="page-break"></div>
+
+  {% include "reports/sales_report/sections/trends/trend_section.html" %}
   <div class="page-break"></div>
 
   {% include "reports/sales_report/sections/totals.html" %}
   <div class="page-break"></div>
 
+
+  {% include "reports/sales_report/sections/managers/managers_section.html" %}
+<div class="page-break"></div>
+
+
+  {% include "reports/sales_report/sections/orders/orders_section.html" %}
+  <div class="page-break"></div>
+
+
+ {% comment %} {% include "reports/sales_report/sections/managers.html" %}
+  <div class="page-break"></div>  {% endcomment %}
+
   {% include "reports/sales_report/sections/categories.html" %}
   <div class="page-break"></div>
 
-  {% include "reports/sales_report/sections/stores.html" %}
+  {% comment %} {% include "reports/sales_report/sections/stores.html" %}
+  <div class="page-break"></div> {% endcomment %}
+
+  {% include "reports/sales_report/sections/stores/_performance.html" %}
+    <div class="page-break"></div>
+  {% include "reports/sales_report/sections/stores/_diag_categories.html" %}
   <div class="page-break"></div>
+
+
+  {% include "reports/sales_report/sections/appendix/appendix_a_store_matrices.html" %}
+<div class="page-break"></div>
+
+{% include "reports/sales_report/sections/appendix/appendix_b_subcategories_ytd.html" %}
+<div class="page-break"></div>
+
 {% endblock %}

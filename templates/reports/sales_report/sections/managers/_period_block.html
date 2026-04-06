@@ -1,0 +1,164 @@
+{% comment %} <div id="{{ anchor_id }}"></div>
+
+<h3 class="compare-title" style="margin-top:32px;">
+  {{ block_title }}
+</h3>
+
+{% if block.insights %}
+  <div class="insights-block" style="margin-bottom: 18px;">
+    {% for insight_block in block.insights %}
+      <div class="insight-card">
+        <div class="insight-title">{{ insight_block.title }}</div>
+        <ul class="insight-list">
+          {% for item in insight_block.items %}
+            <li>{{ item|safe }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if block.rows %}
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Менеджер</th>
+        <th>Чистая выручка</th>
+        <th>Заказы с отгрузкой</th>
+        <th>Возвраты</th>
+        <th>% возвратов</th>
+        <th>Средняя отгрузка на заказ</th>
+        <th>Доля выручки</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in block.rows %}
+        <tr class="{% if row.row_flag %}row-{{ row.row_flag }}{% endif %}">
+          <td>
+            <div>{{ row.manager_l1 }}</div>
+            {% if row.manager_l2 %}
+              <div class="shop-name" style="font-size: 11px; opacity: 0.72;">{{ row.manager_l2 }}</div>
+            {% endif %}
+          </td>
+          <td>{{ row.amount }}</td>
+          <td>{{ row.orders_with_shipments }}</td>
+          <td>{{ row.cr }}</td>
+<td>
+  <span class="rr-badge rr-badge--{{ row.rr_class|cut:'rr-' }}">
+    {{ row.return_rate }}
+  </span>
+</td>
+          <td>{{ row.aov }}</td>
+          <td>{{ row.share|floatformat:1 }}%</td>
+        </tr>
+      {% endfor %}
+
+      <tr class="total-row">
+        <td><span class="shop-name">Итого</span></td>
+        <td>{{ block.total.amount }}</td>
+        <td>{{ block.total.orders_with_shipments }}</td>
+        <td>{{ block.total.cr }}</td>
+        <td>{{ block.total.return_rate }}</td>
+        <td>{{ block.total.aov }}</td>
+        <td>100%</td>
+      </tr>
+    </tbody>
+  </table>
+{% else %}
+  <div class="kpi-footnote">{{ empty_text }}</div>
+{% endif %} {% endcomment %}
+
+
+
+
+
+<div id="{{ anchor_id }}"></div>
+
+<h3 class="compare-title" style="margin-top:32px;">
+  {{ block_title }}
+</h3>
+
+{% if block.insights %}
+  <div class="insights-block">
+    {% for insight_block in block.insights %}
+      <div class="insight-card">
+        <div class="insight-title">{{ insight_block.title }}</div>
+        <ul class="insight-list">
+          {% for item in insight_block.items %}
+            <li>{{ item|safe }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if block.chart_svg %}
+  <div class="managers-chart-card">
+    {{ block.chart_svg|safe }}
+  </div>
+{% endif %}
+
+  <div class="page-break"></div>
+
+
+{% if block.rows %}
+
+<div class="table-section-header">
+  <div class="table-title">Анализ менеджеров по отгрузкам</div>
+  <div class="table-subtitle">
+    Чистая выручка, количество заказов и уровень возвратов
+  </div>
+</div>
+
+<table class="compare-table">
+    <thead>
+      <tr>
+        <th>Менеджер</th>
+        <th>Чистая выручка</th>
+        <th>Заказы с отгрузкой</th>
+        <th>Возвраты</th>
+        <th>% возвратов</th>
+        <th>Средняя отгрузка на заказ</th>
+        <th>Доля выручки</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in block.rows %}
+        <tr class="{% if row.row_flag %}row-{{ row.row_flag }}{% endif %}">
+          <td>
+            <div class="manager-name">
+              <span class="manager-name__last">{{ row.manager_l1 }}</span>
+              {% if row.manager_l2 %}
+                <span class="manager-name__first">{{ row.manager_l2 }}</span>
+              {% endif %}
+            </div>
+          </td>
+          <td>{{ row.amount }}</td>
+          <td>{{ row.orders_with_shipments }}</td>
+          <td>{{ row.cr }}</td>
+          <td>
+<span class="rr-badge rr-badge--{{ row.rr_class }}">
+  {{ row.return_rate }}
+</span>
+          </td>
+          <td>{{ row.aov }}</td>
+          <td>{{ row.share|floatformat:1 }}%</td>
+        </tr>
+      {% endfor %}
+
+      <tr class="total-row">
+        <td><span class="manager-name__last">Итого</span></td>
+        <td>{{ block.total.amount }}</td>
+        <td>{{ block.total.orders_with_shipments }}</td>
+        <td>{{ block.total.cr }}</td>
+        <td>{{ block.total.return_rate }}</td>
+        <td>{{ block.total.aov }}</td>
+        <td>100%</td>
+      </tr>
+    </tbody>
+  </table>
+{% else %}
+  <div class="kpi-footnote">{{ empty_text }}</div>
+{% endif %}

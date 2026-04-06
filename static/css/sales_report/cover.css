@@ -2,433 +2,526 @@
 
 /* ===== ФИРМЕННЫЕ ЦВЕТА COSMORELAX ===== */
 :root {
-  --cosmoblue: #002FA7;
-  --cosmoblue-light: #2d5cd6;
-  --cosmogreen: #10b981;
-  --cosmogray: #6b7280;
-  --cosmogray-light: #f9fafb;
-  --cosmotext: #1f2937;
-  --border-color: #e5e7eb;
+    --cosmoblue: #002FA7;
+    --cosmoblue-light: #2d5cd6;
+    --cosmogreen: #10b981;
+    --cosmogray: #6b7280;
+    --cosmogray-light: #f9fafb;
+    --cosmotext: #1f2937;
+    --border-color: #e5e7eb;
 }
 
 /* ===== ОСНОВНЫЕ СТИЛИ ===== */
 .cover {
-  padding: 6px 0 0;
-}
-
-.cover-card {
-  border: 1px solid var(--border-color);
-  border-radius: 20px;
-  background: #fff;
-  overflow: hidden;
-  min-height: 900px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-  position: relative;
+    height: 100vh;              /* Используем height вместо min-height */
+    display: flex;
+    flex-direction: column;
+    padding: 6px 0 0;
+    box-sizing: border-box;
 }
 
 /* Top brand section */
 .cover-brand {
-  padding: 28px 32px 16px;
-  display: flex;
-  justify-content: center;
+    padding: 28px 32px 16px;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;             /* Запрещаем сжиматься */
 }
 
 .cover-brand-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
 
 .cover-logo {
-  height: 38px;
-  width: auto;
-  display: block;
+    height: 38px;
+    width: auto;
+    display: block;
 }
 
 .cover-brand-subtitle {
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--cosmoblue);
-  font-weight: 700;
-  opacity: 0.9;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--cosmoblue);
+    font-weight: 700;
+    opacity: 0.9;
 }
 
 /* Main content area */
 .cover-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0 32px;
+    flex: 1;                    /* Занимает всё доступное пространство */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 0 32px;
+    overflow-y: auto;           /* Добавляем скролл если контент не помещается */
+    min-height: 0;              /* Важно для flexbox */
 }
 
 /* Center titles */
 .cover-center {
-  text-align: center;
-  padding-bottom: 48px;
+    text-align: center;
+    padding: 20px 0 20px;      /* Уменьшил нижний отступ */
 }
 
 .cover-subtitle {
-  font-size: 13px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--cosmoblue);
-  font-weight: 800;
-  margin-bottom: 12px;
-  position: relative;
-  display: inline-block;
-  padding-bottom: 6px;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--cosmoblue);
+    font-weight: 800;
+    margin-bottom: 12px;
+    position: relative;
+    display: inline-block;
+    padding-bottom: 6px;
 }
 
 .cover-subtitle::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 2px;
-  background: var(--cosmoblue);
-  opacity: 0.4;
-  border-radius: 1px;
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 2px;
+    background: var(--cosmoblue);
+    opacity: 0.4;
+    border-radius: 1px;
 }
 
 .cover-title {
-  font-size: 42px;
-  line-height: 1.05;
-  letter-spacing: -0.025em;
-  font-weight: 1000;
-  color: var(--cosmotext);
-  margin: 0 0 24px 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 42px;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    font-weight: 1000;
+    color: var(--cosmotext);
+    margin: 0 0 24px 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Разделитель - SVG для корректной печати */
 .cover-divider {
-  margin: 28px auto;
-  max-width: 320px;
+    margin: 20px auto;          /* Уменьшил отступы */
+    max-width: 320px;
 }
 
 .cover-divider-svg {
-  width: 100%;
-  height: 6px;
-  display: block;
+    width: 100%;
+    height: 6px;
+    display: block;
 }
 
 .cover-period {
-  font-size: 14px;
-  color: var(--cosmogray);
-  margin-top: 20px;
+    font-size: 14px;
+    color: var(--cosmogray);
+    margin-top: 20px;
 }
 
 .cover-period-label {
-  font-weight: 600;
-  margin-right: 8px;
+    font-weight: 600;
+    margin-right: 8px;
 }
 
 .cover-period-value {
-  font-weight: 700;
-  color: var(--cosmotext);
+    font-weight: 700;
+    color: var(--cosmotext);
 }
 
-/* Бейдж - ОПТИМИЗИРОВАННЫЙ ДЛЯ ПЕЧАТИ */
+/* Бейдж */
 .cover-badge {
-  display: inline-block;
-  margin-top: 20px;
-  padding: 10px 26px;
-  background: var(--cosmoblue); /* Однотонный фон для печати */
-  color: white;
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
-  position: relative;
-  border: 2px solid var(--cosmoblue);
-  /* Градиент только для экрана */
-  background-image: linear-gradient(135deg, var(--cosmoblue), var(--cosmoblue-light));
+    display: inline-block;
+    margin-top: 20px;
+    padding: 10px 26px;
+    background: var(--cosmoblue);
+    color: white;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
+    border: 2px solid var(--cosmoblue);
+    background-image: linear-gradient(135deg, var(--cosmoblue), var(--cosmoblue-light));
 }
 
 .badge-content {
-  position: relative;
-  z-index: 2;
+    position: relative;
+    z-index: 2;
+    border-radius: 2px;
 }
 
 /* Illustration */
 .cover-art-wrap {
-  margin: 40px auto 0;
-  max-width: 680px;
-  width: 100%;
+    margin: 20px auto 0;        /* Уменьшил отступ */
+    max-width: 680px;
+    width: 100%;
+    flex-shrink: 0;             /* Запрещаем сжиматься */
 }
 
 .cover-art {
-  width: 100%;
-  height: 280px;
-  object-fit: contain;
-  display: block;
-  opacity: 0.98;
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.1));
+    width: 100%;
+    height: 240px;              /* Немного уменьшил высоту */
+    object-fit: contain;
+    display: block;
+    opacity: 0.98;
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.1));
 }
 
 .cover-art-caption {
-  text-align: center;
-  font-size: 12px;
-  color: var(--cosmogray);
-  margin-top: 12px;
-  font-style: italic;
-  opacity: 0.9;
+    text-align: center;
+    font-size: 12px;
+    color: var(--cosmogray);
+    margin-top: 8px;            /* Уменьшил отступ */
+    font-style: italic;
+    opacity: 0.9;
 }
 
 /* Footer */
 .cover-footer {
-  margin-top: auto;
-  padding: 32px 32px 24px;
-  border-top: 1px solid var(--border-color);
-  background: rgba(249, 250, 251, 0.6);
+    flex-shrink: 0;             /* Запрещаем сжиматься */
+    padding: 24px 32px 0px;    /* Уменьшил отступы */
+    border-top: 1px solid var(--border-color);
+    background: rgba(249, 250, 251, 0.6);
 }
 
 .cover-footer-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 32px;
-  margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 32px;
+    margin-bottom: 16px;        /* Уменьшил отступ */
 }
 
 .cover-footer-section {
-  flex: 1;
-  text-align: center;
+    flex: 1;
+    text-align: center;
 }
 
 .cover-footer-divider {
-  width: 1px;
-  background: var(--border-color);
-  align-self: stretch;
-  opacity: 0.5;
+    width: 1px;
+    background: var(--border-color);
+    align-self: stretch;
+    opacity: 0.5;
 }
 
 .cover-meta-label {
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--cosmoblue);
-  font-weight: 800;
-  margin-bottom: 8px;
-  opacity: 0.9;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--cosmoblue);
+    font-weight: 800;
+    margin-bottom: 6px;         /* Уменьшил отступ */
+    opacity: 0.9;
 }
 
 .cover-meta-value {
-  font-size: 16px;
-  font-weight: 900;
-  color: var(--cosmotext);
-  margin-bottom: 4px;
-  font-variant-numeric: tabular-nums;
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--cosmotext);
+    margin-bottom: 2px;         /* Уменьшил отступ */
+    font-variant-numeric: tabular-nums;
 }
 
 .cover-meta-note {
-  font-size: 11px;
-  color: var(--cosmogray);
-  opacity: 0.9;
+    font-size: 11px;
+    color: var(--cosmogray);
+    opacity: 0.9;
 }
 
 /* Цвета для типов отчётов */
 .type-monthly {
-  color: var(--cosmoblue) !important;
-  position: relative;
-  padding-bottom: 6px;
-  display: inline-block;
+    color: var(--cosmoblue) !important;
+    position: relative;
+    padding-bottom: 6px;
+    display: inline-block;
 }
 
 .type-monthly::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 2px;
-  background: var(--cosmoblue);
-  border-radius: 1px;
-  opacity: 0.5;
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 2px;
+    background: var(--cosmoblue);
+    border-radius: 1px;
+    opacity: 0.5;
 }
 
 .type-daily {
-  color: var(--cosmogreen) !important;
-  position: relative;
-  padding-bottom: 6px;
-  display: inline-block;
+    color: var(--cosmogreen) !important;
+    position: relative;
+    padding-bottom: 6px;
+    display: inline-block;
 }
 
 .type-daily::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 2px;
-  background: var(--cosmogreen);
-  border-radius: 1px;
-  opacity: 0.5;
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 2px;
+    background: var(--cosmogreen);
+    border-radius: 1px;
+    opacity: 0.5;
 }
 
 .cover-footer-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-color);
-  opacity: 0.9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;          /* Уменьшил отступ */
+    border-top: 1px solid var(--border-color);
+    opacity: 0.9;
 }
 
 .cover-copyright {
-  font-size: 11px;
-  color: var(--cosmogray);
-  opacity: 0.8;
+    font-size: 11px;
+    color: var(--cosmogray);
+    opacity: 0.8;
 }
 
 .cover-confidential {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--cosmoblue);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.9;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--cosmoblue);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+
+/* Добавьте в конец файла cover.css */
+
+/* Красивое название компании */
+.cover-company-name {
+    font-size: 28px;
+    font-weight: 1000;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cosmoblue);
+    margin: 8px 0 4px;
+    text-shadow: 2px 2px 4px rgba(0, 47, 167, 0.1);
+    position: relative;
+    display: inline-block;
+    padding: 0 20px;
+}
+
+/* Декоративные элементы для названия */
+.cover-company-name::before,
+.cover-company-name::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 30px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cosmoblue), transparent);
+    opacity: 0.3;
+}
+
+.cover-company-name::before {
+    left: -20px;
+    transform: translateY(-50%);
+}
+
+.cover-company-name::after {
+    right: -20px;
+    transform: translateY(-50%);
+}
+
+
+/* ===== ФИКС ДЛЯ ПРИЖАТИЯ ФУТЕРА ===== */
+@media screen {
+  html, body { height: 100%; margin: 0; padding: 0; }
+  .cover { flex: 1 !important; height: 100%; min-height: 0; }
+  .cover-content { flex: 1 !important; min-height: 0; }
+  .cover-footer { margin-top: auto !important; flex-shrink: 0; }
+}
+
+.cover {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100%;
+    min-height: 0;
+}
+
+.cover-content {
+    flex: 1 !important;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.cover-footer {
+    margin-top: auto !important;
+    flex-shrink: 0;
+}
+
+/* Пустое расстояние 5 см */
+.cover-spacer-5cm {
+    height: 5cm;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+/* Пустое расстояние 15 см */
+.cover-spacer-15cm {
+    height: 15cm;
+    width: 100%;
+    flex-shrink: 0;
 }
 
 /* Responsive */
 @media (max-width: 920px) {
-  .cover-card {
-    min-height: auto;
-    border-radius: 16px;
-  }
-  
-  .cover-footer-container {
-    flex-direction: column;
-    gap: 24px;
-  }
-  
-  .cover-footer-divider {
-    width: 100%;
-    height: 1px;
-  }
-  
-  .cover-title {
-    font-size: 36px;
-  }
-  
-  .cover-art {
-    height: 220px;
-  }
-  
-  .cover-badge {
-    font-size: 12px;
-    padding: 8px 22px;
-  }
-  
-  .cover-subtitle {
-    font-size: 12px;
-  }
+    .cover-title {
+        font-size: 36px;
+    }
+    
+    .cover-art {
+        height: 200px;
+    }
+    
+    .cover-footer-container {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .cover-footer-divider {
+        width: 100%;
+        height: 1px;
+    }
+    
+    .cover-badge {
+        font-size: 12px;
+        padding: 8px 22px;
+    }
+    
+    .cover-subtitle {
+        font-size: 12px;
+    }
 }
 
-/* ===== ВАЖНО: СТИЛИ ДЛЯ ПЕЧАТИ ===== */
+/* ===== СТИЛИ ДЛЯ ПЕЧАТИ ===== */
 @media print {
-  .cover {
-    padding: 0 !important;
-  }
-  
-  .cover-card {
-    border: none !important;
-    border-radius: 0 !important;
-    min-height: auto !important;
-    box-shadow: none !important;
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
-  
-  /* Разделитель - чёткие линии при печати */
-  .cover-divider-svg line {
-    stroke: #000 !important;
-    stroke-opacity: 0.1 !important;
-    stroke-dasharray: none !important;
-  }
-  
-  .cover-divider-svg circle {
-    fill: #002FA7 !important;
-  }
-  
-  /* Бейдж - твёрдый цвет для печати */
-  .cover-badge {
-    background: #002FA7 !important;
-    background-image: none !important;
-    box-shadow: none !important;
-    border: 2px solid #002FA7 !important;
-    color: white !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  
-  /* Убираем анимации и сложные эффекты */
-  .cover-badge::after,
-  .cover-badge::before {
-    display: none !important;
-  }
-  
-  /* Иллюстрация */
-  .cover-art {
-    filter: none !important;
-    opacity: 1 !important;
-  }
-  
-  /* Футер */
-  .cover-footer {
-    background: transparent !important;
-    border-top: 1px solid #000;
-
-  }
-  
-  /* Убедимся, что цвета печатаются */
-  .cover-subtitle,
-  .cover-brand-subtitle,
-  .cover-meta-label,
-  .cover-confidential,
-  .type-monthly {
-    color: #002FA7 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  
-  .type-daily {
-    color: #10b981 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  
-  /* Подчёркивания */
-  .type-monthly::after,
-  .type-daily::after,
-  .cover-subtitle::after {
-    background: currentColor !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  
-  /* Убираем прозрачности */
-  .cover-art-caption,
-  .cover-meta-note,
-  .cover-copyright {
-    opacity: 1 !important;
-    color: #666 !important;
-  }
-  
-  /* Разделители в футере */
-  .cover-footer-divider {
-    background: #000 !important;
-    opacity: 0.1 !important;
-  }
+    .cover {
+       height: 250mm !important;
+    min-height: 250mm !important;
+    flex: none !important;   
+        page-break-after: always;
+    }
+    
+    .cover-content {
+        overflow-y: visible !important;
+    }
+    
+    .cover-divider-svg line {
+        stroke: #000 !important;
+        stroke-opacity: 0.1 !important;
+    }
+    
+    .cover-divider-svg circle {
+        fill: #002FA7 !important;
+    }
+    
+    .cover-badge {
+        background: #002FA7 !important;
+        background-image: none !important;
+        box-shadow: none !important;
+        border: 2px solid #002FA7 !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    .cover-art {
+        filter: none !important;
+        opacity: 1 !important;
+    }
+    
+    .cover-footer {
+        background: transparent !important;
+        border-top: 1px solid #000 !important;
+    }
+    
+    .cover-subtitle,
+    .cover-brand-subtitle,
+    .cover-meta-label,
+    .cover-confidential,
+    .type-monthly {
+        color: #002FA7 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    .type-daily {
+        color: #10b981 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    .type-monthly::after,
+    .type-daily::after,
+    .cover-subtitle::after {
+        background: currentColor !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    .cover-art-caption,
+    .cover-meta-note,
+    .cover-copyright {
+        opacity: 1 !important;
+        color: #666 !important;
+    }
+    
+    .cover-footer-divider {
+        background: #000 !important;
+        opacity: 0.1 !important;
+    }
 }
+
+
+
+
+
+/* Адаптив для мобильных */
+@media (max-width: 768px) {
+    .cover-company-name {
+        font-size: 24px;
+        letter-spacing: 3px;
+    }
+    
+    .cover-company-name::before,
+    .cover-company-name::after {
+        width: 20px;
+    }
+}
+
+/* Стили для печати */
+@media print {
+    .cover-company-name {
+        color: #002FA7 !important;
+        text-shadow: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    .cover-company-name::before,
+    .cover-company-name::after {
+        background: #002FA7 !important;
+        opacity: 0.2 !important;
+    }
+
+    .cover-footer{
+  padding-bottom: 0 !important;
+}
+}
+
+

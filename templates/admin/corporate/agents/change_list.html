@@ -1,0 +1,107 @@
+{% extends "admin/change_list.html" %}
+{% load static admin_urls %}
+
+{% block breadcrumbs %}{% endblock %}
+{% block object-tools %}{% endblock %}
+{% block title %}Справочники | Агенты{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/admin_overrides.css' %}">
+  <link rel="stylesheet" href="{% static 'css/admin_items.css' %}">
+  <style>
+    .ag-hero{ display:flex; gap:16px; flex-wrap:wrap; padding-bottom:6px; align-items:flex-start; }
+    .ag-left{ display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+    .ag-avatar{
+      width:44px;height:44px;border-radius:12px;
+      background: linear-gradient(135deg, #f8fafc, #ecfeff);
+      border:1px solid rgba(2,132,199,.18);
+      display:flex;align-items:center;justify-content:center;
+      color:#0284c7;font-size:20px;
+      box-shadow:0 4px 12px rgba(2,132,199,.10);
+    }
+    .ag-meta{ display:flex; flex-direction:column; gap:4px; line-height:1.3; }
+    .ag-kicker{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#6b7280; }
+    .ag-title{ font-size:19px; font-weight:600; color:#111827; }
+
+    .ag-card{
+      min-width:230px; max-width:360px;
+      border-radius:2px; background:rgba(248,250,252,0.96);
+      box-shadow:0 18px 40px rgba(15,23,42,0.16);
+      padding:10px 12px 12px;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .ag-btn{
+      display:inline-flex; align-items:center; justify-content:flex-start; gap:8px;
+      width:100%;
+      font-size:13px;
+      padding:6px 10px;
+      border-radius:2px;
+      text-decoration:none;
+      border:1px solid #d1d5db;
+      background:#f3f4f6;
+      color:#111827;
+      box-shadow:0 1px 2px rgba(15,23,42,.06);
+    }
+    .ag-btn:hover{ background:#e5e7eb; color:#111827; }
+    .ag-btn-primary{ border:1px solid rgba(2,132,199,.22); background:rgba(2,132,199,.10); }
+    .ag-btn-primary:hover{ background:rgba(2,132,199,.16); }
+    .ag-divider{ height:1px; background:rgba(148,163,184,0.35); margin:2px 0 4px; }
+    .ag-foot{ font-size:11px;color:#9ca3af; }
+    .ag-foot strong{ color:#4b5563; }
+
+    .ag-stats{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:8px;
+      margin-top:2px;
+    }
+    .ag-stat{
+      border:1px solid rgba(148,163,184,.35);
+      background:rgba(255,255,255,.7);
+      border-radius:12px;
+      padding:8px 10px;
+      box-shadow:0 1px 2px rgba(15,23,42,.04);
+    }
+    .ag-stat .k{ font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#9ca3af; }
+    .ag-stat .v{ font-size:16px; font-weight:700; color:#0f172a; margin-top:2px; }
+  </style>
+{% endblock %}
+
+{% block content_title %}
+  {% url cl.opts|admin_urlname:'add' as add_url %}
+
+  <div class="ag-hero">
+    <div class="ag-left">
+      <div class="ag-avatar">🤝</div>
+      <div class="ag-meta">
+        <span class="ag-kicker">Справочники</span>
+        <span class="ag-title">Агенты</span>
+      </div>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <div class="ag-card">
+      <div style="display:flex; justify-content:space-between; align-items:baseline;">
+        <span style="font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9ca3af;">Навигация</span>
+        <span style="font-size:13px; font-weight:600; color:#0f172a;">Действия</span>
+      </div>
+
+      <div class="ag-divider"></div>
+
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        {% if has_add_permission %}
+          <a href="{{ add_url }}" class="ag-btn ag-btn-primary">➕ Добавить агента</a>
+        {% endif %}
+      </div>
+
+      <div class="ag-divider"></div>
+
+      <div class="ag-foot">
+        Сейчас в списке: <strong>{{ cl.result_count }}</strong>
+        {% if cl.paginator %} · Страниц: <strong>{{ cl.paginator.num_pages }}</strong>{% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,16 @@
+/* Скрываем "ручку" перетаскивания */
+.drag-handler,
+.drag,
+.drag-handle,
+.mptt-draggable,
+td.drag,
+td.drag-handler {
+  display: none !important;
+}
+
+/* На всякий: курсор не "grab" */
+tr,
+td,
+th {
+  cursor: default !important;
+}

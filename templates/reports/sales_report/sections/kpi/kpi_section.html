@@ -1,0 +1,57 @@
+{% load static %}
+
+<section id="kpi">
+  <div class="section">
+        <div class="kpi-first-page">
+    <h2 class="section-title">{{ summary.title }}</h2>
+
+    {% include "reports/sales_report/sections/kpi/_cards.html" with cards=kpi_ctx.cards %}
+
+    {% include "reports/sales_report/sections/kpi/_accum_cards.html" with accum_cards=kpi_ctx.accum_cards %}
+    {% include "reports/sales_report/sections/kpi/_period_text.html" with mtd_text=period_text.mtd_text ytd_text=period_text.ytd_text %}
+        </div>
+            <div class="page-break"></div>
+    
+
+    {% include "reports/sales_report/sections/kpi/_compare.html" with compare=kpi_ctx.compare compare_chart_svg_pct=summary.compare_chart_svg_pct %}
+    {% include "reports/sales_report/sections/kpi/_shops.html" with rows=kpi_ctx.sales_by_shop total_amount=summary.values.amount total_cr=summary.values.cr %}
+    <div class="page-break"></div>
+
+{% comment %} 
+    {% include "reports/sales_report/sections/stores/_diag_categories.html" %}
+        <div class="page-break"></div> {% endcomment %}
+
+
+
+    {% include "reports/sales_report/sections/kpi/_categories_period.html" %}
+    {% include "reports/sales_report/sections/kpi/_manufacturers_period.html" %}
+      <div class="page-break"></div>
+
+
+    {% comment %} {% include "reports/sales_report/sections/kpi/_subcategories_ytd.html" with subcats_ytd=subcats_ytd %}
+    <div class="page-break"></div> {% endcomment %}
+
+    {# Подробная детализация по подкатегориям вынесена в Приложение B #}
+{% if subcats_ytd.has %}
+  <p class="section-note" style="margin-top:10px">
+    Детализированная таблица «{{ subcats_ytd.title }}» приведена в
+    <a href="#appendix-b"><b>Приложении B</b></a>.
+  </p>
+{% endif %}
+
+
+
+    {% comment %} <div class="page-break"></div> {% endcomment %}
+
+    {% include "reports/sales_report/sections/kpi/_types.html" with rows=kpi_ctx.sales_by_type %}
+
+    {% comment %} <div class="page-break"></div> {% endcomment %}
+
+
+
+    {% comment %} {% include "reports/sales_report/sections/kpi/_control.html" with max_order=kpi_ctx.max_order median_check=kpi_ctx.median_check %} {% endcomment %}
+
+
+
+  </div>
+</section>

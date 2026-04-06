@@ -1,0 +1,24 @@
+
+
+<section id="appendix-b">
+  <div class="section">
+
+    <h2 class="section-title">Приложение B. Детализация по подкатегориям (YTD)</h2>
+
+    <p class="section-note">
+      В приложении приведена детализированная таблица по подкатегориям в разрезе категорий
+      (YTD, сравнение {{ subcats_ytd.years.curr }} к {{ subcats_ytd.years.prev }}).
+      Таблица является справочным материалом к разделу «Итоги периода (KPI)».
+    </p>
+
+    {% if subcats_ytd.has %}
+      <div class="page-break"></div>
+
+      {# Вставляем существующий шаблон как есть #}
+      {% include "reports/sales_report/sections/kpi/_subcategories_ytd.html" with subcats_ytd=subcats_ytd %}
+    {% else %}
+      <p class="section-note">Нет данных для отображения.</p>
+    {% endif %}
+
+  </div>
+</section>

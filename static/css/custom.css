@@ -420,6 +420,7 @@
 /* 5. ПРОДАЖИ ДЭШБОАРД */
 .fa-gauge-high, 
 .fa-chart-line
+
 {
     color: var(--color-macro) !important;
 }
@@ -428,7 +429,8 @@
 /* ПРОДАЖИ ЕЖЕДНЕВНЫЕ */
 
 .fa-chart-column,
-.fa-calendar-day
+.fa-calendar-day,
+.fa-truck-fast
 {
     color: var(--color-treasury) !important;
 }
@@ -893,6 +895,11 @@
   padding-bottom: 0.25rem !important;
   line-height: 1.1 !important;
 } */
+
+
+
+
+
 
 
 

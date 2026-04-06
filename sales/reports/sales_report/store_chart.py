@@ -442,3 +442,261 @@ def build_store_amount_bar_svg(
     plt.close(fig)
     
     return buf.getvalue()
+
+
+
+
+
+# from __future__ import annotations
+
+# from io import StringIO
+# from decimal import Decimal
+# from typing import List, Dict, Any, Optional, Tuple
+
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from matplotlib.ticker import FuncFormatter
+
+
+# # ---------------- helpers ----------------
+
+# def _to_float(x) -> float:
+#     if x is None:
+#         return 0.0
+#     if isinstance(x, Decimal):
+#         return float(x)
+#     try:
+#         return float(x)
+#     except Exception:
+#         return 0.0
+
+
+# def _fig_to_svg(fig) -> str:
+#     buf = StringIO()
+#     fig.savefig(buf, format="svg", bbox_inches="tight", pad_inches=0.02)
+#     plt.close(fig)
+#     return buf.getvalue()
+
+
+# def _human_money(x: float) -> str:
+#     x = float(x)
+#     a = abs(x)
+#     if a >= 1_000_000_000:
+#         return f"{x/1_000_000_000:.2f} млрд"
+#     if a >= 1_000_000:
+#         return f"{x/1_000_000:.2f} млн"
+#     if a >= 1_000:
+#         return f"{x/1_000:.1f} тыс"
+#     return f"{x:.0f}"
+
+
+# def _pct_change(curr: float, prev: float) -> float:
+#     if prev > 0:
+#         return (curr - prev) / prev * 100.0
+#     if curr > 0:
+#         return 100.0
+#     return 0.0
+
+
+# def _pareto_threshold_index(cum: np.ndarray, threshold: float = 0.8) -> Optional[int]:
+#     """Возвращает индекс первой точки, где cum >= threshold."""
+#     if cum.size == 0:
+#         return None
+#     idx = int(np.argmax(cum >= threshold))
+#     return idx if cum[idx] >= threshold else None
+
+
+# # ---------------- main chart ----------------
+
+# def build_store_amount_bar_svg(
+#     rows_raw: List[Dict[str, Any]],
+#     *,
+#     title: str = "Чистая выручка по магазинам",
+#     subtitle: Optional[str] = None,
+#     top_n: int = 12,
+#     currency: str = "₽",
+#     show_pareto: bool = True,
+#     pareto_threshold: float = 0.80,          # линия 80% (по умолчанию)
+#     show_delta_labels: bool = True,          # справа: значение и % изменения
+#     show_delta_bars: bool = True,            # добавляет маленький “Δ” маркер рядом (не перегружает)
+# ) -> str:
+#     """
+#     Красивый бизнес-график уровня “в отчёт собственнику”:
+#       - сортировка по текущей выручке
+#       - основной бар: текущий период
+#       - “было”: тонкий фон/контур (не конкурирует)
+#       - справа: значение и % (1 знак) цветом
+#       - Pareto-линия накопленной доли + отметка порога (например 80%)
+#       - аккуратная сетка, без рамок, читабельно в PDF
+#     Ожидаемые ключи в rows_raw: store, amount, prev_amount
+#     """
+#     rows = [r for r in (rows_raw or []) if r.get("store")]
+#     if not rows:
+#         return ""
+
+#     rows.sort(key=lambda r: _to_float(r.get("amount")), reverse=True)
+#     rows = rows[:top_n]
+
+#     labels = [str(r["store"]) for r in rows]
+#     curr = np.array([_to_float(r.get("amount")) for r in rows], dtype=float)
+#     prev = np.array([_to_float(r.get("prev_amount")) for r in rows], dtype=float)
+
+#     # safety
+#     curr = np.nan_to_num(curr, nan=0.0, posinf=0.0, neginf=0.0)
+#     prev = np.nan_to_num(prev, nan=0.0, posinf=0.0, neginf=0.0)
+
+#     # Pareto по текущему (как правило, так и нужно)
+#     total_curr = float(curr.sum()) if curr.size else 0.0
+#     share = (curr / total_curr) if total_curr > 0 else np.zeros_like(curr)
+#     cum_share = np.cumsum(share)
+
+#     # для горизонтального barh разворачиваем порядок (топ сверху)
+#     labels_r = labels[::-1]
+#     curr_r = curr[::-1]
+#     prev_r = prev[::-1]
+#     cum_r = cum_share[::-1]  # для отображения слева направо по y тоже разворачиваем
+#     share_r = share[::-1]
+
+#     max_val = float(max(curr.max(initial=0.0), prev.max(initial=0.0), 1.0))
+#     n = len(labels_r)
+#     y = np.arange(n)
+
+#     # --------- style ----------
+#     COLOR_MAIN = "#2563EB"   # основной (синий)
+#     COLOR_PREV = "#D1D5DB"   # фон “было”
+#     COLOR_GRID = "#E5E7EB"
+#     COLOR_TEXT = "#0F172A"
+#     COLOR_MUTED = "#64748B"
+#     COLOR_POS = "#16A34A"
+#     COLOR_NEG = "#DC2626"
+#     COLOR_PARETO = "#0F172A"      # линия Pareto (чёрная)
+#     COLOR_THRESH = "#94A3B8"      # линия 80%
+
+#     fig_h = max(3.4, 0.44 * n + 1.5)
+#     fig_w = 12.2 if show_pareto else 11.6
+
+#     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+#     fig.patch.set_facecolor("white")
+#     ax.set_facecolor("white")
+
+#     # --- bars ---
+#     # “Было” как лёгкий фон
+#     ax.barh(y, prev_r, height=0.58, color=COLOR_PREV, zorder=1)
+
+#     # “Стало” как главный бар
+#     ax.barh(y, curr_r, height=0.36, color=COLOR_MAIN, zorder=2)
+
+#     # --- axes / grid ---
+#     ax.xaxis.grid(True, color=COLOR_GRID, linewidth=1.0)
+#     ax.set_axisbelow(True)
+#     for s in ax.spines.values():
+#         s.set_visible(False)
+#     ax.tick_params(axis="both", length=0)
+#     ax.set_yticks(y)
+#     ax.set_yticklabels(labels_r, fontsize=11, color=COLOR_TEXT)
+#     ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: _human_money(v)))
+#     ax.set_xlabel(f"Чистая выручка за период, {currency}", fontsize=10.5, color=COLOR_MUTED, labelpad=10)
+
+#     # место справа под подписи + pareto-ось
+#     right_pad = max_val * (0.30 if show_pareto else 0.22)
+#     ax.set_xlim(0, max_val + right_pad)
+
+#     # title / subtitle
+#     ax.set_title(title, loc="left", fontsize=14, fontweight="bold", color=COLOR_TEXT, pad=10)
+#     if subtitle:
+#         ax.text(0, 1.02, subtitle, transform=ax.transAxes, fontsize=11, color=COLOR_MUTED, ha="left")
+
+#     # --- delta labels (value + %), + optional delta marker ---
+#     for i in range(n):
+#         c = float(curr_r[i])
+#         p = float(prev_r[i])
+#         pct = _pct_change(c, p)
+
+#         if pct > 0:
+#             col = COLOR_POS
+#             sign = "+"
+#         elif pct < 0:
+#             col = COLOR_NEG
+#             sign = ""  # минус уже в числе
+#         else:
+#             col = COLOR_MUTED
+#             sign = ""
+
+#         x_text = c + max_val * 0.018
+
+#         if show_delta_labels:
+#             ax.text(
+#                 x_text,
+#                 i,
+#                 f"{_human_money(c)}   {sign}{pct:.1f}%",
+#                 va="center",
+#                 ha="left",
+#                 fontsize=11,
+#                 fontweight="bold",
+#                 color=col if abs(pct) >= 0.05 else COLOR_MUTED,
+#                 zorder=5,
+#             )
+
+#         if show_delta_bars:
+#             # маленький “Δ” маркер рядом с текстом (очень деликатно)
+#             # рисуем короткую вертикальную черту — зелёную/красную
+#             if abs(pct) >= 0.05 and (c > 0 or p > 0):
+#                 ax.plot(
+#                     [x_text - max_val * 0.010, x_text - max_val * 0.010],
+#                     [i - 0.13, i + 0.13],
+#                     color=col,
+#                     linewidth=2.4,
+#                     solid_capstyle="round",
+#                     zorder=5,
+#                 )
+
+#     # --- Pareto line (cumulative share) ---
+#     if show_pareto:
+#         ax2 = ax.twiny()
+#         ax2.set_facecolor("none")
+#         for s in ax2.spines.values():
+#             s.set_visible(False)
+
+#         # шкала 0..100%
+#         ax2.set_xlim(0, 1.0)
+#         ax2.set_xticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+#         ax2.set_xticklabels([f"{int(t*100)}%" for t in ax2.get_xticks()], fontsize=10, color=COLOR_MUTED)
+#         ax2.tick_params(axis="x", length=0, pad=6)
+
+#         # линия накопленной доли — по y магазинам
+#         ax2.plot(cum_r, y, color=COLOR_PARETO, linewidth=2.0, zorder=6)
+#         ax2.scatter(cum_r, y, s=16, color=COLOR_PARETO, zorder=7)
+
+#         # линия порога (80%)
+#         ax2.axvline(pareto_threshold, color=COLOR_THRESH, linewidth=1.4, linestyle="--", zorder=4)
+
+#         # подпись “80%” сверху
+#         ax2.text(
+#             pareto_threshold,
+#             1.02,
+#             f"{int(pareto_threshold*100)}% порог",
+#             transform=ax2.get_xaxis_transform(),
+#             ha="center",
+#             va="bottom",
+#             fontsize=10,
+#             color=COLOR_MUTED,
+#         )
+
+#         # подсветка магазина, на котором достигнут порог
+#         idx = _pareto_threshold_index(cum_share, pareto_threshold)
+#         if idx is not None:
+#             # idx относится к оригинальному порядку (топ->низ), у нас разворот:
+#             idx_r = (n - 1) - idx
+#             ax.axhline(idx_r, color=COLOR_GRID, linewidth=2.2, zorder=0, alpha=0.9)
+#             ax.text(
+#                 max_val + right_pad * 0.02,
+#                 idx_r,
+#                 f"достигли {int(pareto_threshold*100)}% на «{labels[idx]}»",
+#                 ha="left",
+#                 va="center",
+#                 fontsize=10,
+#                 color=COLOR_MUTED,
+#             )
+
+#     fig.tight_layout()
+#     return _fig_to_svg(fig)

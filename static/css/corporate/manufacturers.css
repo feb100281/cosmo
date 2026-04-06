@@ -1,0 +1,958 @@
+:root{
+  --text:#111827;
+  --muted:#6b7280;
+  --line:#e5e7eb;
+  --head:#f8fafc;
+
+  --group:#eef2ff;
+  --group-line:#c7d2fe;
+  --accent:#4f46e5;
+
+  --chip-bg:#ffffff;
+  --chip-text:#111827;
+  --chip-border:#e5e7eb;
+
+  /* PART 3 highlights */
+  --hi-max-bg: rgba(79, 70, 229, .10);
+  --hi-max-br: rgba(79, 70, 229, .25);
+  --hi-min-bg: rgba(107, 114, 128, .10);
+  --hi-min-br: rgba(107, 114, 128, .22);
+}
+
+html, body{
+  margin:0;
+  padding:0;
+  background:#fff;
+  color:var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+}
+
+.wrap{
+  max-width: 980px;
+  margin: 20px auto 40px;
+  padding: 0 16px;
+}
+
+/* ---------- шапка ---------- */
+.dochead{
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--line);
+  margin-bottom: 14px;
+}
+.kicker{
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.title{
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0;
+}
+.meta{
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  font-size: 12px;
+  color: #374151;
+}
+.dot{
+  width:8px;height:8px;border-radius:50%;
+  background: var(--accent);
+  display:inline-block;
+}
+
+/* ---------- кнопки ---------- */
+.printbar{
+  margin: 12px 0 16px;
+  display: flex;
+  gap: 10px;
+  flex-wrap:wrap;
+}
+.printbar button{
+  font-size: 13px;
+  padding: 6px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #f3f4f6;
+  cursor: pointer;
+}
+.printbar button:hover{ background: #e5e7eb; }
+
+/* ---------- заголовки секций ---------- */
+.section-title{
+  margin: 28px 0 18px;
+  padding: 12px 12px 12px 14px;
+
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text);
+
+  /* важно: отдельно цвет и отдельно градиент */
+  background-color: rgba(79,70,229,.05);
+  background-image: linear-gradient(180deg, rgba(79,70,229,.06), rgba(79,70,229,.02));
+
+  position: relative;
+}
+
+.section-title::before{
+  content:"";
+  position:absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  /* border-radius: 2px 0 0 10px; */
+  background: var(--accent);
+}
+
+.section-title::after{
+  content:"";
+  position:absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 3px;
+  /* border-radius: 1px; */
+  background: linear-gradient(90deg, var(--accent), rgba(79,70,229,.35), transparent);
+}
+
+.cat-block{
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  background:#fff;
+}
+
+.cat-head{
+  background: var(--group);
+  border-bottom: 1px solid var(--group-line);
+  padding: 10px 12px;
+  display:flex;
+  align-items:flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+}
+.cat-head::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:6px;
+  background: var(--accent);
+}
+
+.cat-name{
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.2;
+  padding-left: 8px;
+}
+.cat-meta{
+  font-size: 12px;
+  color: #4b5563;
+  white-space: nowrap;
+  align-self:center;
+  padding-left: 8px;
+}
+
+.cat-body{
+  padding: 10px 12px 12px;
+  background:#fff;
+}
+
+.mf-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.mf-chip{
+  display:inline-flex;
+  align-items:center;
+  padding: 6px 10px;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 600;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+/* =========================================================
+   PAGE BREAK
+   ========================================================= */
+.pagebreak{
+  height: 1px;
+  margin: 18px 0;
+  page-break-before: always;
+  break-before: page;
+}
+
+/* =========================================================
+   PART 2: Алфавитная таблица
+   ========================================================= */
+table{
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+thead th{
+  background: var(--head);
+  color: #374151;
+  text-align: left;
+  font-size: 12px;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+tbody td{
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  font-size: 13px;
+}
+tbody tr:last-child td{ border-bottom: none; }
+
+.mname{
+  font-weight: 800;
+  line-height: 1.25;
+  font-size: 14px;
+}
+
+.chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.subchip{
+  display:inline-flex;
+  align-items:center;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #374151;
+  font-size: 12px;
+  line-height: 1.4;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.cat-title{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+}
+.cat-icon{
+  width:18px;
+  height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 18px;
+}
+.cat-icon svg{
+  width:18px;
+  height:18px;
+  display:block;
+}
+
+/* ===================== PART 3: Revenue by year ===================== */
+/* === Elegant dotted table (rev-table) === */
+.rev-table{
+  width: 100%;
+  border-collapse: separate;      /* важно для аккуратных радиусов + dotted */
+  border-spacing: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* header */
+.rev-table thead th{
+  background: var(--head);
+  color:#374151;
+  font-size: 11px;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+/* body cells */
+.rev-table tbody td{
+  padding: 10px 12px;
+  font-size: 13px;
+  vertical-align: middle;
+
+  /* dotted horizontal separators like mini-table */
+  border-bottom: 1px dotted rgba(107,114,128,.35);
+
+  /* keep cell backgrounds clean */
+  background-clip: padding-box;
+}
+
+/* remove last row separator */
+.rev-table tbody tr:last-child td{
+  border-bottom: none;
+}
+
+/* dotted vertical separators */
+.rev-table tbody td + td{
+  border-left: 1px dotted rgba(107,114,128,.30);
+}
+
+/* numeric alignment */
+.num{
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* sticky/first cols */
+.sticky-col{
+  font-weight: 800;
+}
+
+/* total column background stays */
+.total-col{
+  font-weight: 900;
+  background: rgba(248,250,252,.9);
+}
+
+/* small muted text */
+.smallmuted{
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* “Горизонтальный анализ”: min/max (оставляем, но делаем совместимым с dotted) */
+.rev-table td.is-max{
+  background: var(--hi-max-bg);
+  box-shadow: inset 0 0 0 1px var(--hi-max-br);
+  font-weight: 800;
+}
+.rev-table td.is-min{
+  background: var(--hi-min-bg);
+  box-shadow: inset 0 0 0 1px var(--hi-min-br);
+}
+
+/* лёгкий hover по строке (так, чтобы не убить подсветку min/max/total) */
+.rev-table tbody tr:hover td{
+  background-image: linear-gradient(0deg, rgba(17,24,39,.03), rgba(17,24,39,.03));
+}
+.rev-table tbody tr:hover td.is-max,
+.rev-table tbody tr:hover td.is-min{
+  /* подсветка важнее hover */
+  background-image: none;
+}
+
+/* ===================== PART 3: Horizontal analysis (heatmap + status) ===================== */
+
+.mf-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.mf-name{
+  font-weight: 900;
+}
+
+/* бейджи */
+.badge{
+  display:inline-flex;
+  align-items:center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+  color: #374151;
+  background: #fff;
+  white-space: nowrap;
+}
+
+.badge-active{ border-color: rgba(34,197,94,.28); background: rgba(34,197,94,.10); }
+.badge-stopped{ border-color: rgba(239,68,68,.28); background: rgba(239,68,68,.10); }
+.badge-zero{ border-color: rgba(107,114,128,.26); background: rgba(107,114,128,.08); }
+
+.badge-up{ border-color: rgba(34,197,94,.28); background: rgba(34,197,94,.10); }
+.badge-down{ border-color: rgba(239,68,68,.28); background: rgba(239,68,68,.10); }
+
+/* heatmap по строке: --k (0..1) задаётся inline.
+   множитель 0.18 — чтобы заливка была деловой, не “кислотной”. */
+.rev-table td.heat{
+  background: rgba(79,70,229, calc(var(--k) * 0.18));
+}
+
+/* если хочешь сделать нули визуально тише */
+.rev-table td.heat{
+  color: #111827;
+}
+.rev-table tr.status-stopped td.heat{
+  /* немного более “плотная” подложка у потерянных */
+  background-image: linear-gradient(0deg, rgba(239,68,68,.03), rgba(239,68,68,.03));
+}
+
+/* левый маркер статуса (как в BI) */
+.rev-table tr.status-stopped td.sticky-col{
+  box-shadow: inset 4px 0 0 rgba(239,68,68,.40);
+}
+.rev-table tr.status-active td.sticky-col{
+  box-shadow: inset 4px 0 0 rgba(34,197,94,.28);
+}
+.rev-table tr.status-zero td.sticky-col{
+  box-shadow: inset 4px 0 0 rgba(107,114,128,.25);
+}
+
+/* аккуратный hover на строку */
+.rev-table tbody tr:hover td{
+  background-image: linear-gradient(0deg, rgba(17,24,39,.03), rgba(17,24,39,.03));
+}
+.rev-table tbody tr:hover td.total-col{
+  box-shadow: inset 0 0 0 1px rgba(79,70,229,.22);
+}
+
+
+/* ===================== PART 3: Horizontal analysis (heatmap + status) ===================== */
+
+.mf-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.mf-name{
+  font-weight: 900;
+}
+
+/* badges */
+.badge{
+  display:inline-flex;
+  align-items:center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+  color: #374151;
+  background: #fff;
+  white-space: nowrap;
+}
+
+.badge-active{
+  border-color: rgba(34,197,94,.28);
+  background: rgba(34,197,94,.10);
+}
+.badge-pause{
+  border-color: rgba(245,158,11,.30);
+  background: rgba(245,158,11,.12);
+}
+.badge-stopped{
+  border-color: rgba(239,68,68,.28);
+  background: rgba(239,68,68,.10);
+}
+
+/* left status stripe */
+.rev-table tr.status-active td.sticky-col{
+  box-shadow: inset 4px 0 0 rgba(34,197,94,.30);
+}
+.rev-table tr.status-pause td.sticky-col{
+  box-shadow: inset 4px 0 0 rgba(245,158,11,.32);
+}
+.rev-table tr.status-stopped td.sticky-col{
+  box-shadow: inset 4px 0 0 rgba(239,68,68,.40);
+}
+
+/* heatmap per row:
+   --k in [0..1] from python, multiply alpha to keep it business-like */
+.rev-table td.heat{
+  background: rgba(79,70,229, calc(var(--k) * 0.18));
+}
+
+/* make zeros/low values look calmer */
+.rev-table td.heat{
+  color: #111827;
+}
+
+/* zebra + hover */
+.rev-table tbody tr:nth-child(even) td{
+  background-image: linear-gradient(0deg, rgba(17,24,39,.015), rgba(17,24,39,.015));
+}
+.rev-table tbody tr:hover td{
+  background-image: linear-gradient(0deg, rgba(17,24,39,.03), rgba(17,24,39,.03));
+}
+.rev-table tbody tr:hover td.total-col{
+  box-shadow: inset 0 0 0 1px rgba(79,70,229,.22);
+}
+
+/* =========================================================
+   PRINT
+   ========================================================= */
+@media print{
+  .wrap{ max-width: 100%; margin: 0; padding: 0; }
+  .printbar{ display: none; }
+  @page{ size: A4; margin: 12mm; }
+  .cat-block{ break-inside: avoid; page-break-inside: avoid; }
+  tr{ break-inside: avoid; page-break-inside: avoid; }
+
+  *{
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+
+@media print{
+  /* фикс “слишком крупно” при печати из браузера */
+  html, body{
+    font-size: 11px !important;
+  }
+
+  .title{ font-size: 16px !important; }
+  /* .section-title{ font-size: 14px !important; } */
+  .rev-table thead th{ font-size: 11px !important; }
+  .rev-table tbody td{ font-size: 11px !important; }
+
+  /* чтобы таблица аккуратнее помещалась */
+  .rev-table thead th,
+  .rev-table tbody td{
+    padding: 8px 10px !important;
+  }
+
+  /* часто помогает в Chrome */
+  .wrap{
+    max-width: 100% !important;
+  }
+}
+
+
+
+/* ===== Legend before revenue table ===== */
+.rev-legend{
+  margin: 10px 0 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.legend-item{
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 10px;
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  background: #fff;
+}
+.legend-dot{
+  width:10px;height:10px;border-radius:50%;
+  margin-top: 3px;
+  flex: 0 0 10px;
+  background: #9ca3af;
+}
+.li-active .legend-dot{ background: rgba(34,197,94,.85); }
+.li-pause .legend-dot{ background: rgba(245,158,11,.95); }
+.li-stopped .legend-dot{ background: rgba(239,68,68,.85); }
+
+.legend-title{ font-size: 12px; font-weight: 900; color:#111827; line-height: 1.1; }
+.legend-sub{ font-size: 11px; color: var(--muted); line-height: 1.25; margin-top: 2px; }
+
+/* ===== Manufacturer cell: 2 lines ===== */
+.mf-cell{ display:flex; flex-direction:column; gap:4px; }
+.mf-cell .mf-name{ font-weight:900; line-height:1.15; }
+.mf-cell .mf-meta{ min-height:18px; display:flex; align-items:center; gap:8px; }
+
+/* ===== Table footer totals ===== */
+.rev-table tfoot td{
+  padding: 10px 12px;
+  border-top: 2px solid var(--line);
+  font-size: 13px;
+  background: rgba(248,250,252,.95);
+}
+.totals-row .totals-title{
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 12px;
+  color: #374151;
+}
+.totals-row .totals-num{ font-weight: 900; }
+.totals-row .totals-grand{
+  font-weight: 900;
+  box-shadow: inset 0 0 0 1px rgba(79,70,229,.22);
+  background: rgba(79,70,229,.06);
+}
+
+/* sticky first col in browser */
+.rev-table .sticky-col{
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 2;
+}
+.rev-table thead th:first-child{
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+.rev-table tfoot .sticky-col{
+  background: rgba(248,250,252,.95);
+  z-index: 3;
+}
+
+/* print: disable sticky + legend in one column */
+@media print{
+  .rev-table .sticky-col,
+  .rev-table thead th:first-child{
+    position: static !important;
+  }
+  .rev-legend{ grid-template-columns: 1fr; }
+}
+
+
+
+@media print{
+
+  .rev-legend{
+    display:flex !important;
+    gap:18px !important;
+    margin: 6px 0 10px !important;
+  }
+
+  .legend-item{
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+    align-items: center !important;
+  }
+
+  .legend-dot{
+    width:8px !important;
+    height:8px !important;
+    margin-top: 0 !important;
+  }
+
+  .legend-text{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+
+  .legend-title{
+    font-size: 11px !important;
+    font-weight: 700 !important;
+  }
+
+  .legend-sub{
+    display: none !important;   /* пояснение убираем в PDF */
+  }
+}
+
+
+.svg-wrap svg{
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+@media print{
+  .svg-wrap{ break-inside: avoid; page-break-inside: avoid; }
+}
+
+
+
+/* ===== Brief: override (put at the VERY END of CSS) ===== */
+.brief{
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  font-size: 13px;              /* фиксируем базу */
+  line-height: 1.6;
+}
+
+.brief-kicker{
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.brief-p{
+  font-size: 14px;              /* чтобы абзацы читались */
+  line-height: 1.65;
+  margin: 6px 0;
+}
+
+.brief-label{
+  margin: 14px 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: none;
+
+   color: #2f3e9e; 
+
+  padding-left: 10px;
+  position: relative;
+}
+
+.brief-label::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top: 3px;
+  bottom: 3px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: .65;
+}
+
+.brief-note{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+  margin-left: 6px;
+}
+
+/* важное: убираем дефолтные большие отступы списка */
+.brief-list{
+  margin: 6px 0 10px 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* вот тут ключ: grid, чтобы значение было рядом, а не “улетало” */
+.brief-item{
+  display: grid !important;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(229,231,235,.65);
+}
+
+.brief-item:last-child{
+  border-bottom: none;
+}
+
+.brief-name{
+  min-width: 0;
+}
+
+.brief-val{
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  color: #111827;
+}
+
+/* если список короткий — делаем ещё компактнее */
+.brief-list--compact .brief-item{
+  border-bottom: none;
+  padding: 3px 0;
+}
+
+
+@media print{
+  /* делаем заголовок стабильным в PDF */
+  .section-title{
+    background-image: none !important;
+    background-color: rgba(79,70,229,.04) !important; /* лёгкая полупрозрачность */
+  }
+
+  /* нижнюю неоновую линию лучше заменить на простую */
+  .section-title::after{
+    background: rgba(79,70,229,.35) !important;
+    height: 2px !important;
+  }
+
+  /* вертикальную полосу можно чуть приглушить */
+  .section-title::before{
+    opacity: .85 !important;
+  }
+}
+
+
+
+.brief-list--bulleted{
+  margin: 6px 0 10px;
+  padding: 0;
+}
+
+.brief-list--bulleted .brief-item{
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+
+  border-bottom: none;
+  padding: 3px 0;
+}
+
+.brief-bullet{
+  color: var(--accent);
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+
+.brief-name{
+  flex: 1 1 auto;
+}
+
+.brief-val{
+  margin-left: 10px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+
+
+
+.mini-table{
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.mini-table thead th{
+  background: var(--head);
+  font-size: 11px;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mini-table tbody td{
+  padding: 8px 10px;
+  font-size: 12px;
+  border-bottom: 1px dotted rgba(107,114,128,.35);
+}
+
+.mini-table tbody tr:last-child td{
+  border-bottom: none;
+}
+
+.mini-table tbody td + td{
+  border-left: 1px dotted rgba(107,114,128,.30);
+}
+
+.mini-name{
+  font-weight: 800;
+}
+
+.mini-total{
+  font-weight: 900;
+  background: rgba(79,70,229,.05);
+}
+
+
+
+th .small {
+    font-size: 0.55rem;
+    font-weight: 500;
+    opacity: 0.7;
+}
+
+
+/* контейнер строки внутри ячейки */
+.cell-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+/* иконки — строго в одну колонку слева */
+.icon{
+  width:16px;          /* фиксируем ширину */
+  text-align:left;
+  margin-right:4px;
+  opacity:.85;
+  font-size:13px;
+  flex-shrink:0;       /* чтобы не сжимались */
+}
+
+/* подпись "произв." */
+.unit{
+  font-size:12px;
+  opacity:.7;
+  margin-left:2px;
+}
+
+.cell-main{
+  font-weight:700;
+}
+
+.cell-sub{
+  margin-top:2px;
+  font-size:12px;
+  opacity:.75;
+  white-space:nowrap;
+}
+
+
+.brief-p{ margin: 10px 0; }
+.brief-label{ margin-top: 14px; }
+
+
+
+.hero-chart{
+  margin: 10px 0 16px 0;
+}
+.hero-chart svg{
+  width: 100%;
+  height: auto;
+  display:block;
+}
+
+
+.mini-table tfoot td {
+    background: #f6f8ff;   /* тот же фон что у подсвеченных колонок */
+}
+
+.mini-table tfoot .mini-total {
+    color: #0f172a;        /* как у остальных итоговых ячеек */
+    font-weight: 700;
+}
+
+
+
+
+

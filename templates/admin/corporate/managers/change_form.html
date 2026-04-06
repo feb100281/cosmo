@@ -1,0 +1,137 @@
+{% extends "admin/change_form.html" %}
+{% load static admin_urls %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/admin_overrides.css' %}">
+  <style>
+    .mgr-form-hero{
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+      align-items:center;
+      padding-bottom:10px;
+    }
+
+    .mgr-back-btn{
+      font-size:13px;
+      padding:6px 10px;
+      border-radius:8px;
+      border:1px solid #d1d5db;
+      background:#f3f4f6;
+      text-decoration:none;
+      color:#111827;
+      font-weight:600;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      box-shadow:0 1px 2px rgba(15,23,42,.06);
+    }
+
+    .mgr-back-btn:hover{
+      background:#e5e7eb;
+    }
+
+    .mgr-form-avatar{
+      width:44px;
+      height:44px;
+      border-radius:12px;
+      background:linear-gradient(135deg,#f8fafc,#ecfeff);
+      border:1px solid rgba(2,132,199,.18);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:20px;
+      color:#0284c7;
+      box-shadow:0 4px 12px rgba(2,132,199,.10);
+    }
+
+    .mgr-form-meta{
+      display:flex;
+      flex-direction:column;
+      gap:3px;
+    }
+
+    .mgr-form-kicker{
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      color:#6b7280;
+    }
+
+    .mgr-form-title{
+      font-size:19px;
+      font-weight:600;
+      color:#111827;
+    }
+
+    .mgr-form-card{
+      margin-top:12px;
+      border-radius:14px;
+      background:rgba(248,250,252,0.96);
+      box-shadow:0 18px 40px rgba(15,23,42,0.12);
+      padding:18px 20px 16px;
+    }
+
+    .form-row{
+      margin-bottom:14px;
+    }
+
+    .form-row label{
+      font-weight:600;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      color:#374151;
+    }
+
+    .form-row input{
+      border-radius:8px !important;
+      padding:6px 10px !important;
+    }
+
+    .submit-row{
+      margin-top:16px;
+      border-top:1px solid #e5e7eb;
+      padding-top:12px;
+    }
+
+    .submit-row input.default{
+      border-radius:8px;
+      background:rgba(2,132,199,.10);
+      border:1px solid rgba(2,132,199,.22);
+      font-weight:600;
+    }
+  </style>
+{% endblock %}
+
+{% block content_title %}
+  <div class="mgr-form-hero">
+
+    <a href="{% url 'admin:corporate_managers_changelist' %}"
+       class="mgr-back-btn">
+      ← Назад
+    </a>
+
+    <div class="mgr-form-avatar">👤</div>
+
+    <div class="mgr-form-meta">
+      <span class="mgr-form-kicker">Corporate · Справочник</span>
+
+      {% if original %}
+        <span class="mgr-form-title">Редактирование менеджера</span>
+      {% else %}
+        <span class="mgr-form-title">Добавление менеджера</span>
+      {% endif %}
+    </div>
+
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="mgr-form-card">
+    {{ block.super }}
+  </div>
+{% endblock %}
