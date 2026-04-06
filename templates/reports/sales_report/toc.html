@@ -2,55 +2,133 @@
   <div class="toc-title">Содержание</div>
 
   <nav class="toc-list">
+
     <a class="toc-item" href="#kpi">
       <span class="toc-text">I. Итоги периода (KPI)</span>
     </a>
 
+    <a class="toc-item" href="#trend">
+      <span class="toc-text">II. Тренды и динамика</span>
+    </a>
+
+    <div class="toc-sub">
+      <a class="toc-item toc-item--sub" href="#trend-series">
+        <span class="toc-text">
+          II.1 Динамика за последние
+          {% if report_type == "daily" %}14 дней{% elif report_type == "weekly" %}12 недель{% else %}12 месяцев{% endif %}
+        </span>
+      </a>
+    </div>
+
     <a class="toc-item" href="#totals">
-      <span class="toc-text">II. Накопленные итоги</span>
+      <span class="toc-text">III. Накопленные итоги</span>
     </a>
 
     <div class="toc-sub">
       {% if report_type != "monthly" %}
         <a class="toc-item toc-item--sub" href="#totals-mtd">
-          <span class="toc-text">II.1 MTD (месяц, к прошлому году)</span>
+          <span class="toc-text">III.1 MTD (месяц, к прошлому году)</span>
         </a>
       {% endif %}
 
       <a class="toc-item toc-item--sub" href="#totals-ytd">
-        <span class="toc-text">II.2 YTD (год, к прошлому году)</span>
+        <span class="toc-text">III.2 YTD (год, к прошлому году)</span>
       </a>
 
       <a class="toc-item toc-item--sub" href="#totals-ltm">
-        <span class="toc-text">II.3 Динамика выручки за 13 месяцев</span>
+        <span class="toc-text">III.3 Динамика выручки за 13 месяцев</span>
       </a>
     </div>
 
- 
+
+    <a class="toc-item" href="#managers">
+  <span class="toc-text">IV. Анализ отгрузок по менеджерам</span>
+</a>
+
+<div class="toc-sub">
+  <a class="toc-item toc-item--sub" href="#managers-mtd">
+    <span class="toc-text">IV.1 MTD</span>
+  </a>
+
+  <a class="toc-item toc-item--sub" href="#managers-ytd">
+    <span class="toc-text">IV.2 YTD</span>
+  </a>
+</div>
+
+
+
+
+    <!-- NEW: Orders -->
+    <a class="toc-item" href="#orders">
+      <span class="toc-text">V. Заказы</span>
+    </a>
+
+    <div class="toc-sub">
+      <a class="toc-item toc-item--sub" href="#orders-summary">
+        <span class="toc-text">V.1 Статусы и структура заказов</span>
+      </a>
+    </div>
+
+    <!-- Shifted numbering -->
     <a class="toc-item" href="#categories">
-      <span class="toc-text">III. Анализ продаж по категориям</span>
+      <span class="toc-text">VI. Анализ продаж по категориям</span>
     </a>
 
     <div class="toc-sub">
       <a class="toc-item toc-item--sub" href="#categories-mtd">
-        <span class="toc-text">III.1 Категории и подкатегории (MTD)</span>
+        <span class="toc-text">VI.1 Категории и подкатегории (MTD)</span>
       </a>
 
       <a class="toc-item toc-item--sub" href="#categories-ytd">
-      <span class="toc-text">III.1 Категории и подкатегории (YTD)</span>
-    </a>
+        <span class="toc-text">VI.2 Категории и подкатегории (YTD)</span>
+      </a>
     </div>
 
+    {% comment %} <a class="toc-item" href="#stores">
+      <span class="toc-text">VII. Структура продаж по магазинам</span>
+    </a> {% endcomment %}
 
-      <a class="toc-item" href="#stores">
-      <span class="toc-text">IV. Структура продаж по магазинам</span>
-    </a>
 
-  </nav>
+    <a class="toc-item" href="#stores">
+  <span class="toc-text">VII. Анализ продаж по магазинам</span>
+</a>
+
+
+<div class="toc-sub">
+  <a class="toc-item toc-item--sub" href="#stores-kpi-ytd">
+    <span class="toc-text">VII.1 KPI по магазинам (YTD)</span>
+  </a>
+
+  <a class="toc-item toc-item--sub" href="#stores-pareto">
+    <span class="toc-text">VII.2 Вклад магазинов в выручку (Pareto)</span>
+  </a>
+
+  <a class="toc-item toc-item--sub" href="#stores-kpi-mtd">
+    <span class="toc-text">VII.3 KPI по магазинам (MTD)</span>
+  </a>
+
+
+  <a class="toc-item toc-item--sub" href="#stores-monthly">
+    <span class="toc-text">VII.4 Помесячная динамика</span>
+  </a>
+
+  <a class="toc-item toc-item--sub" href="#stores-diag">
+    <span class="toc-text">VII.5 Категориальная диагностика</span>
+  </a>
 </div>
 
 
 
 
 
+    <a class="toc-item" href="#appendix-a">
+  <span class="toc-text">Приложение A. Матрицы изменений (магазин × категории)</span>
+</a>
 
+<a class="toc-item" href="#appendix-b">
+  <span class="toc-text">Приложение B. Детализация по подкатегориям (YTD)</span>
+</a>
+
+
+  </nav>
+</div>

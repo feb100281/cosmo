@@ -1,0 +1,99 @@
+{% comment %} {# Диагностика: где падают категории по группам магазинов #}
+<section id="stores-diag">
+  <div class="section">
+
+    <h3 class="section-subtitle">Диагностика: где падают категории в разрезе магазинов</h3>
+
+    <p class="section-note">
+Раздел отражает категории с наибольшим снижением выручки 
+в разрезе магазинов. Анализ позволяет локализовать 
+ключевые зоны риска и определить масштаб влияния снижения 
+на общий финансовый результат.
+</p>
+
+
+    {% if stores_cat_diag_ytd.has %}
+      <div class="page-break"></div>
+      <div class="diag-block">
+        {{ stores_cat_diag_ytd.top_drops_html|safe }}
+        <div class="page-break"></div>
+        {{ stores_cat_diag_ytd.matrix_html|safe }}
+      </div>
+    {% endif %}
+
+    {% if stores_cat_diag_mtd.has %}
+      <div class="page-break"></div>
+      <div class="diag-block">
+        {{ stores_cat_diag_mtd.top_drops_html|safe }}
+        <div class="page-break"></div>
+        {{ stores_cat_diag_mtd.matrix_html|safe }}
+      </div>
+    {% endif %}
+
+  </div>
+</section> {% endcomment %}
+
+
+
+
+{% comment %} <section id="stores-diag">
+  <div class="section">
+
+    <h3 class="section-subtitle">Анализ снижения выручки по категориям в разрезе магазинов</h3>
+
+    <p class="section-note">
+      Раздел отражает категории с наибольшим снижением выручки в разрезе магазинов.
+      Анализ позволяет локализовать ключевые зоны риска и определить масштаб влияния снижения
+      на общий финансовый результат.
+      <br><br>
+      Детализированные матрицы изменений (Δ₽, магазин × категории) приведены в
+      <a href="#appendix-a"><b>Приложении A</b></a>.
+    </p>
+
+    {% if stores_cat_diag_ytd.has %}
+      <div class="diag-block">
+        {{ stores_cat_diag_ytd.top_drops_html|safe }}
+      </div>
+    {% endif %}
+
+    {% if stores_cat_diag_mtd.has %}
+      <div class="page-break"></div>
+      <div class="diag-block">
+        {{ stores_cat_diag_mtd.top_drops_html|safe }}
+      </div>
+    {% endif %}
+
+  </div>
+</section> {% endcomment %}
+
+
+
+<section id="stores-diag">
+  <div class="section">
+
+    <h3 class="section-subtitle">VII.6 Категориальная диагностика по магазинам</h3>
+
+    <p class="section-note">
+      Раздел отражает категории с наибольшим снижением выручки в разрезе магазинов.
+      Анализ позволяет локализовать ключевые зоны риска и определить масштаб влияния
+      снижения на общий финансовый результат.
+      <br><br>
+      Детализированные матрицы изменений (Δ₽, магазин × категории) приведены в
+      <a href="#appendix-a"><b>Приложении A</b></a>.
+    </p>
+
+    {% if stores_cat_diag_ytd.has %}
+      <div class="diag-block">
+        {{ stores_cat_diag_ytd.top_drops_html|safe }}
+      </div>
+    {% endif %}
+
+    {% if stores_cat_diag_mtd.has %}
+      <div class="page-break"></div>
+      <div class="diag-block">
+        {{ stores_cat_diag_mtd.top_drops_html|safe }}
+      </div>
+    {% endif %}
+
+  </div>
+</section>

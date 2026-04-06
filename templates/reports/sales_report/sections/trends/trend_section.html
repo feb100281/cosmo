@@ -1,0 +1,14 @@
+<section id="trends">
+  <div class="section">
+    <h2 class="section-title">II. Тренды и динамика</h2>
+
+{% include "reports/sales_report/sections/trends/_trend_table.html" with trend=kpi_ctx.trend trend_meta=kpi_ctx.trend_meta %}
+
+
+
+    {% include "reports/sales_report/sections/trends/_trend_chart.html" with trend_chart_svg=kpi_ctx.trend_chart_svg %}
+
+  </div>
+</section>
+
+

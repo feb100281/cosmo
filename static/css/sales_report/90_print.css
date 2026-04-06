@@ -45,9 +45,11 @@
 
 
 @page{
-  size: A4;
+  size: A4; margin: 0; 
   margin: 12mm 10mm;
 }
+
+
 
 /* на всякий: wkhtmltopdf любит распирать блоки */
 .section, .store-chart-card, .store-chart-wrap{
@@ -69,19 +71,14 @@
 
 
 
-@media print {
-  /* если это SVG area (часто: path с fill) */
-  svg .area,
-  svg path[fill]:not([fill="none"]) {
-    fill: none !important;
-    opacity: 1 !important;
-  }
 
-  /* линия */
-  svg path[stroke] {
-    opacity: 1 !important;
+@media print{
+  *{
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
+
 
 
 

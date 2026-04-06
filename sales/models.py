@@ -1,3 +1,4 @@
+# sales/models.py
 from django.db import models
 from corporate.models import Items, Stores, Managers, Agents, Barcode
 from utils.choices import OPERATION_TYPES
@@ -35,7 +36,6 @@ class SalesOrders(models.Model):
         ]
 
 
-# Create your models here.
 class SalesData(models.Model):
     date = models.DateField(verbose_name="Дата")
     client_order_date = models.DateField(
@@ -65,7 +65,7 @@ class SalesData(models.Model):
         Items, on_delete=models.CASCADE, verbose_name="Наименование"
     )
 
-    client_order_number = models.CharField(
+    client_order_feature = models.CharField(
         max_length=600, verbose_name="Характеристика", null=True, blank=True
     )
 
@@ -240,7 +240,7 @@ class MVSalesOrder(models.Model):
     order_min_date = models.DateField("Первая отгрузка", null=True, blank=True)
     order_max_date = models.DateField("Последняя отгрузка", null=True, blank=True)
     order_duration = models.BigIntegerField(
-        verbose_name="Срок заказа", blank=True, null=True
+        verbose_name="Срок", blank=True, null=True
     )
     realization_duration = models.BigIntegerField(
         verbose_name="Срок реализации", blank=True, null=True

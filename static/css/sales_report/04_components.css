@@ -141,6 +141,7 @@
   text-decoration: none;
 
   transition: color .15s ease;
+  
 }
 
 .toc-item:hover{
@@ -188,7 +189,7 @@
 .chart-block{
   margin-top: 14px;
   padding: 12px 14px;
-  background: var(--bg-soft);
+  /* background: var(--bg-soft); */
 }
 
 .chart-block svg{
@@ -334,6 +335,14 @@
   color: #6b7280;
   line-height: 1.4;
 }
+
+
+
+
+
+
+.compare-table .row-warn td { box-shadow: inset 0 0 0 9999px rgba(255, 193, 7, 0.10); }
+.compare-table .row-crit td { box-shadow: inset 0 0 0 9999px rgba(220, 53, 69, 0.12); }
 
 
 
@@ -691,4 +700,116 @@
 .compare-table td.td-bar {
   padding: 10px 14px;
 }
+
+
+
+
+/* ========== Managers: Insights ========== */
+.mgr-insights{
+  margin: 12px 0 14px;
+  padding: 12px 14px;
+}
+
+.mgr-insight-card{
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(40, 90, 255, .18);
+}
+.mgr-insight-card:last-child{ border-bottom: 0; }
+
+.mgr-insight-title{
+  font-weight: 700;
+  font-size: 14px;
+  color: #0b1b45;
+  margin-bottom: 6px;
+}
+
+.mgr-insight-list{
+  margin: 0;
+  padding-left: 18px;
+}
+.mgr-insight-list li{
+  margin: 4px 0;
+  line-height: 1.35;
+}
+
+.mgr-insight-footnote{
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(40, 90, 255, .18);
+  font-size: 12px;
+  color: rgba(20, 25, 40, .72);
+}
+
+/* ========== Managers: Table typography ========== */
+.managers-table .sub{
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.15;
+}
+.muted{
+  color: rgba(20, 25, 40, .62);
+}
+
+/* ========== Row highlight (very soft) ========== */
+.managers-table tr.row-warn td{
+  background: rgba(255, 193, 7, .10); /* мягкий янтарный */
+}
+.managers-table tr.row-crit td{
+  background: rgba(220, 53, 69, .10); /* мягкий красный */
+}
+
+/* ========== Return rate badge ========== */
+.badge-rr{
+  display: inline-block;
+  border-radius: 6px;
+  font-weight: 700;            /* жирнее */
+  letter-spacing: .2px;
+
+}
+
+.badge-rr.rr-ok{
+  color: #0f5132;
+
+}
+
+.badge-rr.rr-warn{
+  color: #8a5b00;
+
+}
+
+.badge-rr.rr-crit{
+  color: #b02a37;              /* прям красным */
+
+  font-weight: 800;
+}
+
+/* ========== MoM delta ========== */
+.mom{
+  font-weight: 700;
+}
+.mom.pos{ color: #0f5132; }
+.mom.neg{ color: #b02a37; }
+.mom.flat{ color: rgba(20, 25, 40, .72); }
+
+/* ========== Big badge ========== */
+.badge-big{
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  color: rgba(20, 25, 40, .85);
+
+}
+
+
+
+
+
+
+
+.avoid-break {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
 

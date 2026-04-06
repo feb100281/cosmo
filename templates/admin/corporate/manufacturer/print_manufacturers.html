@@ -1,0 +1,222 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{% static 'css/corporate/manufacturers.css' %}">
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="dochead">
+      <div class="kicker">Corporate · справочники</div>
+      <h1 class="title">Список производителей</h1>
+
+      <div class="meta">
+        <span>Сформировано: {{ generated_at|date:"d.m.Y H:i" }}</span>
+        {% comment %} <span class="pill"><span class="dot"></span> Производителей: <b>{{ rows|length }}</b></span> {% endcomment %}
+      </div>
+    </div>
+
+    <div class="printbar">
+      <button onclick="window.print()">🖨️ Печать</button>
+      <button onclick="history.back()">↩ Назад</button>
+    </div>
+
+
+
+
+
+
+    {% include "admin/corporate/manufacturer/_brief.html" with brief=manufacturers_brief %}
+
+    <div class="pagebreak"></div>
+
+
+
+
+    {% if lost_manufacturers_svg %}
+
+      <div class="section-title">Производители без текущей активности продаж</div>
+      <div class="svg-wrap">
+        {{ lost_manufacturers_svg|safe }}
+      </div>
+    {% endif %}
+
+
+
+
+
+   <div class="pagebreak"></div>
+<h3 class="section-title">Чистая выручка по производителям в динамике по годам</h3>
+{% comment %} <div class="smallmuted">
+  Чистая выручка. Период: с {{ years.0 }} года.
+</div> {% endcomment %}
+
+<div class="rev-legend">
+  <div class="legend-item li-active">
+    <span class="legend-dot"></span>
+    <div class="legend-text">
+      <div class="legend-title">Работает</div>
+      <div class="legend-sub">В текущем году есть отгрузки.</div>
+    </div>
+  </div>
+
+  <div class="legend-item li-pause">
+    <span class="legend-dot"></span>
+    <div class="legend-text">
+      <div class="legend-title">Пауза</div>
+      <div class="legend-sub">В прошлом году были отгрузки, в текущем — пока нет.</div>
+    </div>
+  </div>
+
+  <div class="legend-item li-stopped">
+    <span class="legend-dot"></span>
+    <div class="legend-text">
+      <div class="legend-title">Перестали</div>
+      <div class="legend-sub">2 года подряд нет отгрузок, при этом раньше они были.</div>
+    </div>
+  </div>
+</div>
+
+<table class="rev-table">
+  <thead>
+    <tr>
+      <th>Производитель</th>
+      {% for y in years %}
+        <th class="num">{{ y|stringformat:"d" }}</th>
+      {% endfor %}
+      <th class="num">Итого</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for r in revenue_rows %}
+      <tr class="mf-row status-{{ r.status }}">
+        <td class="sticky-col">
+          <div class="mf-cell">
+            <div class="mf-name">{{ r.name }}</div>
+            {% comment %} <div class="mf-meta">
+              {% if r.status == "active" %}
+                <span class="badge badge-active">работает</span>
+              {% elif r.status == "pause" %}
+                <span class="badge badge-pause">пауза</span>
+              {% else %}
+                <span class="badge badge-stopped">перестали</span>
+              {% endif %}
+            </div> {% endcomment %}
+          </div>
+        </td>
+
+        {% for c in r.cells %}
+          <td class="num heat" style="--k: {{ c.k|floatformat:2 }};">
+            {{ c.disp }}
+          </td>
+        {% endfor %}
+
+        <td class="num total-col">
+          {{ r.total_disp }}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+
+  <tfoot>
+    <tr class="totals-row">
+      <td class="sticky-col totals-title">Итого</td>
+
+      {% for c in revenue_totals.cells %}
+        <td class="num totals-num">{{ c.disp }}</td>
+      {% endfor %}
+
+      <td class="num totals-grand">{{ revenue_totals.total_disp }}</td>
+    </tr>
+  </tfoot>
+</table>
+
+
+      <div class="pagebreak"></div>
+
+
+    <div class="section-title">Распределение производителей по категориям</div>
+
+    {% if cats_blocks %}
+      {% for block in cats_blocks %}
+        <div class="cat-block">
+          <div class="cat-head">
+         <div class="cat-name">
+                <span class="cat-title">
+                    <span class="cat-icon">
+                    {% if block.icon %}
+                        {% if block.icon|slice:":4" == "<svg" %}
+                        {{ block.icon|safe }}
+                        {% else %}
+                        {{ block.icon }}
+                        {% endif %}
+                    {% endif %}
+                    </span>
+                    <span>{{ block.cat }}</span>
+                </span>
+                </div>
+            <div class="cat-meta">Производителей: <b>{{ block.manufacturers_count }}</b></div>
+          </div>
+
+          <div class="cat-body">
+            <div class="mf-list">
+              {% for mf_name in block.manufacturers %}
+                <span class="mf-chip">{{ mf_name }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div style="color:var(--muted);font-size:12px;">Нет данных для группировки по категориям.</div>
+    {% endif %}
+
+    <div class="pagebreak"></div>
+
+
+
+
+
+
+
+<div class="section-title">Производители и их подкатегории (алфавит)</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30%;">Производитель</th>
+          <th style="width:70%;">Подкатегории</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>
+              <div class="mname">{{ r.report_name }}</div>
+            </td>
+
+            <td>
+              <div class="chips">
+                {% for s in r.subcats %}
+                  <span class="subchip">{{ s }}</span>
+                {% endfor %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+
+    {% comment %} <div class="pagebreak"></div> {% endcomment %}
+
+
+  </div>
+</body>
+</html>

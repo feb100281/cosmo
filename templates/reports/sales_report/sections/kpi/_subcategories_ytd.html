@@ -1,0 +1,61 @@
+{% if subcats_ytd.has %}
+  <div class="kpi-subcats">
+    <h3 class="subsection-title">{{ subcats_ytd.title }}</h3>
+
+    {% for c in subcats_ytd.cats %}
+      <div class="kpi-subcats-cat">
+        <div class="kpi-subcats-cat-title">{{ c.cat }}</div>
+
+        <table class="tbl tbl-subcats">
+          <colgroup>
+            <col style="width:24%">
+            <col style="width:14%">
+            <col style="width:14%">
+            <col style="width:10%">
+            <col style="width:14%">
+            <col style="width:14%">
+            <col style="width:10%">
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th class="left">Подкатегория</th>
+              <th>Выручка YTD ({{ subcats_ytd.years.prev }})</th>
+              <th>Выручка YTD ({{ subcats_ytd.years.curr }})</th>
+              <th>Δ</th>
+              <th>Кол-во YTD ({{ subcats_ytd.years.prev }})</th>
+              <th>Кол-во YTD ({{ subcats_ytd.years.curr }})</th>
+              <th>Δ</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for r in c.rows %}
+              <tr>
+                <td class="left">{{ r.subcat }}</td>
+                <td class="num">{{ r.amount_prev }}</td>
+                <td class="num">{{ r.amount_curr }}</td>
+                <td class="num delta {{ r.d_amount_dir }}">{{ r.d_amount }}</td>
+
+                <td class="num">{{ r.quant_prev }}</td>
+                <td class="num">{{ r.quant_curr }}</td>
+                <td class="num delta {{ r.d_quant_dir }}">{{ r.d_quant }}</td>
+              </tr>
+            {% endfor %}
+
+            <tr class="tbl-total">
+              <td class="left"><b>ИТОГО по категории</b></td>
+              <td class="num"><b>{{ c.totals.amount_prev }}</b></td>
+              <td class="num"><b>{{ c.totals.amount_curr }}</b></td>
+              <td class="num delta {{ c.totals.d_amount_dir }}"><b>{{ c.totals.d_amount }}</b></td>
+
+              <td class="num"><b>{{ c.totals.quant_prev }}</b></td>
+              <td class="num"><b>{{ c.totals.quant_curr }}</b></td>
+              <td class="num delta {{ c.totals.d_quant_dir }}"><b>{{ c.totals.d_quant }}</b></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

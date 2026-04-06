@@ -1,0 +1,86 @@
+<div class="kpi-metrics-grid">
+  <div class="kpi-metric-item">
+    <div class="kpi-metric-icon">₽</div>
+    <div class="kpi-metric-content">
+      <div class="kpi-metric-label">Оборот</div>
+      <div class="kpi-metric-value">{{ cards.dt }}</div>
+    </div>
+  </div>
+
+  <div class="kpi-metric-item">
+    <div class="kpi-metric-icon">↩</div>
+    <div class="kpi-metric-content">
+      <div class="kpi-metric-label">Возвраты</div>
+      <div class="kpi-metric-value">{{ cards.cr }}</div>
+      {% if cards.rtr_ratio and cards.rtr_ratio != "—" %}
+        <span class="kpi-metric-badge">{{ cards.rtr_ratio }} к обороту</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="kpi-metric-item">
+    <div class="kpi-metric-icon">✓</div>
+    <div class="kpi-metric-content">
+      <div class="kpi-metric-label">Чистая выручка</div>
+      <div class="kpi-metric-value">{{ cards.amount }}</div>
+
+      {% if cards.amount_services and cards.amount_services != "—" %}
+        <div class="kpi-subtext">
+          в т.ч. услуги: {{ cards.amount_services }}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div> 
+
+
+
+
+
+
+
+
+ {% comment %} {# reports/sales_report/sections/kpi/_cards.html #}
+<div class="kpi-grid">
+  <!-- 1) Оборот -->
+  <div class="kpi-card">
+    <div class="kpi-ico">₽</div>
+    <div class="kpi-meta">
+      <div class="kpi-title">ОБОРОТ</div>
+      <div class="kpi-value">{{ cards.dt }}</div>
+    </div>
+  </div>
+
+  <!-- 2) Возвраты -->
+  <div class="kpi-card">
+    <div class="kpi-ico">↩</div>
+    <div class="kpi-meta">
+      <div class="kpi-title">ВОЗВРАТЫ</div>
+      <div class="kpi-value">{{ cards.cr }}</div>
+      <div class="kpi-subpill">
+        <span class="kpi-subpill-val">{{ cards.rtr_ratio }}</span>
+        <span class="kpi-subpill-cap">{{ cards.rtr_caption }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3) Чистая выручка -->
+  <div class="kpi-card">
+    <div class="kpi-ico">✓</div>
+    <div class="kpi-meta">
+      <div class="kpi-title">ЧИСТАЯ ВЫРУЧКА</div>
+      <div class="kpi-value">{{ cards.amount }}</div>
+
+      <div class="kpi-note">
+        в т.ч. услуги: {{ cards.amount_services }}
+        <span class="kpi-note-muted">({{ cards.services_share }})</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Одной строкой снимаем “заказы/чек” -->
+<div class="kpi-footnote">
+  Данные — по отгрузкам (реализациям) за период; один заказ может отгружаться частями.
+</div> {% endcomment %}

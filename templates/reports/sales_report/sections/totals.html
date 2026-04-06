@@ -3,16 +3,16 @@
   <div class="section">
 
     <!-- ГЛАВНЫЙ РАЗДЕЛ -->
-    <h2 class="section-title section-main">II. Накопленные итоги</h2>
+    <h2 class="section-title section-main">III. Накопленные итоги</h2>
 
     <!-- ПОДРАЗДЕЛ MTD / Итог за месяц -->
     <div class="subsection" id="totals-mtd">
 
       <div class="section-title section-sub">
         {% if report_type == "monthly" %}
-          II.1 Итог за месяц (к прошлому году)
+          III.1 MTD Итог за месяц (к прошлому году)
         {% else %}
-          II.1 MTD (месяц, к прошлому году)
+          III.1 MTD (месяц, к прошлому году)
         {% endif %}
       </div>
 
@@ -26,10 +26,25 @@
         {% endif %}
       </p>
 
-      {# ✅ ВЕСЬ MTD-блок (таблица + график + методика) — в один пакет для печати #}
-      <div class="mtd-pack">
+
 
         {{ table_mtd_html|safe }}
+
+{% if mtd_cum_svg %}
+  <div class="chart-block chart-block--mtd-cum avoid-break">
+    {{ mtd_cum_svg|safe }}
+  </div>
+{% endif %}
+
+
+{% if mtd_cat_waterfall_svg %}
+  <div class="chart-block chart-block--mtd avoid-break">
+    {{ mtd_cat_waterfall_svg|safe }}
+  </div>
+{% endif %}
+
+      {# ✅ ВЕСЬ MTD-блок (таблица + график + методика) — в один пакет для печати #}
+      <div class="mtd-pack">
 
         {% if mtd_waterfall_svg %}
           <div class="chart-block chart-block--mtd">
@@ -134,7 +149,7 @@
 <div class="subsection" id="totals-ytd">
 
   <div class="section-title section-sub">
-    II.2 YTD (год, к прошлому году)
+    III.2 YTD (год, к прошлому году)
   </div>
 
   <p class="section-note">
@@ -144,10 +159,22 @@
 
   {{ table_ytd_html|safe }}
 
+
+      {% if ytd_cat_waterfall_svg %}
+  <div class="chart-block chart-block--ytd avoid-break">
+    {{ ytd_cat_waterfall_svg|safe }}
+  </div>
+{% endif %}
+
+
   {% if ytd_cum_svg %}
     <div class="chart-block chart-block--ytd">
       {{ ytd_cum_svg|safe }}
     </div>
+
+
+
+
 
     {% if ytd_driver and ytd_driver.has %}
       {# ✅ тот же визуальный язык, что и MTD-методика #}
@@ -202,11 +229,11 @@
 
     <div class="page-break"></div>
 
-    {# --- II.3 Динамика чистой выручки за 13 месяцев --- #}
+    {# --- III.3 Динамика чистой выручки за 13 месяцев --- #}
     <div class="subsection" id="totals-ltm">
 
       <div class="section-title section-sub">
-        II.3 Динамика чистой выручки за 13 месяцев
+        III.3 Динамика чистой выручки за 13 месяцев
       </div>
 
       <p class="section-note">
@@ -226,6 +253,11 @@
         </div>
 
         {% include "reports/sales_report/sections/_ltm_owner_tabs.html" %}
+
+        <div class="page-break"></div>
+        {% include "reports/sales_report/sections/_prophet_fy_vector.html" %}
+
+
 
 
       {% endif %}

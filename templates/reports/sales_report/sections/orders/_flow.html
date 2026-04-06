@@ -1,0 +1,49 @@
+<section id="orders-flow" class="section">
+
+  {% if not orders_flow.has %}
+    <p class="muted">Нет данных для анализа движения заказов.</p>
+  {% else %}
+
+
+  <div class="section-title section-sub">V.3 Aging заказов</div>
+  <div style="margin-bottom:18px;">
+  {{ orders_flow.aging_table_html|safe }}
+</div>
+
+      {% if orders_flow.aging_svg %}
+    <div class="store-chart-card">
+      <div class="store-chart-wrap">
+        {{ orders_flow.aging_svg|safe }}
+      </div>
+    </div>
+  {% endif %}
+
+
+
+
+  {% comment %} <div class="cards-grid">
+    <div class="card kpi-card">
+      <div class="kpi-title">Медиана исполнения</div>
+      <div class="kpi-value">{{ orders_flow.speed.median }} дн.</div>
+    </div>
+
+    <div class="card kpi-card">
+      <div class="kpi-title">75% заказов закрываются за</div>
+      <div class="kpi-value">{{ orders_flow.speed.p75 }} дн.</div>
+    </div>
+
+    <div class="card kpi-card">
+      <div class="kpi-title">90% заказов закрываются за</div>
+      <div class="kpi-value">{{ orders_flow.speed.p90 }} дн.</div>
+    </div>
+
+    <div class="card kpi-card">
+      <div class="kpi-title">Среднее время исполнения</div>
+      <div class="kpi-value">{{ orders_flow.speed.avg }} дн.</div>
+    </div>
+  </div> {% endcomment %}
+
+
+
+  {% endif %}
+</section>

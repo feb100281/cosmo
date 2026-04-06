@@ -1,0 +1,186 @@
+{% comment %} {# reports/sales_report/sections/kpi/_period_text.html #}
+{% if mtd_text or ytd_text %}
+  <div class="kpi-text-block">
+    {% if mtd_text %}
+      <div class="kpi-text-item">
+        <h3 class="subsection-title">Итоги MTD ({{ mtd_text.period }})</h3>
+        <div class="kpi-text-line">
+          За период продано <b>{{ mtd_text.total_amount }}</b> и <b>{{ mtd_text.total_quant }}</b> шт.
+          К прошлому году: <b>{{ mtd_text.yoy_amount }}</b> ({{ mtd_text.yoy_amount_pct }}),
+          по штукам: <b>{{ mtd_text.yoy_quant }}</b> ({{ mtd_text.yoy_quant_pct }}).
+        </div>
+
+        {% if mtd_text.top_rows %}
+          <div class="kpi-text-line">
+            ТОП категорий по выручке:
+            {% for r in mtd_text.top_rows %}
+              <span class="kpi-chip">{{ r.cat }} — {{ r.amount }} / {{ r.quant }} шт ({{ r.share }})</span>{% if not forloop.last %},{% endif %}
+            {% endfor %}
+            . Доля ТОП-{{ mtd_text.top_rows|length }}: <b>{{ mtd_text.pareto_topn_share }}</b>.
+          </div>
+        {% endif %}
+
+        {% if mtd_text.movers_up or mtd_text.movers_down %}
+          <div class="kpi-text-line">
+            Вклад категорий к изменению месяца к прошлому году:
+            {% if mtd_text.movers_up %}
+              <span class="kpi-sub">рост:</span>
+              {% for r in mtd_text.movers_up %}
+                <span class="kpi-chip kpi-chip-pos">{{ r.cat }} {{ r.d_amount }}</span>{% if not forloop.last %},{% endif %}
+              {% endfor %}
+            {% endif %}
+            {% if mtd_text.movers_down %}
+              <span class="kpi-sub">падение:</span>
+              {% for r in mtd_text.movers_down %}
+                <span class="kpi-chip kpi-chip-neg">{{ r.cat }} {{ r.d_amount }}</span>{% if not forloop.last %},{% endif %}
+              {% endfor %}
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if ytd_text %}
+      <div class="kpi-text-item">
+        <h3 class="subsection-title">Итоги YTD ({{ ytd_text.period }})</h3>
+        <div class="kpi-text-line">
+          С начала года продано <b>{{ ytd_text.total_amount }}</b> и <b>{{ ytd_text.total_quant }}</b> шт.
+          К прошлому году: <b>{{ ytd_text.yoy_amount }}</b> ({{ ytd_text.yoy_amount_pct }}),
+          по штукам: <b>{{ ytd_text.yoy_quant }}</b> ({{ ytd_text.yoy_quant_pct }}).
+        </div>
+
+        {% if ytd_text.top_rows %}
+          <div class="kpi-text-line">
+            ТОП категорий по выручке:
+            {% for r in ytd_text.top_rows %}
+              <span class="kpi-chip">{{ r.cat }} — {{ r.amount }} / {{ r.quant }} шт ({{ r.share }})</span>{% if not forloop.last %},{% endif %}
+            {% endfor %}
+            . Доля ТОП-{{ ytd_text.top_rows|length }}: <b>{{ ytd_text.pareto_topn_share }}</b>.
+          </div>
+        {% endif %}
+
+        {% if ytd_text.movers_up or ytd_text.movers_down %}
+          <div class="kpi-text-line">
+            Вклад категорий в изменение к прошлому году:
+            {% if ytd_text.movers_up %}
+              <span class="kpi-sub">рост:</span>
+              {% for r in ytd_text.movers_up %}
+                <span class="kpi-chip kpi-chip-pos">{{ r.cat }} {{ r.d_amount }}</span>{% if not forloop.last %},{% endif %}
+              {% endfor %}
+            {% endif %}
+            {% if ytd_text.movers_down %}
+              <span class="kpi-sub">падение:</span>
+              {% for r in ytd_text.movers_down %}
+                <span class="kpi-chip kpi-chip-neg">{{ r.cat }} {{ r.d_amount }}</span>{% if not forloop.last %},{% endif %}
+              {% endfor %}
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+{% endif %} {% endcomment %}
+
+
+
+{# reports/sales_report/sections/kpi/_period_text.html #}
+{% if mtd_text or ytd_text %}
+  <div class="kpi-text-block">
+
+    {% if mtd_text %}
+      <div class="kpi-text-item">
+        <h3 class="subsection-title">MTD: как прошёл период ({{ mtd_text.period }})</h3>
+
+        <div class="kpi-text-line">
+          <b>Итог:</b> {{ mtd_text.total_amount }} выручки и {{ mtd_text.total_quant }} шт.
+          <span class="kpi-sub">К прошлому году:</span>
+          {{ mtd_text.yoy_amount }} ({{ mtd_text.yoy_amount_pct }}) по выручке,
+          {{ mtd_text.yoy_quant }} ({{ mtd_text.yoy_quant_pct }}) по количеству.
+        </div>
+
+        {% if mtd_text.top_rows %}
+          <div class="kpi-text-line">
+            <b>Лидеры по выручке:</b>
+            {% for r in mtd_text.top_rows %}
+              <span class="kpi-chip">{{ r.cat }}: {{ r.amount }} / {{ r.quant }} шт ({{ r.share }})</span>
+            {% endfor %}
+            <span class="kpi-sub">Вместе дают</span> <b>{{ mtd_text.pareto_topn_share }}</b> выручки.
+          </div>
+        {% endif %}
+
+        {% if mtd_text.movers_up or mtd_text.movers_down %}
+          <div class="kpi-text-line">
+            <b>Что сильнее всего повлияло на результат (к прошлому году):</b>
+
+            {% if mtd_text.movers_up %}
+              <span class="kpi-sub">в плюс ▲</span>
+              {% for r in mtd_text.movers_up %}
+                <span class="kpi-chip kpi-chip-pos">{{ r.cat }} {{ r.d_amount }}</span>
+              {% endfor %}
+            {% endif %}
+
+            {% if mtd_text.movers_down %}
+              <span class="kpi-sub">в минус ▼</span>
+              {% for r in mtd_text.movers_down %}
+                <span class="kpi-chip kpi-chip-neg">{{ r.cat }} {{ r.d_amount }}</span>
+              {% endfor %}
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if ytd_text %}
+      <div class="kpi-text-item">
+        <h3 class="subsection-title">YTD: итоги с начала года ({{ ytd_text.period }})</h3>
+
+        <div class="kpi-text-line">
+          <b>Итог:</b> {{ ytd_text.total_amount }} выручки и {{ ytd_text.total_quant }} шт.
+          <span class="kpi-sub">К прошлому году:</span>
+          {{ ytd_text.yoy_amount }} ({{ ytd_text.yoy_amount_pct }}) по выручке,
+          {{ ytd_text.yoy_quant }} ({{ ytd_text.yoy_quant_pct }}) по количеству.
+        </div>
+
+        {% if ytd_text.top_rows %}
+          <div class="kpi-text-line">
+            <b>Лидеры по выручке:</b>
+            {% for r in ytd_text.top_rows %}
+              <span class="kpi-chip">{{ r.cat }}:  {{ r.amount }} / {{ r.quant }} шт ({{ r.share }})</span>
+            {% endfor %}
+            <span class="kpi-sub">Вместе дают</span> <b>{{ ytd_text.pareto_topn_share }}</b> выручки.
+          </div>
+        {% endif %}
+
+        {% if ytd_text.movers_up or ytd_text.movers_down %}
+          <div class="kpi-text-line">
+            <b>Драйверы изменения (к прошлому году):</b>
+
+            {% if ytd_text.movers_up %}
+              <span class="kpi-sub">в плюс ▲</span>
+              {% for r in ytd_text.movers_up %}
+                <span class="kpi-chip kpi-chip-pos">{{ r.cat }} {{ r.d_amount }}</span>
+              {% endfor %}
+            {% endif %}
+
+            {% if ytd_text.movers_down %}
+              <span class="kpi-sub">в минус ▼</span>
+              {% for r in ytd_text.movers_down %}
+                <span class="kpi-chip kpi-chip-neg">{{ r.cat }} {{ r.d_amount }}</span>
+              {% endfor %}
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if subcats_ytd.has %}
+  <div class="kpi-text-line">
+    <b>Детализация:</b>
+    таблица по подкатегориям приведена в
+    <a href="#appendix-b"><b>Приложении B</b></a>.
+  </div>
+{% endif %}
+
+
+  </div>
+{% endif %}

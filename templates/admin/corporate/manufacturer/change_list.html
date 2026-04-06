@@ -1,0 +1,109 @@
+{% extends "admin/change_list.html" %}
+{% load static admin_urls %}
+
+{% block breadcrumbs %}{% endblock %}
+{% block object-tools %}{% endblock %}
+{% block title %}Справочники | Производители{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/admin_overrides.css' %}">
+  <link rel="stylesheet" href="{% static 'css/admin_items.css' %}">
+  <style>
+    .mf-hero{ display:flex; gap:16px; flex-wrap:wrap; padding-bottom:6px; align-items:flex-start; }
+    .mf-left{ display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+    .mf-avatar{
+      width:44px;height:44px;border-radius:12px;
+      background: linear-gradient(135deg, #f8fafc, #ecfeff);
+      border:1px solid rgba(2,132,199,.18);
+      display:flex;align-items:center;justify-content:center;
+      color:#0284c7;font-size:20px;
+      box-shadow:0 4px 12px rgba(2,132,199,.10);
+    }
+    .mf-meta{ display:flex; flex-direction:column; gap:4px; line-height:1.3; }
+    .mf-kicker{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#6b7280; }
+    .mf-title{ font-size:19px; font-weight:600; color:#111827; }
+
+    .mf-card{
+      min-width:230px; max-width:360px;
+      border-radius:2px; background:rgba(248,250,252,0.96);
+      box-shadow:0 18px 40px rgba(15,23,42,0.16);
+      padding:10px 12px 12px;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .mf-btn{
+      display:inline-flex; align-items:center; justify-content:flex-start; gap:8px;
+      width:100%;
+      font-size:13px;
+      padding:6px 10px;
+      border-radius:2px;
+      text-decoration:none;
+      border:1px solid #d1d5db;
+      background:#f3f4f6;
+      color:#111827;
+      box-shadow:0 1px 2px rgba(15,23,42,.06);
+    }
+    .mf-btn:hover{ background:#e5e7eb; color:#111827; }
+    .mf-btn-primary{ border:1px solid rgba(2,132,199,.22); background:rgba(2,132,199,.10); }
+    .mf-btn-primary:hover{ background:rgba(2,132,199,.16); }
+    .mf-divider{ height:1px; background:rgba(148,163,184,0.35); margin:2px 0 4px; }
+    .mf-foot{ font-size:11px;color:#9ca3af; }
+    .mf-foot strong{ color:#4b5563; }
+
+    .mf-stats{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:8px;
+      margin-top:2px;
+    }
+    .mf-stat{
+      border:1px solid rgba(148,163,184,.35);
+      background:rgba(255,255,255,.7);
+      border-radius:12px;
+      padding:8px 10px;
+      box-shadow:0 1px 2px rgba(15,23,42,.04);
+    }
+    .mf-stat .k{ font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#9ca3af; }
+    .mf-stat .v{ font-size:16px; font-weight:700; color:#0f172a; margin-top:2px; }
+  </style>
+{% endblock %}
+
+{% block content_title %}
+  {% url cl.opts|admin_urlname:'add' as add_url %}
+  {% url 'admin:corporate_itemmanufacturer_print_manufacturers' as print_url %}
+
+  <div class="mf-hero">
+    <div class="mf-left">
+      <div class="mf-avatar">🏭</div>
+      <div class="mf-meta">
+        <span class="mf-kicker">Справочники</span>
+        <span class="mf-title">Производители</span>
+      </div>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <div class="mf-card">
+      <div style="display:flex; justify-content:space-between; align-items:baseline;">
+        <span style="font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9ca3af;">Навигация</span>
+        <span style="font-size:13px; font-weight:600; color:#0f172a;">Действия</span>
+      </div>
+
+      <div class="mf-divider"></div>
+
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        {% if has_add_permission %}
+          <a href="{{ add_url }}" class="mf-btn mf-btn-primary">➕ Добавить производителя</a>
+        {% endif %}
+      </div>
+
+      <div class="mf-divider"></div>
+
+
+      <div class="mf-foot">
+        Сейчас в списке: <strong>{{ cl.result_count }}</strong>
+        {% if cl.paginator %} · Страниц: <strong>{{ cl.paginator.num_pages }}</strong>{% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

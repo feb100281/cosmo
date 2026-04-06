@@ -415,6 +415,253 @@ th.column-logo_preview, td.field-logo_preview{ text-align:center; width:72px; }
 
 
 
+/* Колонка Заказ */
+td.field-order_pretty {
+    white-space: normal !important;
+}
+
+/* Ссылка */
+.order-link {
+    display: inline-block;
+    line-height: 1.3;
+}
+
+/* Первая строка */
+.order-main {
+    display: block;
+    font-weight: 600;
+}
+
+/* Вторая строка (дата) */
+.order-date {
+    display: block;
+    color: #8c98a4;   /* мягкий серый */
+    font-size: 0.88em;
+    font-weight: 400;
+    margin-top: 2px;
+}
+
+
+td.field-order_min_pretty,
+td.field-order_max_pretty {
+    white-space: nowrap;
+    width: 110px;
+    text-align: center;
+    font-size: 0.95em;
+}
+
+th.column-order_min_pretty,
+th.column-order_max_pretty {
+    width: 110px;
+}
+
+
+
+td.field-order_created_pretty {
+    white-space: nowrap;
+    width: 105px;
+    text-align: center;
+    color: #8c98a4;
+}
+
+
+
+/* --- Orders table tweaks --- */
+
+/* Order cell already ok */
+td.field-order_pretty { white-space: normal !important; }
+
+/* Money: right align + tabular nums */
+td.field-amount_pretty,
+td.field-sales_pretty,
+td.field-returns_pretty {
+    text-align: right !important;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.money { font-weight: 600; }
+.money.muted { color: #9aa6b2; font-weight: 500; }
+.money.neg { color: #c23b3b; }
+
+/* Duration badge */
+/* Duration badge */
+td .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.88em;
+    font-weight: 800;
+    white-space: nowrap;
+    color: #1f2933;   /* тёмный текст */
+}
+
+/* Быстро — хорошо */
+td .badge-green {
+    background: #d7f5e4;
+    border: 1px solid #63d19a;
+}
+
+/* Средне — внимание */
+td .badge-amber {
+    background: #fff1cc;
+    border: 1px solid #f1c40f;
+}
+
+/* Долго — критично */
+td .badge-red {
+    background: #ffd6d1;
+    border: 1px solid #e74c3c;
+}
+
+/* Manager formatting */
+.mgr-last { display:block; font-weight: 650; }
+.mgr-first { display:block; color:#8c98a4; font-size:0.88em; margin-top:2px; }
+
+/* Actions buttons */
+td.field-actions { white-space: nowrap; text-align: center; }
+.act-btn {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 8px;
+    text-decoration: none;
+    margin: 0 2px;
+    opacity: 0.9;
+}
+.act-btn:hover { background: rgba(0,0,0,0.06); opacity: 1; }
+
+
+
+/* Type pill */
+.type-pill{
+    display:inline-block;
+    padding: 3px 10px;
+    font-weight: 700;
+    font-size: 0.86em;
+    white-space: nowrap;
+    color: #1f2933;
+}
+
+
+.store-cell{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  max-width:260px;
+}
+
+.store-logo{
+  width:34px;
+  height:34px;
+  min-width:34px;
+  min-height:34px;
+
+  object-fit:contain;
+  border-radius:8px;
+  background:#fff;
+
+  padding:3px;
+
+  box-shadow:
+    0 2px 6px rgba(0,0,0,.12),
+    0 0 0 1px rgba(0,0,0,.04);
+}
+
+.store-name{
+  font-weight:600;
+  font-size:13px;
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:190px;
+}
+
+.muted{
+  color:#9ca3af;
+}
+
+
+
+
+
+
+.stores-hint{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:3px 8px;
+  font-weight:600;
+  font-size:12px;
+  max-width:380px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.muted{ color:#9ca3af; }
+
+.mgr-last{ font-weight:700; }
+
+.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size:12px;
+}
+
+
+
+
+
+.store-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 8px;
+  margin:2px 4px 2px 0;
+
+  border-radius:6px;
+  background:rgba(2,132,199,.08);
+  border:1px solid rgba(2,132,199,.16);
+
+  font-weight:600;
+  font-size:12px;
+  white-space:nowrap;
+}
+
+.store-chip-logo{
+  width:18px;
+  height:18px;
+  object-fit:contain;
+  border-radius:4px;
+  background:#fff;
+  padding:2px;
+  box-shadow:0 1px 3px rgba(0,0,0,.12);
+}
+
+.store-text-only{
+  padding-left:10px;
+}
+
+
+
+
+
+.chip{
+  display:inline-flex;
+  align-items:center;
+  padding:2px 8px;
+
+
+  background:#f9fafb;
+  font-size:12px;
+  margin:2px 6px 2px 0;
+  white-space:nowrap;
+}
+.chip--muted{
+  color:#6b7280;
+  background:#f3f4f6;
+}
+.muted{ color:#9ca3af; }
 
 
 

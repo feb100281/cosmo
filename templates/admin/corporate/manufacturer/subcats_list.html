@@ -1,0 +1,203 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/admin_overrides.css' %}">
+  <link rel="stylesheet" href="{% static 'css/admin_items.css' %}">
+  <style>
+    .mf-wrap{ max-width:980px; }
+    .mf-hero{
+      display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;
+      margin: 6px 0 14px;
+    }
+    .mf-left{ display:flex; gap:12px; align-items:flex-start; }
+    .mf-avatar{
+      width:44px;height:44px;border-radius:12px;
+      background: linear-gradient(135deg, #f8fafc, #ecfeff);
+      border:1px solid rgba(2,132,199,.18);
+      display:flex;align-items:center;justify-content:center;
+      color:#0284c7;font-size:20px;
+      box-shadow:0 4px 12px rgba(2,132,199,.10);
+      flex: 0 0 auto;
+    }
+    .mf-meta{ display:flex; flex-direction:column; gap:4px; line-height:1.25; }
+    .mf-kicker{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#6b7280; }
+    .mf-title{ font-size:18px; font-weight:650; color:#111827; }
+    .mf-sub{ font-size:12px; color:#6b7280; }
+
+    .mf-card{
+      flex: 1 1 360px;
+      border-radius:16px;
+      background:rgba(248,250,252,0.96);
+      box-shadow:0 18px 40px rgba(15,23,42,0.16);
+      border:1px solid rgba(148,163,184,.35);
+      padding:12px 14px;
+      display:flex; flex-direction:column; gap:10px;
+      min-width: 300px;
+    }
+    .mf-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between; }
+    .mf-badge{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:4px 10px; border-radius:6px;
+      border:1px solid rgba(148,163,184,.45);
+      background:rgba(255,255,255,.75);
+      font-size:12px; color:#0f172a;
+    }
+    .mf-badge .k{ color:#6b7280; }
+    .mf-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+
+    .mf-btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      font-size:13px;
+      padding:7px 10px;
+      border-radius:10px;
+      text-decoration:none;
+      border:1px solid #d1d5db;
+      background:#f3f4f6;
+      color:#111827;
+      box-shadow:0 1px 2px rgba(15,23,42,.06);
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .mf-btn:hover{ background:#e5e7eb; color:#111827; }
+    .mf-btn-primary{ border:1px solid rgba(2,132,199,.22); background:rgba(2,132,199,.10); }
+    .mf-btn-primary:hover{ background:rgba(2,132,199,.16); }
+
+    .mf-panel{
+      border-radius:16px;
+      border:1px solid rgba(148,163,184,.35);
+      background: rgba(255,255,255,.65);
+      box-shadow:0 1px 2px rgba(15,23,42,.04);
+      padding:12px 14px;
+    }
+    .mf-panel-head{
+      display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .mf-panel-title{
+      font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:#9ca3af;
+    }
+    .mf-count{ font-size:12px; color:#6b7280; }
+    .mf-divider{ height:1px; background:rgba(148,163,184,0.35); margin:8px 0 0; }
+
+    .mf-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+    .mf-chip{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(148,163,184,.35);
+      background: rgba(248,250,252,.9);
+      text-decoration:none;
+      color:#0f172a;
+      box-shadow:0 1px 2px rgba(15,23,42,.04);
+      transition: transform .08s ease, background .12s ease;
+    }
+    .mf-chip:hover{
+      transform: translateY(-1px);
+      background: rgba(236,254,255,.95);
+      color:#0f172a;
+    }
+    .mf-chip-name{ font-size:13px; font-weight:600; line-height:1.2; }
+    .mf-chip-go{
+      width:28px;height:28px;border-radius:10px;
+      display:flex;align-items:center;justify-content:center;
+      border:1px solid rgba(2,132,199,.22);
+      background: rgba(2,132,199,.10);
+      color:#0284c7;
+      flex: 0 0 auto;
+    }
+
+    .mf-empty{
+      padding:14px;
+      border-radius:14px;
+      border:1px dashed rgba(148,163,184,.55);
+      background: rgba(248,250,252,.7);
+      color:#6b7280;
+      font-size:13px;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="mf-wrap">
+
+  <div class="mf-hero">
+    <div class="mf-left">
+      <div class="mf-avatar">🧩</div>
+      <div class="mf-meta">
+        <div class="mf-kicker">Corporate · Производители</div>
+        <div class="mf-title">{{ title }}</div>
+        <div class="mf-sub">
+          Производитель: <b>{{ manufacturer.report_name|default:manufacturer.name }}</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="mf-card">
+      <div class="mf-row">
+        <span class="mf-badge">
+          <span class="k">ID:</span> <b>{{ manufacturer.id }}</b>
+        </span>
+
+        <span class="mf-badge">
+          <span class="k">Подкатегорий:</span>
+          <b>{% if subcats %}{{ subcats|length }}{% else %}0{% endif %}</b>
+        </span>
+      </div>
+
+      <div class="mf-actions">
+        <a class="mf-btn" href="javascript:history.back()">← Назад</a>
+
+        <a class="mf-btn mf-btn-primary"
+           href="{% url 'admin:corporate_itemmanufacturer_change' manufacturer.id %}">
+          ✏️ Открыть карточку
+        </a>
+
+        <a class="mf-btn"
+           href="{% url 'admin:corporate_items_changelist' %}?manufacturer__id__exact={{ manufacturer.id }}">
+          📦 Все товары производителя
+        </a>
+      </div>
+
+      <div class="mf-divider"></div>
+
+      <div class="mf-count">
+        Клик по подкатегории откроет номенклатуру с фильтрами по производителю и подкатегории.
+      </div>
+    </div>
+  </div>
+
+  <div class="mf-panel">
+    <div class="mf-panel-head">
+      <div class="mf-panel-title">Подкатегории</div>
+      <div class="mf-count">
+        {% if subcats %}Показано: <b>{{ subcats|length }}</b>{% else %}Нет данных{% endif %}
+      </div>
+    </div>
+
+    {% if subcats %}
+      <div class="mf-grid">
+        {% for id,name in subcats %}
+          <a class="mf-chip"
+             href="{% url 'admin:corporate_items_changelist' %}?manufacturer__id__exact={{ manufacturer.id }}&subcat__id__exact={{ id }}">
+            <span class="mf-chip-name">{{ name }}</span>
+            <span class="mf-chip-go">→</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="mf-empty">Подкатегорий нет</div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

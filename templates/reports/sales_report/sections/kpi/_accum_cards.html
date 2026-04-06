@@ -1,0 +1,30 @@
+{# reports/sales_report/sections/kpi/_accum_cards.html #}
+<div class="accum-wrap">
+  <div class="accum-title">НАКОПЛЕННЫЕ ИТОГИ</div>
+
+  <div class="accum-grid">
+    <!-- MTD -->
+    <div class="accum-card">
+      <div class="accum-head">
+        <div class="accum-k">{{ accum_cards.mtd.title }}</div>
+        <div class="accum-d">{{ accum_cards.mtd.subtitle }}</div>
+      </div>
+      <div class="accum-val">{{ accum_cards.mtd.amount }}</div>
+      <div class="accum-delta {% if accum_cards.mtd.delta_is_positive %}pos{% else %}neg{% endif %}">
+        {{ accum_cards.mtd.delta_ly }} к прошлому году
+      </div>
+    </div>
+
+    <!-- YTD -->
+    <div class="accum-card">
+      <div class="accum-head">
+        <div class="accum-k">{{ accum_cards.ytd.title }}</div>
+        <div class="accum-d">{{ accum_cards.ytd.subtitle }}</div>
+      </div>
+      <div class="accum-val">{{ accum_cards.ytd.amount }}</div>
+      <div class="accum-delta {% if accum_cards.ytd.delta_is_positive %}pos{% else %}neg{% endif %}">
+        {{ accum_cards.ytd.delta_ly }} к прошлому году
+      </div>
+    </div>
+  </div>
+</div>

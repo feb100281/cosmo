@@ -1,3 +1,4 @@
+# corporate/models.py
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey # type: ignore
 from utils.choices import CHANNEL_CHOICES,REGION_CHOICES,FURNITURE_ZONES
@@ -7,7 +8,6 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 
-# Create your models here.
 class Companies(models.Model):
     name = models.CharField(max_length=250,verbose_name='Наименование')
     
@@ -18,7 +18,6 @@ class Companies(models.Model):
     def __str__(self):
         return f"{self.name}"
     
-
 class Projects(models.Model):
     name = models.CharField(max_length=250, verbose_name='Наименование')
     company = models.ForeignKey(Companies, on_delete=models.CASCADE,verbose_name='Компания')
@@ -41,7 +40,14 @@ class ItemMaterial(models.Model):
         return f"{self.name}"
 
 class ItemManufacturer(models.Model):
-    name = models.CharField(max_length=250,verbose_name='Наименование производителя',unique=True)    
+    name = models.CharField(max_length=250,verbose_name='Наименование производителя',unique=True)
+    report_name = models.CharField(
+        max_length=250,
+        verbose_name='Название в отчете',
+        null=True,
+        blank=True,
+        help_text='Как в отчетах показывать производителя'
+    )    
     country = CountryField(verbose_name='Страна',default='RU')
         
     class Meta:       
@@ -50,6 +56,11 @@ class ItemManufacturer(models.Model):
 
     def __str__(self):
         return f"{self.name}"
+    
+    def save(self, *args, **kwargs):
+        if not self.report_name:
+            self.report_name = self.name
+        super().save(*args, **kwargs)
     
 
 class ItemBrend(models.Model):
@@ -171,7 +182,7 @@ class Items(models.Model):
     pict = models.ImageField(upload_to='itempic/', blank=True, null=True,verbose_name='Изображение')
     cat = models.ForeignKey(CatTree,on_delete=models.SET_NULL,verbose_name='Категория',null=True)
     material = models.ManyToManyField(ItemMaterial,verbose_name='Материалы',blank=True)
-    manufacturer = models.ForeignKey(ItemManufacturer,verbose_name='Производитель',on_delete=models.SET_NULL,null=True,blank=True)
+    manufacturer = models.ForeignKey(ItemManufacturer,verbose_name='Производитель',on_delete=models.SET_NULL,null=True,blank=True,  related_name="items")
     brend = models.ForeignKey(ItemBrend, verbose_name='Бренд',on_delete=models.SET_NULL,null=True,blank=True)
     init_date = models.DateField(verbose_name='Дата инициализации',help_text='Дата появления номенклатуры в ассортименте',default=timezone.now)
     zones = models.ManyToManyField(ItemZones, verbose_name='Доп сегментации',blank=True)
@@ -197,6 +208,7 @@ class StoreGroups(models.Model):
     name = models.CharField(max_length=250,verbose_name='Наименование группы')
     region = models.CharField(max_length=250,choices=REGION_CHOICES, default='г. Москва')
     pict = models.ImageField(upload_to='storelogos/', blank=True, null=True,verbose_name='Логотип')
+    is_active = models.BooleanField(default=True, verbose_name="Активная группа")
     
     class Meta:
         verbose_name = "Группа магазина"

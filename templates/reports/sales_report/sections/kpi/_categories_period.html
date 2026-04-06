@@ -1,0 +1,30 @@
+{% if kpi_ctx.categories_pareto_svg %}
+  <div class="kpi-block">
+    <h3 class="subsection-title">Категории за период</h3>
+
+    <div class="kpi-chart">
+      {{ kpi_ctx.categories_pareto_svg|safe }}
+    </div>
+
+    {% comment %} {% if kpi_ctx.categories_table %}
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Категория</th>
+            <th>Чистая выручка</th>
+            <th>Доля</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in kpi_ctx.categories_table %}
+            <tr>
+              <td>{{ r.cat }}</td>
+              <td>{{ r.amount }}</td>
+              <td>{{ r.share }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %} {% endcomment %}
+  </div>
+{% endif %}

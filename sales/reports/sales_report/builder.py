@@ -2,36 +2,56 @@
 from datetime import date
 import pandas as pd
 
-
 from sales.models import MV_Daily_Sales
 from sales.dash_apps.dailysales.data import get_month_data, get_ytd_data
 from sales.print_utils import build_mtd_table, build_ytd_table
 
-from .charts import build_charts
 from .insights import build_insights
 from .period import classify_report, format_period, report_number
-from .summary import build_summary
 
 from .ranges import period_range, prev_period_range, last_13m_range
-from .trends import trend_ranges, trend_meta
-from .kpi import build_kpi_for_range
 
-from .stores import get_store_sales_for_range
+# ✅ KPI теперь модульный
+from .kpi.summary import build_summary
+from .kpi.kpi_data import build_kpi_for_range
+from .kpi.kpi_block import build_kpi_context
+
+from .stores.store_sales import get_store_sales_for_range
 from .store_chart import build_store_amount_bar_svg
 from .store_logos import attach_store_logos
-from .trend_chart import build_trend_chart_svg
+
 from .commulative_chart import build_mtd_waterfall_svg, build_ytd_cumulative_svg
 from .ltm_chart import build_revenue_13m_svg
+from .ltm_insights import build_ltm_insights
+from .ltm_forecast_prophet import build_prophet_eom_projection
+
 from .categories_block import build_categories_context, build_categories_context_ytd
 from .print_utils_categories import build_categories_table
 from .categories_chart import build_mtd_categories_bar_svg, build_ytd_categories_bar_svg
-from .ltm_insights import build_ltm_insights
 
-from dateutil.relativedelta import relativedelta
-from .ltm_forecast_prophet import build_prophet_eom_projection
+from .managers_block import build_managers_context
 
+from .orders.orders_block import build_orders_context
+from .orders.orders_flow.flow_block import build_orders_flow_context
+from .orders.orders_lifecycle.lifecycle_block import build_orders_lifecycle_context
+from .ltm_forecast_prophet_year import build_prophet_fy_vector
+from .prophet_fy_chart import build_prophet_fy_bar_svg
 
+from .kpi.period_text_block import build_period_text_context
+from .trends.mtd_cum_data import build_mtd_cum_series
+from .trends.mtd_cum_chart import build_mtd_cum_chart_svg
 
+from .categories_data import get_mtd_categories_raw
+from .categories_waterfall_mtd import build_mtd_categories_waterfall_svg
+from .categories_data import get_ytd_categories_raw
+from .categories_waterfall_ytd import build_ytd_categories_waterfall_svg
+
+from .kpi.subcategories_ytd_block import build_subcategories_ytd_context
+from .stores.storegroup_category_block import build_storegroup_category_diagnostics_block
+
+from .stores.performance import build_store_performance_html_block
+
+from .managers.block import build_managers_shipments_context
 
 
 
@@ -41,8 +61,8 @@ from .formatters import (
     fmt_pct,
     fmt_delta_money,
     fmt_delta_pct,
-    fmt_money_0, 
-    fmt_delta_short
+    fmt_money_0,
+    fmt_delta_short,
 )
 
 
@@ -53,8 +73,6 @@ def build_mtd_method_context(df_mtd_raw):
     """
     import pandas as pd
 
-    
-    
     df = df_mtd_raw.copy()
     if df.empty:
         return None
@@ -77,7 +95,6 @@ def build_mtd_method_context(df_mtd_raw):
         orders = float(d["orders"].sum())
         ave = (revenue / orders) if orders else 0.0
 
-        # справочно
         dt = float(d["dt"].sum()) if "dt" in d.columns else 0.0
         cr = float(d["cr"].sum()) if "cr" in d.columns else 0.0
 
@@ -99,7 +116,6 @@ def build_mtd_method_context(df_mtd_raw):
         "y_prev": y_prev,
         "y_curr": y_curr,
 
-        # значения
         "revenue_prev": fmt_money(p["revenue"]),
         "revenue_curr": fmt_money(c["revenue"]),
         "orders_prev": fmt_int(p["orders"]),
@@ -107,21 +123,17 @@ def build_mtd_method_context(df_mtd_raw):
         "ave_prev": fmt_money_0(p["ave"]),
         "ave_curr": fmt_money_0(c["ave"]),
 
-        # эффекты
         "eff_orders": fmt_delta_short(eff_orders),
         "eff_ave": fmt_delta_short(eff_ave),
 
-        # контроль
         "bridge_rev": fmt_money(bridge_rev),
         "residual": fmt_delta_money(residual),
 
-        # контрольная строка (чтобы красиво вывести в HTML)
         "control_left": fmt_money(p["revenue"]),
         "control_e1": fmt_delta_money(eff_orders),
         "control_e2": fmt_delta_money(eff_ave),
         "control_right": fmt_money(c["revenue"]),
 
-        # возвраты (справочно)
         "cr_prev": fmt_money(p["cr"]),
         "cr_curr": fmt_money(c["cr"]),
         "d_cr": fmt_delta_money(d_cr),
@@ -132,12 +144,6 @@ def build_mtd_method_context(df_mtd_raw):
 def build_ytd_driver_context(df_ytd_raw):
     """
     YTD: драйверы изменения выручки (Orders / Ave) + контроль сходимости.
-    Revenue = Orders * Ave, Ave = Revenue / Orders
-    Эффект заказов       = (Orders_curr - Orders_prev) * Ave_prev
-    Эффект среднего чека = (Ave_curr - Ave_prev) * Orders_curr
-    Контроль:
-      Revenue_prev + эффекты ≈ Revenue_curr
-      residual = Revenue_curr - bridge_rev
     """
     import pandas as pd
 
@@ -174,7 +180,7 @@ def build_ytd_driver_context(df_ytd_raw):
     eff_ave = (c["ave"] - p["ave"]) * c["orders"]
 
     bridge_rev = p["revenue"] + eff_orders + eff_ave
-    residual = c["revenue"] - bridge_rev  # то, что не “сошлось” из-за округлений/особенностей данных
+    residual = c["revenue"] - bridge_rev
 
     d_rev = c["revenue"] - p["revenue"]
     eff_sum = eff_orders + eff_ave
@@ -184,6 +190,7 @@ def build_ytd_driver_context(df_ytd_raw):
         if abs(eff_orders) >= abs(eff_ave)
         else "за счёт среднего чека"
     )
+
     def _dir(v):
         if v > 0:
             return "pos"
@@ -196,14 +203,11 @@ def build_ytd_driver_context(df_ytd_raw):
         "y_prev": y_prev,
         "y_curr": y_curr,
 
-        # эффекты (коротко — для текста)
         "eff_orders": fmt_delta_short(eff_orders),
         "eff_ave": fmt_delta_short(eff_ave),
         "eff_orders_dir": _dir(eff_orders),
         "eff_ave_dir": _dir(eff_ave),
 
-
-        # контроль (точнее)
         "d_rev": fmt_delta_money(d_rev),
         "eff_sum": fmt_delta_money(eff_sum),
         "residual": fmt_delta_money(residual),
@@ -212,81 +216,53 @@ def build_ytd_driver_context(df_ytd_raw):
     }
 
 
-
 def build_daily_sales_report_context(d: date, request=None) -> dict:
-    # объект дня (может быть нужен для insights/секций, но KPI теперь не из него)
     obj = MV_Daily_Sales.objects.get(pk=d)
 
-    # тип отчёта + период (строки для обложки)
     rtype = classify_report(d)
     period = format_period(d, rtype)
 
-    # диапазон дат для KPI (итог за период)
     period_start, period_end = period_range(d, rtype)
+
+    # ✅ RAW KPI (для summary и других расчётов)
     kpi = build_kpi_for_range(period_start, period_end)
 
-    # ---------------------------------------------------------------------
-    # ✅ TREND (пока без графика) — сразу форматируем для шаблона
-    # ---------------------------------------------------------------------
-    trend_points = 12
-
-    trend = []
-    for s, e, label, is_current in trend_ranges(rtype, d, points=trend_points):
-        k = build_kpi_for_range(s, e)
-
-        trend.append({
-            "label": label,
-            "start": s,
-            "end": e,
-            "is_current": is_current,
-
-            # RAW для графика
-            "amount_raw": k.get("amount") or 0,
-            "dt_raw": k.get("dt") or 0,
-            "orders_raw": k.get("orders") or 0,
-            "cr_raw": k.get("cr") or 0,
-            "ave_check_raw": k.get("ave_check") or 0,
-
-            # formatted для таблицы
-            "amount": fmt_money(k.get("amount")),
-            "dt": fmt_money(k.get("dt")),
-            "orders": fmt_int(k.get("orders")),
-            "cr": fmt_money(k.get("cr")),
-            "ave_check": fmt_money(k.get("ave_check")),
-            "rtr_ratio": fmt_pct(k.get("rtr_ratio")),
-        })
-
-    trend_meta_ctx = trend_meta(rtype, d, points=trend_points)
-
-    trend_chart_svg = build_trend_chart_svg(trend, metric="amount_raw")
+    # ✅ KPI-контекст для шаблонов (trend внутри него!)
+    kpi_ctx = build_kpi_context(
+        report_type=rtype,
+        report_date=d,
+        period_start=period_start,
+        period_end=period_end,
+        trend_points=12,
+    )
+    period_text = build_period_text_context(d)
     
-    
-    # --- data-bars для "Выручка" (amount_raw) ---
-    amount_vals = [t["amount_raw"] for t in trend if (t.get("amount_raw") is not None)]
-    if amount_vals:
-        vmin, vmax = min(amount_vals), max(amount_vals)
-        span = (vmax - vmin) or 1
-        for t in trend:
-            v = t.get("amount_raw") or 0
-            t["amount_pct"] = round((v - vmin) / span * 100, 1)
-    else:
-        for t in trend:
-            t["amount_pct"] = 0
+    total_dt = fmt_money(kpi.get("dt"))        # оборот по всем
+    total_cr = fmt_money(kpi.get("cr"))        # возвраты по всем
+    total_amount = fmt_money(kpi.get("amount"))# чистая выручка по всем
 
+    # --- ORDERS ---
+    orders = build_orders_context(
+        period_start=period_start,
+        period_end=period_end,
+        order_type=None,
+        top_n_orders=15,
+    )
 
+    df_orders = orders.get("_df_orders")
+    orders_flow = build_orders_flow_context(df_orders)
+    orders.pop("_df_orders", None)
 
+    orders_lifecycle = build_orders_lifecycle_context(period_start, period_end)
 
-    # продажи по магазинам за период (RAW)
+    # --- STORES (RAW) ---
     store_rows_raw = get_store_sales_for_range(period_start, period_end)
 
-    # предыдущий период для сравнения (RAW)
     prev_start, prev_end = prev_period_range(period_start, period_end, rtype)
     store_prev_raw = get_store_sales_for_range(prev_start, prev_end)
 
-    # индекс прошлого периода по store_id
     prev_map = {r["store_id"]: r for r in store_prev_raw}
 
-    # ✅ данные для графика: current vs prev (amount)
     store_rows_chart = []
     for r in store_rows_raw:
         p = prev_map.get(r["store_id"])
@@ -295,17 +271,11 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
             "amount": r.get("amount") or 0,
             "prev_amount": (p.get("amount") if p else 0) or 0,
         })
-        
-    
-    
 
-    # ✅ график (SVG) по магазинам (TOP-12 по чистой выручке)
     store_chart_svg = build_store_amount_bar_svg(
         store_rows_chart,
         title="Чистая выручка по магазинам (было / стало)",
     )
-    
-
 
     def _delta(curr, prev):
         if prev is None:
@@ -326,7 +296,6 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
             return "down"
         return "flat"
 
-    # ✅ ИТОГО (по текущему периоду)
     total_dt = 0
     total_cr = 0
     total_amount = 0
@@ -343,12 +312,10 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
     total_ave_check = (total_amount / total_orders) if total_orders else None
     total_rtr_ratio = (total_cr / total_dt) if total_dt else None
 
-    # форматируем строки магазинов + дельты к прошлому периоду
     store_rows = []
     for r in store_rows_raw:
         p = prev_map.get(r["store_id"])
 
-        # дельты (RAW)
         d_amount = _delta(r.get("amount"), p.get("amount") if p else None)
         d_amount_pct = _delta_pct(r.get("amount"), p.get("amount") if p else None)
 
@@ -361,7 +328,6 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         d_ave = _delta(r.get("ave_check"), p.get("ave_check") if p else None)
         d_ave_pct = _delta_pct(r.get("ave_check"), p.get("ave_check") if p else None)
 
-        # ⚠ возвраты: рост — плохо (для стрелок/цвета можно инвертировать)
         d_cr = _delta(r.get("cr"), p.get("cr") if p else None)
         d_cr_pct = _delta_pct(r.get("cr"), p.get("cr") if p else None)
 
@@ -376,7 +342,6 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
             "ave_check": fmt_money(r.get("ave_check")),
             "rtr_ratio": fmt_pct(r.get("rtr_ratio")),
 
-            # дельты для отображения (вторая строка в ячейке)
             "delta": {
                 "amount": {
                     "abs": fmt_delta_money(d_amount),
@@ -405,14 +370,12 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
                 "cr": {
                     "abs": fmt_delta_money(d_cr),
                     "pct": fmt_delta_pct(d_cr_pct),
-                    # рост возвратов визуально считаем "down" (т.е. плохо)
                     "dir": _dir(-d_cr) if d_cr is not None else "na",
                     "has": p is not None,
                 },
             },
         })
 
-    # добавляем строку ИТОГО последней (без дельт, чтобы не перегружать)
     store_rows.append({
         "store": "ИТОГО",
         "amount": fmt_money(total_amount),
@@ -426,61 +389,84 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
     })
     store_rows = attach_store_logos(store_rows)
 
-    # данные MTD/YTD (как и раньше, на дату d)
+    # --- MTD/YTD ---
     df_mtd_raw = get_month_data(d)
     df_ytd_raw = get_ytd_data(d)
+    mtd_cum_ctx = build_mtd_cum_series(df_mtd_raw, d)
+    mtd_cum_svg = build_mtd_cum_chart_svg(mtd_cum_ctx)
+    df_mtd_cat_raw = get_mtd_categories_raw(d)
+    mtd_cat_waterfall_svg = build_mtd_categories_waterfall_svg(df_mtd_cat_raw, top_n=10)
+    df_ytd_cat_raw = get_ytd_categories_raw(d)
+    ytd_cat_waterfall_svg = build_ytd_categories_waterfall_svg(df_ytd_cat_raw, top_n=10)
+    subcats_ytd = build_subcategories_ytd_context(d)
+
+    
+
     ytd_driver = build_ytd_driver_context(df_ytd_raw)
-    
+
+    table_mtd = build_mtd_table(df_mtd_raw)
+    table_ytd = build_ytd_table(df_ytd_raw)
+
+    mtd_waterfall_svg = build_mtd_waterfall_svg(df_mtd_raw)
+    mtd_method = build_mtd_method_context(df_mtd_raw)
+    ytd_cum_svg = build_ytd_cumulative_svg(df_ytd_raw)
+
+    # --- CATEGORIES ---
     categories = build_categories_context(d, top_n=12)
-    
     categories_chart_svg = build_mtd_categories_bar_svg(
-    categories.get("raw"),
-    top_n=12,
-    title="MTD: ТОП категорий (текущий год vs прошлый)",
-)
-    
-    categories_ytd = build_categories_context_ytd(d, top_n=12)
-
-    categories_ytd_chart_svg = build_ytd_categories_bar_svg(
-    categories_ytd.get("raw"),
-    top_n=12,
-    title="YTD: ТОП категорий (текущий год vs прошлый)",
-)
-
+        categories.get("raw"),
+        top_n=12,
+        title="MTD: ТОП категорий (текущий год vs прошлый)",
+    )
 
     categories_table_html = build_categories_table(
-    categories.get("cats", []),
-    title="ТОП категорий (MTD, к прошлому году)",
-    mode="cat"
-).get("html", "")
+        categories.get("cats", []),
+        title="ТОП категорий (MTD, к прошлому году)",
+        mode="cat",
+    ).get("html", "")
 
     subcategories_table_html = build_categories_table(
         categories.get("subcats", []),
         title="ТОП подкатегорий (MTD, к прошлому году)",
-        mode="sub"
+        mode="sub",
     ).get("html", "")
-    
-    
+
     categories_ytd = build_categories_context_ytd(d, top_n=12)
+    categories_ytd_chart_svg = build_ytd_categories_bar_svg(
+        categories_ytd.get("raw"),
+        top_n=12,
+        title="YTD: ТОП категорий (текущий год vs прошлый)",
+    )
 
     categories_ytd_table_html = build_categories_table(
         categories_ytd.get("cats", []),
         title="ТОП категорий (YTD, к прошлому году)",
-        mode="cat"
+        mode="cat",
     ).get("html", "")
 
     subcategories_ytd_table_html = build_categories_table(
         categories_ytd.get("subcats", []),
         title="ТОП подкатегорий (YTD, к прошлому году)",
-        mode="sub"
+        mode="sub",
     ).get("html", "")
 
-
-
+    # --- MANAGERS ---
+    # managers = build_managers_context(
+    #     d,
+    #     big_order_threshold=100_000,
+    #     return_warn_pct=5.5,
+    #     return_crit_pct=8.0,
+    # )
     
-    # --- 13 месяцев (с 1-го числа) ---
-    ltm_start, ltm_end = last_13m_range(d)
+    managers = build_managers_shipments_context(
+    d,
+    big_order_threshold=100_000,
+    return_warn_pct=5.5,
+    return_crit_pct=8.0,
+)
 
+    # --- 13M / LTM ---
+    ltm_start, ltm_end = last_13m_range(d)
     qs_13m = (
         MV_Daily_Sales.objects
         .filter(date__gte=ltm_start, date__lte=ltm_end)
@@ -488,60 +474,58 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         .order_by("date")
     )
     df_13m_raw = pd.DataFrame(list(qs_13m))
-
     revenue_13m_svg = build_revenue_13m_svg(df_13m_raw, report_date=d)
     ltm_insights = build_ltm_insights(df_13m_raw, d)
-    
-    
+
     # --- Prophet projection (EOM) ---
     fc_start = date(2023, 1, 1)
-
     qs_fc = (
         MV_Daily_Sales.objects
         .filter(date__gte=fc_start, date__lte=d)
         .values("date", "amount")
         .order_by("date")
     )
-
     df_fc_raw = pd.DataFrame(list(qs_fc))
-    
-    print("PROPHET df_fc_raw rows:", len(df_fc_raw))
-    if not df_fc_raw.empty:
-        print("PROPHET range:", df_fc_raw["date"].min(), "->", df_fc_raw["date"].max())
 
     ltm_prophet = build_prophet_eom_projection(
         df_fc_raw,
         report_date=d,
-        historical_cut_off=None,   # можно поставить fc_start, если хочешь жестко
+        historical_cut_off=None,
         yearly_seasonality=True,
         weekly_seasonality=True,
         seasonality_mode="additive",
         changepoint_prior_scale=0.05,
         changepoint_range=1.0,
         n_changepoints=25,
-)
-
-
-
-
-
-
-
-    table_mtd = build_mtd_table(df_mtd_raw)
-    table_ytd = build_ytd_table(df_ytd_raw)
+    )
     
-    mtd_waterfall_svg = build_mtd_waterfall_svg(df_mtd_raw)
-    mtd_method = build_mtd_method_context(df_mtd_raw)
-    ytd_cum_svg = build_ytd_cumulative_svg(df_ytd_raw)
+    fy_bar_svg = build_prophet_fy_bar_svg(
+    df_fc_raw,
+    ltm_prophet["_forecast_df"],   # если сохранишь fc внутри build_prophet...
+    report_date=d,
+        )
+
     
+    # --- Prophet projection (FY vector: year-end) ---
+    ltm_prophet_year = build_prophet_fy_vector(
+        df_fc_raw,
+        report_date=d,
+        historical_cut_off=None,     # можно потом сделать “последние 24 месяца”, если надо
+        yearly_seasonality=True,
+        weekly_seasonality=True,
+        seasonality_mode="additive",
+        changepoint_prior_scale=0.05,
+        changepoint_range=1.0,
+        n_changepoints=25,
+        compare_with_yesterday=True,
+        last_n_days=14,
+    )
 
 
-
-
-    charts = build_charts(d, df_mtd_raw=df_mtd_raw, df_ytd_raw=df_ytd_raw)
+    # --- INSIGHTS ---
     insights = build_insights(obj)
 
-    # summary — строим из KPI за период
+    # --- SUMMARY (верхняя секция KPI отчёта) ---
     summary = build_summary(
         kpi=kpi,
         period_value=period["value"],
@@ -551,10 +535,15 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         period_end=period_end,
         generated_dt=None,
     )
+    
+    stores_cat_diag_ytd = build_storegroup_category_diagnostics_block(d, mode="ytd")
+    stores_cat_diag_mtd = build_storegroup_category_diagnostics_block(d, mode="mtd")
+    
+    stores_perf = build_store_performance_html_block(d)
 
     return {
         "obj": obj,
-        "report_date": d,  # дата среза (конец периода)
+        "report_date": d,
         "generated_date": date.today(),
         "report_type": rtype,
         "period_label": period["label"],
@@ -565,44 +554,64 @@ def build_daily_sales_report_context(d: date, request=None) -> dict:
         "store_sales": store_rows,
         "store_prev_start": prev_start,
         "store_prev_end": prev_end,
-
-        # ✅ SVG-график по магазинам
         "store_chart_svg": store_chart_svg,
 
         "report_number": report_number(d, rtype),
+
+        # ✅ KPI
         "summary": summary,
-        "kpi": kpi,
+        "kpi": kpi,          # raw (если где-то еще нужно)
+        "kpi_ctx": kpi_ctx,  # чистый контекст для шаблонов KPI
+        "total_dt": total_dt,
+        "total_cr": total_cr,
+        "total_amount": total_amount,
+        "total_dt_fmt": fmt_money(kpi.get("dt")),
+        "period_text": period_text,
 
-        # ✅ тренды
-        "trend": trend,
-        "trend_chart_svg": trend_chart_svg,
-        "trend_meta": trend_meta_ctx,
-        
+        # ✅ managers
+        "managers": managers,
 
-
+        # ✅ MTD / YTD blocks
         "table_mtd_html": table_mtd.get("html", ""),
         "table_ytd_html": table_ytd.get("html", ""),
         "mtd_waterfall_svg": mtd_waterfall_svg,
         "mtd_method": mtd_method,
         "ytd_cum_svg": ytd_cum_svg,
         "ytd_driver": ytd_driver,
+        "mtd_cum_svg": mtd_cum_svg,
+        "mtd_cat_waterfall_svg": mtd_cat_waterfall_svg,
+        "ytd_cat_waterfall_svg": ytd_cat_waterfall_svg,
+        "subcats_ytd": subcats_ytd,
+
+        # ✅ 13m / LTM
         "revenue_13m_svg": revenue_13m_svg,
         "ltm_insights": ltm_insights,
         "ltm_prophet": ltm_prophet,
-        
+        "ltm_prophet_year": ltm_prophet_year,
+        "fy_bar_svg": fy_bar_svg,
+
+        # ✅ categories
         "categories": categories,
         "categories_table_html": categories_table_html,
         "subcategories_table_html": subcategories_table_html,
         "categories_chart_svg": categories_chart_svg,
-        
+
         "categories_ytd": categories_ytd,
         "categories_ytd_table_html": categories_ytd_table_html,
         "subcategories_ytd_table_html": subcategories_ytd_table_html,
-        "categories_ytd": categories_ytd,
         "categories_ytd_chart_svg": categories_ytd_chart_svg,
 
-        
-        "charts": charts,
+        # ✅ insights
         "insights": insights,
         "src": (request.GET.get("src", "list") if request else "list"),
+
+        # ✅ orders
+        "orders": orders,
+        "orders_flow": orders_flow,
+        "orders_lifecycle": orders_lifecycle,
+        
+        # ✅ shops
+        "stores_cat_diag_ytd": stores_cat_diag_ytd,
+        "stores_cat_diag_mtd": stores_cat_diag_mtd,
+        "stores_perf": stores_perf,
     }
