@@ -4,9 +4,9 @@
 
 from django.db import connection
 import pandas as pd
-import numpy as np
 from dateutil.relativedelta import relativedelta
 from datetime import timedelta
+
 
 
 def get_month_data(date):
