@@ -2,7 +2,7 @@
 from django.db import models
 from corporate.models import Items, Stores, Managers, Agents, Barcode
 from utils.choices import OPERATION_TYPES
-
+from orders.models import Order
 
 class SalesOrders(models.Model):
     client_order = models.CharField(max_length=250, verbose_name="Заказ клиента")
@@ -158,6 +158,12 @@ class SalesData(models.Model):
     )
     barcode = models.ForeignKey(
         Barcode, on_delete=models.CASCADE, verbose_name="Баркод", null=True, blank=True
+    )
+    order_id = models.ForeignKey(
+        Order, on_delete=models.CASCADE, verbose_name="всегда null", null=True, blank=True
+    )
+    order_guid = models.CharField(
+        max_length=250, verbose_name="Заказ GUID", null=True, blank=True
     )
 
     class Meta:
