@@ -157,6 +157,7 @@ class SubCategory(models.Model):
 
 class Barcode(models.Model):
     barcode = models.CharField(max_length=50,verbose_name='Штрихкод',unique=True)
+    spec = models.TextField(verbose_name='Штрихкод',null=True,blank=True)
     
     
 
