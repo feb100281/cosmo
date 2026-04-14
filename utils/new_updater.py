@@ -1,0 +1,591 @@
+import pandas as pd
+import duckdb
+from duckdb import DuckDBPyConnection
+from .db_engine import get_duckdb_conn, get_mysql_conn
+from pprint import pprint
+
+
+file = '/Users/pavelustenko/Downloads/продажи 2026-04-13.xlsx'
+
+REGISTERED_COLUMNS = [
+    "Регистратор",
+    "Дата документа",
+    "Заказ клиента",
+    "Номер Заказа клиента",
+    "Дата Заказа клиента",
+    "Менеджер",
+    "Подразделение",
+    "Агент",
+    "Склад",
+    "Группа номенклатуры",
+    "Вид номенклатуры",
+    "Артикул",
+    "Штрихкод",
+    "Производитель",
+    "Марка (бренд)",
+    "Коллекция",
+    "ID товара",
+    "Номенклатура",
+    "Название товара на сайте",
+    "Характеристика",
+    "УИД",
+    "Количество",
+    "Выручка",
+]
+
+
+# Чтение исходных данных из excel
+def read_excel(file):
+    df = pd.read_excel(file, dtype=str, skipfooter=1)
+    df["Дата документа"] = pd.to_datetime(
+        df["Дата документа"], dayfirst=True, errors="coerce"
+    )
+    df["Дата Заказа клиента"] = pd.to_datetime(
+        df["Дата Заказа клиента"], dayfirst=True, errors="coerce"
+    )
+    df["Количество"] = df["Количество"].astype(float)
+    df["Выручка"] = df["Выручка"].astype(float)
+    return df
+
+
+# Обновление продаж
+def update_sales(conn: DuckDBPyConnection):
+    df = conn.sql('select "Дата документа" as date  from raw').df()
+    min_date = df["date"].min().date()
+    max_date = df["date"].max().date()
+
+    sales = conn.sql(
+        """
+        SELECT
+    t."Дата документа"::date as date,
+    case when COALESCE(t."Выручка", 0) > 0 then 'Sales' else 'Return' end as operation,
+    case when COALESCE(t."Выручка", 0) > 0 then COALESCE(t."Выручка", 0)::double else 0::double end as dt,
+    case when COALESCE(t."Выручка", 0) < 0 then abs(COALESCE(t."Выручка", 0))::double else 0::double end as cr,
+    case when COALESCE(t."Выручка", 0) > 0 then COALESCE(t."Количество", 0)::double else 0::double end as quant_dt,
+    case when COALESCE(t."Выручка", 0) < 0 then abs(COALESCE(t."Количество", 0))::double else 0::double end as quant_cr,
+        i.id::bigint as item_id,
+        s.id::bigint as store_id,
+        a.id::bigint as agent_id,
+        t."Заказ клиента"::text as client_order,
+        t."Дата Заказа клиента"::text as client_order_date,
+        t."Номер Заказа клиента"::text as client_order_number,
+        m.id::bigint as manager_id,
+        t."Склад"::text as warehouse,
+        b.id::bigint as barcode_id,
+        t."Характеристика"::text as spec,
+        t."УИД"::text as order_guid
+        FROM raw t
+        left join items as i on i.fullname = t."Номенклатура"
+        left join stores as s on LOWER(s.name) = LOWER(t."Подразделение")
+        left join agents as a on a.name = t."Агент"
+        left join managers as m on m.name = t."Менеджер"
+        left join barcodes as b on b.barcode = t."Штрихкод"
+        
+    """
+    )
+
+    conn.register("sales", sales.df())
+
+    mysql_conn = get_mysql_conn()
+
+    rows = sales.fetchall()
+
+    with mysql_conn.cursor() as cur:
+
+        cur.execute(
+            "DELETE FROM sales_salesdata WHERE date BETWEEN %s AND %s",
+            (min_date, max_date),
+        )
+        mysql_conn.commit()
+
+        cur.executemany(
+            """
+            INSERT INTO sales_salesdata (
+                date,
+                operation,
+                dt,
+                cr,
+                quant_dt,
+                quant_cr,
+                item_id,
+                store_id,
+                agent_id,
+                client_order,
+                client_order_date,
+                client_order_number,
+                manager_id,
+                warehouse,
+                barcode_id,
+                spec,
+                order_guid
+                
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """,
+            rows,
+        )
+
+    mysql_conn.commit()
+    return f"добавлена реализация с {min_date} по {max_date}"
+
+
+# Обновление справочника номенклатур
+def update_items(conn: DuckDBPyConnection):
+    fullnames = conn.sql(
+        """
+        select distinct id, fullname
+        from mysql_db.djangodb.corporate_items
+    """
+    )
+
+    conn.register("items", fullnames.df())
+
+    new_items = conn.sql(
+        """
+        SELECT DISTINCT
+            t."Номенклатура"::text as fullname,
+            COALESCE(t."Название товара на сайте",t."Номенклатура")::text as name,
+            t."Артикул"::text as article,
+            min(t."Дата документа")::date as init_date,
+            b.id::bigint as brend_id,
+            m.id::bigint as manufacturer_id,
+            t."ID товара" as im_id,
+            t."Группа номенклатуры" as onec_cat,
+            t."Вид номенклатуры" as onec_subcat
+        from raw t
+        left join brands as b on b.name = t."Марка (бренд)"
+        left join manu as m on m.name = t."Производитель"
+        where t."Номенклатура" not in (
+            select distinct fullname from fullnames
+        )
+          and t."Номенклатура" is not null
+        group by
+            t."Номенклатура",
+            t."Название товара на сайте",
+            t."Артикул",
+            b.id,
+            m.id,
+            t."ID товара",
+            t."Группа номенклатуры",
+            t."Вид номенклатуры"
+    """
+    )
+
+    df = new_items.df()
+
+    if df.empty:
+        return "Нет новых номенклатур для добавления"
+
+    mysql_conn = get_mysql_conn()
+    rows = list(df.itertuples(index=False, name=None))
+    l_items = ", ".join(df["name"].astype(str).tolist())
+
+    with mysql_conn.cursor() as cur:
+        cur.executemany(
+            """
+            INSERT INTO corporate_items (
+                fullname,
+                name,
+                article,
+                init_date,
+                brend_id,
+                manufacturer_id,
+                im_id,
+                onec_cat,
+                onec_subcat
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """,
+            rows,
+        )
+
+    mysql_conn.commit()
+    return f"{len(rows)} номенклатур было добавлено ({l_items})"
+
+
+# Обновление справочника бренда
+def update_brand(conn: DuckDBPyConnection):
+    brands = conn.sql(
+        "select distinct id, name from mysql_db.djangodb.corporate_itembrend WHERE name IS NOT NULL"
+    )
+
+    conn.register("brands", brands.df())
+    new_brands = conn.sql(
+        'SELECT DISTINCT "Марка (бренд)" as name from raw where "Марка (бренд)" not in (SELECT name from brands) and "Марка (бренд)" is not null'
+    )
+
+    rows = new_brands.fetchall()
+
+    if not rows:
+        return "Нет новых брэндов для добавления"
+    else:
+        mysql_conn = get_mysql_conn()
+        rows = new_brands.fetchall()
+        l_stores = new_brands.df()
+        l_stores = l_stores["name"].tolist()
+        l_stores = ", ".join(l_stores)
+
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO corporate_itemcollections (name)
+                VALUES (%s,)
+                
+            """,
+                rows,
+            )
+
+        mysql_conn.commit()
+        return f"{len(rows)} брендов было добавлено ({(l_stores)})"
+
+
+# Обновление справочника бренда
+def update_manufacturer(conn: DuckDBPyConnection):
+    manu = conn.sql(
+        "select distinct id, name from mysql_db.djangodb.corporate_itemmanufacturer WHERE name IS NOT NULL"
+    )
+
+    conn.register("manu", manu.df())
+    new_manu = conn.sql(
+        """ 
+        SELECT DISTINCT
+        "Производитель" as name,
+        'RU' as country
+        from raw 
+        where 
+        "Производитель" not in (SELECT name from manu) 
+        and "Производитель" is not null        
+        """
+    )
+
+    rows = new_manu.fetchall()
+
+    if not rows:
+        return "Нет новых производителей для добавления"
+    else:
+        mysql_conn = get_mysql_conn()
+        rows = new_manu.fetchall()
+        l_stores = new_manu.df()
+        l_stores = l_stores["name"].tolist()
+        l_stores = ", ".join(l_stores)
+
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO corporate_itemmanufacturer (name, country)
+                VALUES (%s, %s )
+                
+            """,
+                rows,
+            )
+
+        mysql_conn.commit()
+        return f"{len(rows)} производителей было добавлено ({(l_stores)})"
+
+
+# Обновление справочника коллекции
+def update_collections(conn: DuckDBPyConnection):
+
+    cols = conn.sql(
+        "select distinct id, name from mysql_db.djangodb.corporate_itemcollections WHERE name IS NOT NULL"
+    )
+
+    conn.register("collections", cols.df())
+
+    new_cols = conn.sql(
+        'SELECT DISTINCT "Коллекция" as name from raw where "Коллекция" not in (SELECT name from cols) and "Коллекция" is not null'
+    )
+
+    rows = new_cols.fetchall()
+
+    if not rows:
+        return "Нет новых Колекций для добавления"
+
+    else:
+        mysql_conn = get_mysql_conn()
+        rows = new_cols.fetchall()
+        l_stores = new_cols.df()
+        l_stores = l_stores["name"].tolist()
+        l_stores = ", ".join(l_stores)
+
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO corporate_itemcollections (name)
+                VALUES (%s,)
+                
+            """,
+                rows,
+            )
+
+        mysql_conn.commit()
+        return f"{len(rows)} коллекций было добавлено ({(l_stores)})"
+
+
+# Обновление справочника менеджеров
+def update_managers(conn: DuckDBPyConnection):
+
+    managers = conn.sql(
+        "select distinct id, name from mysql_db.djangodb.corporate_managers WHERE name IS NOT NULL"
+    )
+
+    conn.register("managers", managers.df())
+
+    new_managers = conn.sql(
+        """ 
+        SELECT DISTINCT 
+        "Менеджер" as name,
+        "Менеджер" as report_name        
+        from raw where "Менеджер" not in (SELECT name from managers) 
+        and "Менеджер" is not null 
+        """
+    )
+
+    rows = new_managers.fetchall()
+
+    if not rows:
+        return "Нет новых менеджеров для добавления"
+
+    else:
+        mysql_conn = get_mysql_conn()
+        rows = new_managers.fetchall()
+        l_stores = new_managers.df()
+        l_stores = l_stores["name"].tolist()
+        l_stores = ", ".join(l_stores)
+
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO corporate_managers (name, report_name)
+                VALUES (%s, %s )
+                
+            """,
+                rows,
+            )
+
+        mysql_conn.commit()
+        return f"{len(rows)} менеджеров было добавлено ({(l_stores)})"
+
+
+# Обновление справочника агентов
+def update_agents(conn: DuckDBPyConnection):
+
+    agents = conn.sql(
+        "select distinct id, name from mysql_db.djangodb.corporate_agents WHERE name IS NOT NULL"
+    )
+
+    conn.register("agents", agents.df())
+
+    new_agents = conn.sql(
+        """
+        SELECT DISTINCT 
+        "Агент" as name,
+        "Агент" as report_name        
+        from raw where "Агент" not in (SELECT name from agents) 
+        and "Агент" is not null 
+        """
+    )
+
+    rows = new_agents.fetchall()
+
+    if not rows:
+        return "Нет новых агентов для добавления"
+
+    else:
+        mysql_conn = get_mysql_conn()
+        rows = new_agents.fetchall()
+        l_stores = new_agents.df()
+        l_stores = l_stores["name"].tolist()
+        l_stores = ", ".join(l_stores)
+
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO corporate_agents (name, report_name)
+                VALUES (%s, %s )
+                
+            """,
+                rows,
+            )
+
+        mysql_conn.commit()
+        return f"{len(rows)} агентов было добавлено ({(l_stores)})"
+
+
+# Обновление справочника магазинов
+def update_stores(conn: DuckDBPyConnection):
+
+    stores = conn.sql(
+        "select distinct id, LOWER(name) as name from mysql_db.djangodb.corporate_stores WHERE name IS NOT NULL"
+    )
+
+    conn.register("stores", stores.df())
+
+    new_stores = conn.sql(
+        """ 
+        select distinct 
+        "Подразделение" as name,
+        'RETAIL' as chanel,
+        '' as adress,
+        NULL as gr_id
+        from raw
+        where LOWER("Подразделение") not in (select name from stores) 
+        and "Подразделение" is not null       
+        """
+    )
+
+    rows = new_stores.fetchall()
+
+    if not rows:
+        return "Нет новых магазинов для добавления"
+
+    else:
+
+        mysql_conn = get_mysql_conn()
+        rows = new_stores.fetchall()
+        l_stores = new_stores.df()
+        l_stores = l_stores["name"].tolist()
+        l_stores = ", ".join(l_stores)
+
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO corporate_stores (name, chanel, adress, gr_id)
+                VALUES (%s, %s, %s, %s )
+                
+            """,
+                rows,
+            )
+
+        mysql_conn.commit()
+        return f"{len(rows)} магазинов было добавлено ({(l_stores)})"
+
+
+# Обновление справочника баркодов
+def update_barcodes(conn: DuckDBPyConnection):
+
+    barcodes = conn.sql(
+        "select distinct id, barcode from mysql_db.djangodb.corporate_barcode WHERE barcode IS NOT NULL"
+    )
+
+    conn.register("barcodes", barcodes.df())
+
+    new_barcodes = conn.sql(
+        """ 
+        select distinct 
+        "Штрихкод"::text as barcode,
+        string_agg(DISTINCT "Характеристика", ', ' ORDER BY "Характеристика") as spec        
+        from raw
+        where "Штрихкод"::text not in (select barcode from barcodes) 
+        and "Штрихкод" is not null    
+        group by   barcode 
+        """
+    )
+
+    rows = new_barcodes.fetchall()
+
+    if not rows:
+        return "Нет новых баркодов для добавления"
+
+    else:
+        mysql_conn = get_mysql_conn()
+        rows = new_barcodes.fetchall()
+        l_stores = new_barcodes.df()
+        l_stores = l_stores["barcode"].tolist()
+        l_stores = ", ".join(l_stores)
+
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO corporate_barcode (barcode, spec)
+                VALUES (%s, %s)
+                
+            """,
+                rows,
+            )
+        mysql_conn.commit()
+        return f"{len(rows)} баркодов было добавлено ({(l_stores)})"
+
+
+# Обновление m2m
+def m2m_update(conn: DuckDBPyConnection):
+    item_barcode = conn.sql("select distinct item_id, barcode_id from sales").fetchall()
+    item_collection = conn.sql(
+        """ 
+        SELECT distinct
+        i.id as items_id,
+        c.id as itemcollections_id
+        from raw t
+        join items as i on i.fullname = t."Номенклатура"
+        join collections as c on c.name = t."Коллекция"
+                
+        """
+    ).fetchall()
+
+    mysql_conn = get_mysql_conn()
+
+    with mysql_conn.cursor() as cur:
+
+        cur.executemany(
+            """
+            INSERT IGNORE INTO corporate_items_barcode (items_id, barcode_id)
+            VALUES (%s,%s)
+            """,
+            item_barcode,
+        )
+        mysql_conn.commit()
+        cur.executemany(
+            """
+            INSERT IGNORE INTO corporate_items_collection (items_id, itemcollections_id)
+            VALUES (%s,%s)
+            """,
+            item_collection,
+        )
+        mysql_conn.commit()
+
+    return "M2M обновлены"
+
+
+# Обновление MV
+def refresh_mv_daily_sales():
+    mysql_conn = get_mysql_conn()
+
+    with mysql_conn.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS mv_daily_sales")
+        cur.execute(
+            """
+                CREATE TABLE mv_daily_sales AS
+                SELECT * FROM daily_sales
+            """
+        )
+        cur.execute(
+            """
+                ALTER TABLE mv_daily_sales
+                ADD UNIQUE KEY ux_mv_daily_sales_date (`date`)
+            """
+        )
+        mysql_conn.commit()
+    return "MV UPDATED"
+
+
+# Запускаем халабуду
+def main(file):
+    conn: DuckDBPyConnection = get_duckdb_conn()
+    log = []
+    conn.register("raw", read_excel(file))
+    log.append(update_brand(conn))
+    log.append(update_manufacturer(conn))
+    log.append(update_collections(conn))
+    log.append(update_managers(conn))
+    log.append(update_agents(conn))
+    log.append(update_stores(conn))
+    log.append(update_barcodes(conn))
+    log.append(update_items(conn))
+    log.append(update_sales(conn))
+    log.append(m2m_update(conn))
+    log.append(refresh_mv_daily_sales())
+
+    return "; \n".join(log)
+
+
+print(main(file))

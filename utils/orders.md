@@ -384,7 +384,8 @@ class MVSalesOrder(models.Model):
 
 ```
 
-АДМИНКА
+АДМИНКА + DJANGO DASH + ЧУДЕСА
+
 
 
 

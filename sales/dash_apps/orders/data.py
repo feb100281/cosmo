@@ -2,11 +2,60 @@
 
 # Данные для дневного отчета
 
+
 from django.db import connection
 import pandas as pd
-import numpy as np
-from dateutil.relativedelta import relativedelta
-from datetime import timedelta
+
+def get_orders_by_period(sd=None, ed=None, order_type=None):
+    if not sd or not ed:
+        return None
+
+    start_date = pd.to_datetime(sd).strftime("%Y-%m-%d")
+    end_date = pd.to_datetime(ed).strftime("%Y-%m-%d")
+
+    where_clause = ""
+    if order_type == 1:
+        where_clause = "WHERE ord.client_order_type != 'Розничные продажи'"
+    elif order_type == 2:
+        where_clause = "WHERE ord.client_order_type = 'Розничные продажи'"
+
+    q = f"""
+    SELECT
+        ord.client_order_type,
+        ord.client_order,
+        ord.client_order_date,
+        ord.sales as total_sales,
+        x.dt as sales_period,
+        ord.returns,
+        x.cr as returns_period,
+        ord.amount,
+        x.dt - x.cr as amount_period,
+        ord.items_amount,
+        ord.service_amount,
+        ord.items_quant,
+        ord.unique_items,
+        ord.order_duration,
+        DATEDIFF(x.max_date, ord.client_order_date) + 1 AS current_order_duration
+    FROM (
+        SELECT
+            orders_id,
+            SUM(dt) as dt,
+            SUM(cr) as cr,
+            MAX(`date`) as max_date
+        FROM sales_salesdata
+        WHERE `date` BETWEEN %(start_date)s AND %(end_date)s
+        GROUP BY orders_id
+    ) x
+    JOIN mv_orders as ord on ord.orders_id = x.orders_id
+    {where_clause}
+    """
+
+    with connection.cursor() as cur:
+        cur.execute(q, {"start_date": start_date, "end_date": end_date})
+        rows = cur.fetchall()
+        cols = [c[0] for c in cur.description]
+    return pd.DataFrame(rows, columns=cols)
+
 
 def get_orders_details(orders_id):
     q = """
@@ -39,3 +88,4 @@ def get_orders_details(orders_id):
         rows = cur.fetchall()
         cols = [c[0] for c in cur.description]  # самый совместимый вариант
     return pd.DataFrame(rows, columns=cols)
+
