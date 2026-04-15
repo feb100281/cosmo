@@ -1,3 +1,4 @@
+# utils/orders_updater.py
 import pandas as pd
 import duckdb
 from duckdb import DuckDBPyConnection
@@ -7,7 +8,7 @@ from pprint import pprint
 
 # Тестовый файл - УБРАТЬ ПОТОМ И ПЕРЕДАВАТЬ В MAIN ИЗ ДЖАНГО
 
-file = '/Users/pavelustenko/Downloads/заказы 2026-04-13.xlsx'
+file = '/Users/daria/Desktop/2026-04-14/Orders_2026_04_14.xlsx'
 
 REGISTERED_COLUMS = [
     "GUID_ЗК",
