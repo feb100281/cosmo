@@ -123,6 +123,30 @@ def orders_summary(conn: DuckDBPyConnection):
     conn.register("orders_summary", orders_sum)
     return "orders_summary registered"
 
+def get_summary_by_orders_status(conn:DuckDBPyConnection):
+    return conn.sql(
+        """ 
+        SELECT
+        t.status as "Статус заказа",
+        count(t.*) as "Всего заказов",
+        count(t.*) filter (where t.is_cancelled = true) as "в т.ч отменено", 
+        count(t.*) filter (where t.is_cancelled = false) as "в т.ч выполнено / выполняется",
+        sum(t.qty) as "Ед заказано",
+        sum(t.qty) filter (where t.is_cancelled = true) as "в т.ч отменено",
+        sum(t.qty) filter (where t.is_cancelled = false) as "в т.ч выполнено / выполняется",
+        sum(t.amount) as "Сумма заказов",
+        sum(t.amount) filter (where t.is_cancelled = true) as "в т.ч отменено",
+        sum(t.amount) filter (where t.is_cancelled = false) as "в т.ч выполнено / выполняется",        
+        sum(t.paid) as "Оплачено на дату",
+        sum(t.shiped) as "Отгружено ед на дату",
+        sum(t.returned) as "Возвраты ед на дату",
+        sum(t.shiped_amount) as "Реализация на дату (руб)",
+        sum(t.returned_amount) as "Возвращено на дату (руб)",
+        sum(t.shiped_amount-t.returned_amount) as "Всего реализация"
+        from orders_summary t
+        group by t.status
+        """
+    )
 
 def main():
     conn = get_duckdb_conn()
@@ -130,7 +154,9 @@ def main():
     log.append(register_tables(conn))
     log.append(advance_items(conn))
     log.append(orders_summary(conn))
-    conn.sql("select * from orders_summary").df().to_excel("try.xlsx",index=False)
     
+    conn.sql("select * from orders_summary").df().to_excel("try.xlsx",index=False)
+    stutus_summary = get_summary_by_orders_status(conn)
+    stutus_summary.df().to_excel("try.xlsx")
     
 main()
