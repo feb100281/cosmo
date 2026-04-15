@@ -1,3 +1,4 @@
+# utils/new_updater.py
 import pandas as pd
 import duckdb
 from duckdb import DuckDBPyConnection
@@ -5,7 +6,7 @@ from .db_engine import get_duckdb_conn, get_mysql_conn
 from pprint import pprint
 
 
-file = '/Users/pavelustenko/Downloads/продажи 2026-04-13.xlsx'
+file = '/Users/daria/Desktop/2026-04-14/Sales_2026-04-14.xlsx'
 
 REGISTERED_COLUMNS = [
     "Регистратор",
@@ -229,7 +230,7 @@ def update_brand(conn: DuckDBPyConnection):
             cur.executemany(
                 """
                 INSERT INTO corporate_itemcollections (name)
-                VALUES (%s,)
+                VALUES (%s)
                 
             """,
                 rows,
@@ -312,7 +313,7 @@ def update_collections(conn: DuckDBPyConnection):
             cur.executemany(
                 """
                 INSERT INTO corporate_itemcollections (name)
-                VALUES (%s,)
+                VALUES (%s)
                 
             """,
                 rows,
