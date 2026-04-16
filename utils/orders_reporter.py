@@ -57,62 +57,7 @@ def advance_items(conn:DuckDBPyConnection):
     return "all good"
 
 # Саммари по заказам
-def mv_orders_summary(conn: DuckDBPyConnection):
-    # orders_sum = conn.sql(
-    #     """ 
-    #     SELECT
-    #         t.id,
-    #         t.fullname,
-    #         t.number,
-    #         t.date_from,
-    #         t.update_at,
-    #         t.is_cancelled,
-    #         t.cancellation_reason,
-    #         t.status,
-    #         t.client,
-    #         t.manager,
-    #         COALESCE(oi.qty, 0) AS qty,
-    #         COALESCE(oi.amount, 0) AS amount,
-    #         COALESCE(ocf.paid, 0) AS paid,
-    #         COALESCE(s.shiped, 0) AS shiped,
-    #         COALESCE(s.returned, 0) AS returned,
-    #         COALESCE(s.shiped_amount, 0) AS shiped_amount,
-    #         COALESCE(s.returned_amount, 0) AS returned_amount,
-    #         COALESCE(ocf.payment_dates)
-            
-    #     FROM orders AS t
-    #     LEFT JOIN (
-    #         SELECT
-    #             order_id,
-    #             SUM(qty) AS qty,
-    #             SUM(amount) AS amount
-    #         FROM orders_items
-    #         GROUP BY order_id
-    #     ) oi
-    #         ON oi.order_id IS NOT DISTINCT FROM t.id
-    #     LEFT JOIN (
-    #         SELECT
-    #             order_guid,
-    #             SUM(amount) AS paid,
-    #             LIST(concat(date,': ',amount,'руб')) as payment_dates
-    #         FROM orders_cf
-    #         GROUP BY order_guid
-    #     ) ocf
-    #         ON ocf.order_guid IS NOT DISTINCT FROM t.id
-    #     LEFT JOIN (
-    #         SELECT
-    #             order_guid,
-    #             SUM(quant_dt) AS shiped,
-    #             SUM(quant_cr) AS returned,
-    #             SUM(dt) AS shiped_amount,
-    #             SUM(cr) AS returned_amount
-    #         FROM sales
-    #         GROUP BY order_guid
-    #     ) s
-    #         ON s.order_guid IS NOT DISTINCT FROM t.id
-    #     ORDER BY t.update_at DESC
-    #     """
-    # )
+def mv_orders_summary(conn: DuckDBPyConnection):    
     delivery_cats = conn.sql("select distinct id::bigint as id from cattree where parent_id = 86").df()['id'].to_list()
     delivery_cats = ', '.join(map(str, delivery_cats))
     if not delivery_cats:
@@ -125,6 +70,7 @@ def mv_orders_summary(conn: DuckDBPyConnection):
 
     mv = conn.sql(
         f""" 
+        
         SELECT
         t.order_id,
         t.number || ' от ' || strftime(t.date_from, '%d.%m.%Y')::TEXT AS order_name,
@@ -132,9 +78,26 @@ def mv_orders_summary(conn: DuckDBPyConnection):
         t.date_from,
         max(t.update_at) as update_at,
         string_agg(DISTINCT t.status, ', ' ORDER BY t.status) AS status,
-        string_agg(DISTINCT t.client, ', ' ORDER BY t.client) AS client,
-        string_agg(DISTINCT t.manager, ', ' ORDER BY t.manager) AS manager,
-        string_agg(DISTINCT t.store, ', ' ORDER BY t.store) AS store,        
+        COALESCE(string_agg(DISTINCT t.client, ', ' ORDER BY t.client),'Клиент не указан') AS client,
+        COALESCE(string_agg(DISTINCT t.manager, ', ' ORDER BY t.manager),'Менеджер не указан') AS manager,
+        COALESCE(string_agg(DISTINCT t.store, ', ' ORDER BY t.store),'Магазин не указан') AS store,        
+        
+        CASE 
+            WHEN 
+                COALESCE(sum(t.qty) FILTER (where t.pid_id != 86), 0) = 
+                COALESCE(sum(t.qty) FILTER (where t.pid_id != 86 and cancellation_reason is not null), 0)
+                AND COALESCE(sum(t.qty) FILTER (where t.pid_id != 86 and cancellation_reason is not null), 0) != 0
+            THEN 'Отменен'
+
+            WHEN
+                COALESCE(sum(t.qty) FILTER (where t.pid_id != 86), 0) != 
+                COALESCE(sum(t.qty) FILTER (where t.pid_id != 86 and cancellation_reason is not null), 0)
+                AND COALESCE(sum(t.qty) FILTER (where t.pid_id != 86 and cancellation_reason is not null), 0) != 0
+            THEN 'Уменьшен'
+
+            ELSE 'Без изменений'
+        END AS change_status,
+        
         
         COALESCE(sum(t.qty) FILTER (where t.pid_id != 86), 0) as qty_ordered,
         COALESCE(sum(t.qty) FILTER (where t.pid_id != 86 and cancellation_reason is not null), 0) as qty_cancelled,
@@ -156,15 +119,22 @@ def mv_orders_summary(conn: DuckDBPyConnection):
         COALESCE(sum(t.amount) FILTER (
             where cancellation_reason is not null and t.pid_id != 86
         ), 0) as amount_active,
-             
+        
+        max(COALESCE(ocf.cash_recieved)) as cash_recieved,
+        max(COALESCE(ocf.cash_returned)) as cash_returned,
+        max(COALESCE(ocf.cash_pmts)) as cash_pmts,       
+        
         max(COALESCE(s.shiped, 0)) AS shiped,
         max(COALESCE(s.returned, 0)) AS returned,
         max(COALESCE(s.shiped_qty, 0)) AS shiped_qty,
         max(COALESCE(s.amount, 0)) AS shiped_amount,
         max(COALESCE(s.returned_amount, 0)) AS returned_amount,
         max(COALESCE(s.shiped_amount, 0)) as total_shiped_amount,
-        max(COALESCE(s.delivery_amount,0)) as shiped_delivery_amount
+        max(COALESCE(s.delivery_amount,0)) as shiped_delivery_amount,
+        
+        max(COALESCE(ocf.payment_dates)) as payment_dates
         from items_joined t        
+        
         LEFT JOIN (
             SELECT
                 order_guid,
@@ -179,7 +149,20 @@ def mv_orders_summary(conn: DuckDBPyConnection):
                 SUM(dt-cr) filter (where item_id in ({deliveriy_items})) as delivery_amount
             FROM sales
             GROUP BY order_guid            
-        ) s on s.order_guid = t.order_id
+        ) s on s.order_guid IS NOT DISTINCT FROM t.order_id
+        
+        LEFT JOIN (
+            SELECT
+                order_guid,
+                SUM(amount) AS cash_pmts,
+                COALESCE(SUM(amount) filter (where amount>0),0) as cash_recieved,
+                COALESCE(SUM(amount) filter (where amount<0),0) as cash_returned,
+                LIST(concat(date,': ',amount,' руб')) as payment_dates
+            FROM orders_cf
+            GROUP BY order_guid
+        ) ocf
+            ON ocf.order_guid IS NOT DISTINCT FROM t.order_id
+        
         
         GROUP BY 
         t.order_id,
@@ -226,10 +209,7 @@ def main():
     log.append(register_tables(conn))
     log.append(advance_items(conn))
     log.append(mv_orders_summary(conn))
+    
+    return "; \n".join(log)
    
     
-    # conn.sql("select * from orders_summary").df().to_excel("try.xlsx",index=False)
-    # stutus_summary = get_summary_by_orders_status(conn)
-    # stutus_summary.df().to_excel("try_status.xlsx")
-    
-main()

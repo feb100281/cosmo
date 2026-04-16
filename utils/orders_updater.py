@@ -4,7 +4,7 @@ import duckdb
 from duckdb import DuckDBPyConnection
 from .db_engine import get_duckdb_conn, get_mysql_conn, get_engine
 from pprint import pprint
-
+from .orders_reporter import main as final_mv
 
 # Тестовый файл - УБРАТЬ ПОТОМ И ПЕРЕДАВАТЬ В MAIN ИЗ ДЖАНГО
 
@@ -309,14 +309,17 @@ def main(file):
     conn: DuckDBPyConnection = get_duckdb_conn()
     log = []
     conn.register("raw", read_excel(file))
-    # log.append(update_orders(conn))
-    # log.append(update_items(conn))
-    # log.append(update_barcodes(conn))
-    # log.append(update_orders_items(conn))
+    log.append(update_orders(conn))
+    log.append(update_items(conn))
+    log.append(update_barcodes(conn))
+    log.append(update_orders_items(conn))
     create_raw_orders(conn)
-    conn.close()
+    # conn.close()
+    rep =  final_mv()
+    a = "; \n".join(log)
+    
 
-    return "; \n".join(log)
+    return a + rep
 
 
 # print(main(file2))

@@ -5,7 +5,6 @@ from duckdb import DuckDBPyConnection
 from .db_engine import get_duckdb_conn, get_mysql_conn
 from pprint import pprint
 
-
 file = '/Users/daria/Desktop/2026-04-14/Sales_2026-04-14.xlsx'
 
 REGISTERED_COLUMNS = [
@@ -748,4 +747,4 @@ def main(file):
     return "; \n".join(log)
 
 
-print(main(file))
+# print(main(file))
