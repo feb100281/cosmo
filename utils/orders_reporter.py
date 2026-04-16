@@ -118,7 +118,13 @@ def orders_summary(conn: DuckDBPyConnection):
             ON s.order_guid IS NOT DISTINCT FROM t.id
         ORDER BY t.update_at DESC
         """
-    ).df()
+    )
+    conn.sql(
+        """ 
+        CREATE OR REPLACE mysql_db.djangodb.mv_orders_table
+        SELECT * from orders_sum
+        """
+    )
 
     conn.register("orders_summary", orders_sum)
     return "orders_summary registered"
@@ -154,9 +160,10 @@ def main():
     log.append(register_tables(conn))
     log.append(advance_items(conn))
     log.append(orders_summary(conn))
+   
     
     conn.sql("select * from orders_summary").df().to_excel("try.xlsx",index=False)
     stutus_summary = get_summary_by_orders_status(conn)
-    stutus_summary.df().to_excel("try.xlsx")
+    stutus_summary.df().to_excel("try_status.xlsx")
     
 main()
