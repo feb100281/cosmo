@@ -110,8 +110,10 @@ JAZZMIN_SETTINGS = {
         {"model": "auth.User"},
         {"model": "sales.MV_Daily_Sales"},
         # ссылка на Dash Upload Form
-        {"name": "Upload Form", "url": "/upload-form", "new_window": True},
-        {"name": "Redis update", "url": "/redis-form", "new_window": True},
+        {"name": "Upload Form", "url": "/upload-sales", "new_window": True},
+        # {"name": "Redis update", "url": "/redis-form", "new_window": True},
+        {"name": "Upload orders", "url": "/upload-orders", "new_window": True},
+        {"name": "Upload cf", "url": "/upload-cf", "new_window": True},
     ],
     
 

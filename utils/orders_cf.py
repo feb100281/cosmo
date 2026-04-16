@@ -101,6 +101,6 @@ def main(file):
     return "; \n".join(log)
 
 
-print(main(file))
+# print(main(file))
 
 
