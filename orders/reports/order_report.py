@@ -4,25 +4,21 @@ from openpyxl import Workbook
 from datetime import datetime
 import io
 
-from .queries.duckdb_queries import DuckDBReportQueries
-from .queries.toc_queries import TOCQueries
+
 from .queries.dashboard_queries import DashboardQueries
 
 from .sheets.toc_sheet import TOCSheet
 from .sheets.dashboard_sheet import DashboardSheet
-from .sheets.debtors_sheet import DashboardDebtorsSheet
-from .sheets.inconsistencies_sheet import InconsistenciesSheet
+from .sheets.debtors_sheet import ActiveDebtorsSheet, ClosedDebtorsSheet
+
 
 
 def generate_orders_report(request):
     # Получаем данные
-    inconsistencies = TOCQueries.get_inconsistencies(request=request)
     dashboard_data = DashboardQueries.get_dashboard_data(request=request)
-
-    total_inconsistencies = (
-        len(inconsistencies.get("agreement_cancelled", [])) +
-        len(inconsistencies.get("execution_cancelled", []))
-    )
+    active_debtors = DashboardQueries.get_active_debtors(request=request)
+    closed_debtors = DashboardQueries.get_closed_debtors(request=request)
+    status_summary = DashboardQueries.get_status_summary(request=request) 
 
     wb = Workbook()
 
@@ -34,38 +30,47 @@ def generate_orders_report(request):
     sheets_info = []
     sheet_counter = 1
     
-    # Лист TOC (оглавление) создаем отдельно
+    # Лист TOC (оглавление)
     toc_sheet = TOCSheet(wb)
     
-    # Лист 1: Несоответствия (если есть)
-    if total_inconsistencies > 0:
-        inconsistencies_sheet = InconsistenciesSheet(wb, sheet_counter)
-        inconsistencies_sheet.build(inconsistencies)
-        sheets_info.append({
-            "number": sheet_counter,
-            "name": "НЕСООТВЕТСТВИЯ",
-            "description": f"Отмененные заказы с активными статусами ({total_inconsistencies} шт.)"
-        })
-        sheet_counter += 1
-    
-    # Лист 2 (или 1): Общая аналитика
-    dashboard_sheet = DashboardSheet(wb, sheet_counter)
-    dashboard_sheet.build(dashboard_data)
+    # Лист 1: Общая аналитика (Dashboard)
+    dashboard_sheet = DashboardSheet(wb, str(sheet_counter))
+    dashboard_sheet.build(
+        dashboard_data=dashboard_data, 
+        active_debtors=active_debtors,
+        status_summary=status_summary  # НОВЫЙ ПАРАМЕТР
+    )
     sheets_info.append({
         "number": sheet_counter,
         "name": "ОБЩАЯ_АНАЛИТИКА",
-        "description": "Ключевые показатели и аналитика по активным заказам"
+        "description": "Ключевые показатели, статусы заказов, топы и предупреждения"
     })
     sheet_counter += 1
     
-    # Лист 3 (или 2): Дебиторка
-    debtors_sheet = DashboardDebtorsSheet(wb, sheet_counter)
-    debtors_sheet.build(dashboard_data.get("all_debtors", []))
+    # Лист 2: Активная дебиторка
+    active_debtors_sheet = ActiveDebtorsSheet(wb, str(sheet_counter))
+    active_debtors_sheet.build(active_debtors)
     sheets_info.append({
         "number": sheet_counter,
-        "name": "ДЕБИТОРКА",
-        "description": "Полный список дебиторской задолженности по активным заказам"
+        "name": "АКТИВНАЯ_ДЕБИТОРКА",
+        "description": f"Активные заказы с долгом ({len(active_debtors)} шт.)"
     })
+    sheet_counter += 1
+    
+    # Лист 3: Закрытая дебиторка (отгружено, но не оплачено)
+    if closed_debtors:
+        closed_debtors_sheet = ClosedDebtorsSheet(wb, str(sheet_counter))
+        closed_debtors_sheet.build(closed_debtors)
+        sheets_info.append({
+            "number": sheet_counter,
+            "name": "ЗАКРЫТАЯ_ДЕБИТОРКА",
+            "description": f"Отгружено, но не оплачено ({len(closed_debtors)} шт.)"
+        })
+        sheet_counter += 1
+    
+    # Переставляем TOC на первое место
+    toc_index = wb.sheetnames.index("TOC")
+    wb.move_sheet(wb["TOC"], offset=-toc_index)
     
     # Строим оглавление
     toc_sheet.build(sheets_info, request=request, filters=None)

@@ -1,3 +1,4 @@
+# utils/orders_reporter.py
 import pandas as pd
 import duckdb
 from duckdb import DuckDBPyConnection
@@ -157,6 +158,6 @@ def main():
     
     conn.sql("select * from orders_summary").df().to_excel("try.xlsx",index=False)
     stutus_summary = get_summary_by_orders_status(conn)
-    stutus_summary.df().to_excel("try.xlsx")
+    stutus_summary.df().to_excel("try_status.xlsx")
     
 main()
