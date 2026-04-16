@@ -8,7 +8,7 @@ from pprint import pprint
 
 # Тестовый файл - УБРАТЬ ПОТОМ И ПЕРЕДАВАТЬ В MAIN ИЗ ДЖАНГО
 
-file = "/Users/daria/Desktop/2026-04-14/Pay_2026_04_14.xlsx"
+file = "/Users/daria/Desktop/2026-04-15/Cash_2026-04-15.xlsx"
 
 REGISTERED_COLS = [
     "GUID_ЗК",
