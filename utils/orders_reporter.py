@@ -52,7 +52,9 @@ def advance_items(conn:DuckDBPyConnection):
         """
     )
     my_sql = get_engine()
-    items_joined.df().to_sql('mv_orders_items',con=my_sql,index=False,if_exists='replace')
+    items_joined_df = items_joined.df()
+    items_joined_df['id'] = items_joined_df.index + 1
+    items_joined_df.to_sql('mv_orders_items',con=my_sql,index=False,if_exists='replace')
     conn.register("items_joined",items_joined)
     return "all good"
 

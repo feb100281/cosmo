@@ -320,85 +320,117 @@
 #     export_payments_to_excel.short_description = "Экспортировать выбранные оплаты в Excel"
 
 
+# # orders/admin.py
 
 
 
 
+# class OrderItemInline(admin.TabularInline):
+    # model = OrderItem
+    # extra = 0
+    # fields = ['item', 'barcode', 'qty', 'price', 'amount']
+    # readonly_fields = ['amount']
+    # raw_id_fields = ['item', 'barcode']
+    # show_change_link = True
 
-# orders/admin.py
+
+# # @admin.register(Order)
+# # class OrderAdmin(admin.ModelAdmin):
+#     list_display = ['fullname', 'number', 'date_from', 'status', 'manager', 'store', 'is_cancelled']
+#     list_filter = ['status', 'is_cancelled', 'manager', 'store', 'date_from', 'oper_type']
+#     search_fields = ['fullname', 'number', 'client', 'id']
+#     readonly_fields = ['id', 'date_from', 'update_at']
+#     inlines = [OrderItemInline]
+#     date_hierarchy = 'date_from'
+#     list_per_page = 50
+    
+#     fieldsets = (
+#         ('Основная информация', {
+#             'fields': ('id', 'fullname', 'number', 'client', 'manager')
+#         }),
+#         ('Статус и даты', {
+#             'fields': ('status', 'oper_type', 'store', 'date_from', 'update_at')
+#         }),
+#         ('Отмена заказа', {
+#             'fields': ('is_cancelled', 'cancellation_reason'),
+#             'classes': ('collapse',)
+#         }),
+#     )
+    
+#     def get_urls(self):
+#         urls = super().get_urls()
+#         custom_urls = [
+#             path('export-report/', self.export_report, name='export_orders_report'),
+#         ]
+#         return custom_urls + urls
+    
+#     def changelist_view(self, request, extra_context=None):
+#         extra_context = extra_context or {}
+#         extra_context['export_url'] = 'admin:export_orders_report'
+#         extra_context['current_filters'] = request.GET.urlencode()
+#         return super().changelist_view(request, extra_context=extra_context)
+    
+#     def export_report(self, request):
+#         """Экспорт отчета"""
+#         from .reports.order_report import generate_orders_report
+#         return generate_orders_report(request)
+
+
+# @admin.register(OrderItem)
+# class OrderItemAdmin(admin.ModelAdmin):
+#     list_display = ['order', 'item', 'barcode', 'qty', 'price', 'amount']
+#     list_filter = ['order__status', 'order__date_from']
+#     search_fields = ['order__fullname', 'item__fullname', 'barcode__barcode']
+#     readonly_fields = ['amount']
+#     raw_id_fields = ['order', 'item', 'barcode']
+#     list_per_page = 50
+
+
+# @admin.register(OrdersCF)
+# class OrdersCFAdmin(admin.ModelAdmin):
+#     list_display = ['order_guid', 'date', 'oper_type', 'oper_name', 'amount', 'store', 'doc_number']
+#     list_filter = ['oper_type', 'date', 'store']
+#     search_fields = ['order_guid', 'doc_number', 'cash_deck']
+#     date_hierarchy = 'date'
+#     list_per_page = 50
+
 
 from django.contrib import admin
-from django.urls import path
-from django.utils.html import format_html
-from django.http import HttpResponse
-from .models import Order, OrderItem, OrdersCF
+from .models import MV_Orders, OrdersCF, MV_OrdersItems
 
+
+class OrderCFInline(admin.TabularInline):
+    model = OrdersCF
+    extra = 0
+    fields = ['date', 'oper_type', 'cash_deck', 'doc_number', 'amount', 'store']
+    readonly_fields = ['date', 'oper_type', 'cash_deck', 'doc_number', 'amount', 'store']
+    show_change_link = True
 
 class OrderItemInline(admin.TabularInline):
-    model = OrderItem
+    model = MV_OrdersItems
     extra = 0
-    fields = ['item', 'barcode', 'qty', 'price', 'amount']
-    readonly_fields = ['amount']
-    raw_id_fields = ['item', 'barcode']
+    fields = ['article', 'fullname', 'barcode', 'qty', 'price', 'amount','cancellation_reason']
+    readonly_fields = ['article', 'fullname', 'barcode', 'qty', 'price', 'amount','cancellation_reason']
     show_change_link = True
 
 
-@admin.register(Order)
+@admin.register(MV_Orders)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ['fullname', 'number', 'date_from', 'status', 'manager', 'store', 'is_cancelled']
-    list_filter = ['status', 'is_cancelled', 'manager', 'store', 'date_from', 'oper_type']
-    search_fields = ['fullname', 'number', 'client', 'id']
-    readonly_fields = ['id', 'date_from', 'update_at']
-    inlines = [OrderItemInline]
+    list_display = [
+        'order_name', 'number',
+        'date_from', 'status', 'change_status',
+        'client', 'manager',
+        'qty_ordered', 'qty_cancelled', 'order_qty',
+        'order_amount', 'amount_delivery', 'amount_cancelled', 'amount_active',
+        'cash_recieved', 'cash_returned', 'cash_pmts',
+        'shiped', 'returned', 'shiped_qty', 'shiped_amount', 'returned_amount',
+        'total_shiped_amount', 'shiped_delivery_amount',
+    ]
+    list_filter = ['status', 'change_status', 'manager', 'date_from', 'client']
+    search_fields = ['order_name', 'number', 'client', 'order_id']
+    inlines = [OrderCFInline, OrderItemInline]
     date_hierarchy = 'date_from'
     list_per_page = 50
     
-    fieldsets = (
-        ('Основная информация', {
-            'fields': ('id', 'fullname', 'number', 'client', 'manager')
-        }),
-        ('Статус и даты', {
-            'fields': ('status', 'oper_type', 'store', 'date_from', 'update_at')
-        }),
-        ('Отмена заказа', {
-            'fields': ('is_cancelled', 'cancellation_reason'),
-            'classes': ('collapse',)
-        }),
-    )
-    
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('export-report/', self.export_report, name='export_orders_report'),
-        ]
-        return custom_urls + urls
-    
-    def changelist_view(self, request, extra_context=None):
-        extra_context = extra_context or {}
-        extra_context['export_url'] = 'admin:export_orders_report'
-        extra_context['current_filters'] = request.GET.urlencode()
-        return super().changelist_view(request, extra_context=extra_context)
-    
-    def export_report(self, request):
-        """Экспорт отчета"""
-        from .reports.order_report import generate_orders_report
-        return generate_orders_report(request)
-
-
-@admin.register(OrderItem)
-class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ['order', 'item', 'barcode', 'qty', 'price', 'amount']
-    list_filter = ['order__status', 'order__date_from']
-    search_fields = ['order__fullname', 'item__fullname', 'barcode__barcode']
-    readonly_fields = ['amount']
-    raw_id_fields = ['order', 'item', 'barcode']
-    list_per_page = 50
-
-
-@admin.register(OrdersCF)
-class OrdersCFAdmin(admin.ModelAdmin):
-    list_display = ['order_guid', 'date', 'oper_type', 'oper_name', 'amount', 'store', 'doc_number']
-    list_filter = ['oper_type', 'date', 'store']
-    search_fields = ['order_guid', 'doc_number', 'cash_deck']
-    date_hierarchy = 'date'
-    list_per_page = 50
+    class Media:
+        css = {"all": ("css/admin_overrides.css",)}
