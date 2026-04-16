@@ -1,3 +1,5 @@
+# orders/models.py
+
 from django.db import models
 from corporate.models import Items
 from corporate.models import Barcode
@@ -15,10 +17,10 @@ class Order(models.Model):
     is_cancelled = models.BooleanField(verbose_name='Отмененный заказ',default=False)
     cancellation_reason =  models.CharField(max_length=500,verbose_name='Причина отмены',null=True,blank=True)
     status = models.CharField(max_length=500,verbose_name='Статус',null=True,blank=True)
-    manager = models.CharField(max_length=500,verbose_name='Статус',null=True,blank=True)
-    client = models.CharField(max_length=500,verbose_name='Статус',null=True,blank=True)
-    oper_type = models.CharField(max_length=500,verbose_name='Статус',null=True,blank=True)
-    store = models.CharField(max_length=500,verbose_name='Статус',null=True,blank=True)
+    manager = models.CharField(max_length=500,verbose_name='Менеджер',null=True,blank=True)
+    client = models.CharField(max_length=500,verbose_name='Клиент',null=True,blank=True)
+    oper_type = models.CharField(max_length=500,verbose_name='Тип заказа',null=True,blank=True)
+    store = models.CharField(max_length=500,verbose_name='Магазин',null=True,blank=True)
     
     class Meta:
         verbose_name = "Заказ"
