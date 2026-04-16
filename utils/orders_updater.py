@@ -2,13 +2,14 @@
 import pandas as pd
 import duckdb
 from duckdb import DuckDBPyConnection
-from .db_engine import get_duckdb_conn, get_mysql_conn
+from .db_engine import get_duckdb_conn, get_mysql_conn, get_engine
 from pprint import pprint
-
+from .orders_reporter import main as final_mv
 
 # Тестовый файл - УБРАТЬ ПОТОМ И ПЕРЕДАВАТЬ В MAIN ИЗ ДЖАНГО
 
 file = '/Users/daria/Desktop/2026-04-15/Orders_2026-04-15.xlsx'
+
 
 REGISTERED_COLUMS = [
     "GUID_ЗК",
@@ -272,6 +273,37 @@ def update_orders_items(conn: DuckDBPyConnection):
     mysql_conn.commit()
     return "НОМЕНКЛАТУРЫ В ЗАКАЗАХ ОБНОВЛЕНЫ"
 
+def create_raw_orders(conn:DuckDBPyConnection):
+    raw_orders = conn.sql(
+        """ 
+        select
+            t."GUID_ЗК"::text as order_id,	
+            t."Номер Заказа"::text as number,
+            t."ДатаИВремяСоздания"::date as date_from,
+            t."Склад"::text as warehouse,
+            t."Подразделение"::text as store,
+            COALESCE(t."Менеджер"::text,'Менеджер не указан') as manager,
+            COALESCE(t."Клиент"::text,'Клиент не указан') as client,
+            t."Тип операции"::text as oper_type,
+            COALESCE(t."РабочееНаименование"::text, 'Номенклатура не указана') as fullname,
+            COALESCE(t."Артикул"::text,'Нет арт.') as article,
+            COALESCE(t."Штрихкод"::text,'Нет ШК') as barcode,
+            COALESCE(t."Кол."::double,0) as qty,	
+            COALESCE(
+                t."Итоговая сумма"::double / NULLIF(t."Кол."::double, 0),
+                0
+            ) as price,
+            COALESCE(t."Итоговая сумма"::double,0) as amount,  
+            t."ПричинаОтмены"::text as cancellation_reason,
+            t."Дата и время изменения"::date as update_at,
+            t."Статус"::text as status
+        from raw t
+        """
+    ).df()
+    my_sql = get_engine()
+    raw_orders.to_sql("raw_orders",con=my_sql,if_exists='replace',index=False)
+    return "Таблица raw_orders обновлена"
+    
 
 def main(file):
     conn: DuckDBPyConnection = get_duckdb_conn()
@@ -281,8 +313,13 @@ def main(file):
     log.append(update_items(conn))
     log.append(update_barcodes(conn))
     log.append(update_orders_items(conn))
+    create_raw_orders(conn)
+    # conn.close()
+    rep =  final_mv()
+    a = "; \n".join(log)
+    
 
-    return "; \n".join(log)
+    return a + rep
 
 
-print(main(file))
+# print(main(file2))

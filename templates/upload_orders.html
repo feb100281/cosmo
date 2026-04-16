@@ -1,0 +1,14 @@
+<!-- templates/upload_orders.html -->
+{% if messages %}
+  {% for message in messages %}
+    <div style="padding:10px; margin:10px 0; border:1px solid #ccc;">
+        {{ message }}
+    </div>
+  {% endfor %}
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Загрузить</button>
+</form>
