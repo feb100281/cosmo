@@ -63,3 +63,15 @@ class OrdersCF(models.Model):
     def __str__(self):
         
         return f"{self.oper_type} {self.date} {self.amount:,.0f} руб"
+
+# делаем историю изменений по загрузки нового отчета
+
+
+
+
+# делаем заглушку для mv_model в админке по заказам
+
+
+
+
+

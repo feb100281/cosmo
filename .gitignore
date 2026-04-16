@@ -20,9 +20,9 @@ staticfiles/
 .env.local
 
 # macOS
-.DS_Store
-.xlsx
-.duckdb
-.csv
+*.DS_Store
+*.xlsx
+*.duckdb
+*.csv
    
 # Миграции (можно исключить, но осторожно!)
