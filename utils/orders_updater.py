@@ -53,7 +53,7 @@ def read_excel(file):
     df = fdf[cols].copy()
     df["ДатаИВремяСоздания"] = pd.to_datetime(df["ДатаИВремяСоздания"], dayfirst=True)
     df["Дата и время изменения"] = pd.to_datetime(
-        df["ДатаИВремяСоздания"], dayfirst=True
+        df["Дата и время изменения"], dayfirst=True
     )
     df["Кол."] = (
         df["Кол."]
