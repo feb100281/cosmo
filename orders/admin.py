@@ -394,8 +394,53 @@
 #     date_hierarchy = 'date'
 #     list_per_page = 50
 
+# # orders/admin.py
+# from django.contrib import admin
+# from .models import MV_Orders, OrdersCF, MV_OrdersItems
 
+
+# class OrderCFInline(admin.TabularInline):
+#     model = OrdersCF
+#     extra = 0
+#     fields = ['date', 'oper_type', 'cash_deck', 'doc_number', 'amount', 'store']
+#     readonly_fields = ['date', 'oper_type', 'cash_deck', 'doc_number', 'amount', 'store']
+#     show_change_link = True
+
+# class OrderItemInline(admin.TabularInline):
+#     model = MV_OrdersItems
+#     extra = 0
+#     fields = ['article', 'fullname', 'barcode', 'qty', 'price', 'amount','cancellation_reason']
+#     readonly_fields = ['article', 'fullname', 'barcode', 'qty', 'price', 'amount','cancellation_reason']
+#     show_change_link = True
+
+
+# @admin.register(MV_Orders)
+# class OrderAdmin(admin.ModelAdmin):
+#     list_display = [
+#         'order_name', 'number',
+#         'date_from', 'status', 'change_status',
+#         'client', 'manager',
+#         'qty_ordered', 'qty_cancelled', 'order_qty',
+#         'order_amount', 'amount_delivery', 'amount_cancelled', 'amount_active',
+#         'cash_recieved', 'cash_returned', 'cash_pmts',
+#         'shiped', 'returned', 'shiped_qty', 'shiped_amount', 'returned_amount',
+#         'total_shiped_amount', 'shiped_delivery_amount',
+#     ]
+#     list_filter = ['status', 'change_status', 'manager', 'date_from', 'client']
+#     search_fields = ['order_name', 'number', 'client', 'order_id']
+#     inlines = [OrderCFInline, OrderItemInline]
+#     date_hierarchy = 'date_from'
+#     list_per_page = 50
+    
+#     class Media:
+#         css = {"all": ("css/admin_overrides.css",)}
+
+
+
+# orders/admin.py
 from django.contrib import admin
+from django.urls import path
+from django.utils.html import format_html
 from .models import MV_Orders, OrdersCF, MV_OrdersItems
 
 
@@ -431,6 +476,24 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderCFInline, OrderItemInline]
     date_hierarchy = 'date_from'
     list_per_page = 50
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('export-report/', self.export_report, name='export_orders_report'),
+        ]
+        return custom_urls + urls
+    
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['export_url'] = 'admin:export_orders_report'
+        extra_context['current_filters'] = request.GET.urlencode()
+        return super().changelist_view(request, extra_context=extra_context)
+    
+    def export_report(self, request):
+        """Экспорт отчета по заказам"""
+        from .reports.order_report import generate_orders_report
+        return generate_orders_report(request)
     
     class Media:
         css = {"all": ("css/admin_overrides.css",)}

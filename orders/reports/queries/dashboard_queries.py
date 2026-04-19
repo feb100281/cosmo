@@ -1,879 +1,574 @@
-# # orders/reports/queries/dashboard_queries.py
-# from django.db import connection
-# from datetime import date
-
-
-# class DashboardQueries:
-#     """Запросы для дашборда - через прямой SQL"""
-    
-#     ACTIVE_STATUSES = ("На согласовании", "К выполнению / В резерве")
-    
-#     @classmethod
-#     def _format_statuses(cls):
-#         """Форматирует статусы для SQL IN"""
-#         return "', '".join(cls.ACTIVE_STATUSES)
-    
-#     @classmethod
-#     def get_dashboard_data(cls, request=None, filters=None):
-#         """Получить все данные для дашборда через прямой SQL"""
-        
-#         statuses_str = cls._format_statuses()
-#         today = date.today()
-#         year_start = date(today.year, 1, 1)
-#         month_start = date(today.year, today.month, 1)
-        
-#         with connection.cursor() as cursor:
-#             # 1. KPI по активным заказам (неотмененным)
-#             cursor.execute(f"""
-#                 SELECT 
-#                     COUNT(DISTINCT o.id) as active_orders,
-#                     COALESCE(SUM(oi.amount), 0) as active_amount,
-#                     COALESCE(SUM(ocf.paid), 0) as active_paid,
-#                     COALESCE(AVG(oi.amount), 0) as active_avg_check,
-#                     COALESCE(SUM(oi.amount), 0) - COALESCE(SUM(ocf.paid), 0) as active_debt
-#                 FROM orders_order o
-#                 LEFT JOIN (
-#                     SELECT order_id, SUM(amount) as amount
-#                     FROM orders_orderitem
-#                     GROUP BY order_id
-#                 ) oi ON oi.order_id = o.id
-#                 LEFT JOIN (
-#                     SELECT ocf.order_guid, SUM(ocf.amount) as paid
-#                     FROM orders_orderscf ocf
-#                     INNER JOIN orders_order o2 ON ocf.order_guid = o2.id
-#                     WHERE o2.status IN ('{statuses_str}') AND o2.is_cancelled = 0
-#                     GROUP BY ocf.order_guid
-#                 ) ocf ON ocf.order_guid = o.id
-#                 WHERE o.status IN ('{statuses_str}') AND o.is_cancelled = 0
-#             """)
-#             kpi = cursor.fetchone()
-            
-#             # 2. Отмененные заказы
-#             cursor.execute(f"""
-#                 SELECT 
-#                     COUNT(DISTINCT o.id) as cancelled_orders,
-#                     COALESCE(SUM(oi.amount), 0) as cancelled_amount
-#                 FROM orders_order o
-#                 LEFT JOIN (
-#                     SELECT order_id, SUM(amount) as amount
-#                     FROM orders_orderitem
-#                     GROUP BY order_id
-#                 ) oi ON oi.order_id = o.id
-#                 WHERE o.status IN ('{statuses_str}') AND o.is_cancelled = 1
-#             """)
-#             cancelled = cursor.fetchone()
-            
-#             # 3. YTD (с начала года)
-#             cursor.execute(f"""
-#                 SELECT 
-#                     COUNT(DISTINCT o.id) as orders,
-#                     COALESCE(SUM(oi.amount), 0) as amount,
-#                     COALESCE(SUM(ocf.paid), 0) as paid,
-#                     COALESCE(SUM(oi.amount), 0) - COALESCE(SUM(ocf.paid), 0) as debt
-#                 FROM orders_order o
-#                 LEFT JOIN (
-#                     SELECT order_id, SUM(amount) as amount
-#                     FROM orders_orderitem
-#                     GROUP BY order_id
-#                 ) oi ON oi.order_id = o.id
-#                 LEFT JOIN (
-#                     SELECT ocf.order_guid, SUM(ocf.amount) as paid
-#                     FROM orders_orderscf ocf
-#                     INNER JOIN orders_order o2 ON ocf.order_guid = o2.id
-#                     WHERE o2.status IN ('{statuses_str}') 
-#                         AND o2.is_cancelled = 0
-#                         AND o2.date_from >= '{year_start}'
-#                     GROUP BY ocf.order_guid
-#                 ) ocf ON ocf.order_guid = o.id
-#                 WHERE o.status IN ('{statuses_str}') 
-#                     AND o.is_cancelled = 0
-#                     AND o.date_from >= '{year_start}'
-#             """)
-#             ytd = cursor.fetchone()
-            
-#             # 4. MTD (с начала месяца)
-#             cursor.execute(f"""
-#                 SELECT 
-#                     COUNT(DISTINCT o.id) as orders,
-#                     COALESCE(SUM(oi.amount), 0) as amount,
-#                     COALESCE(SUM(ocf.paid), 0) as paid,
-#                     COALESCE(SUM(oi.amount), 0) - COALESCE(SUM(ocf.paid), 0) as debt
-#                 FROM orders_order o
-#                 LEFT JOIN (
-#                     SELECT order_id, SUM(amount) as amount
-#                     FROM orders_orderitem
-#                     GROUP BY order_id
-#                 ) oi ON oi.order_id = o.id
-#                 LEFT JOIN (
-#                     SELECT ocf.order_guid, SUM(ocf.amount) as paid
-#                     FROM orders_orderscf ocf
-#                     INNER JOIN orders_order o2 ON ocf.order_guid = o2.id
-#                     WHERE o2.status IN ('{statuses_str}') 
-#                         AND o2.is_cancelled = 0
-#                         AND o2.date_from >= '{month_start}'
-#                     GROUP BY ocf.order_guid
-#                 ) ocf ON ocf.order_guid = o.id
-#                 WHERE o.status IN ('{statuses_str}') 
-#                     AND o.is_cancelled = 0
-#                     AND o.date_from >= '{month_start}'
-#             """)
-#             mtd = cursor.fetchone()
-            
-#             # 5. Дебиторы (все с долгом > 0)
-#             cursor.execute(f"""
-#                 SELECT 
-#                     COALESCE(o.client, 'НЕ УКАЗАН') as client,
-#                     o.id as order_id,
-#                     o.fullname as order_number,
-#                     o.date_from as order_date,
-#                     COALESCE(oi.amount, 0) as order_amount,
-#                     COALESCE(ocf.paid, 0) as paid_amount,
-#                     COALESCE(oi.amount, 0) - COALESCE(ocf.paid, 0) as debt
-#                 FROM orders_order o
-#                 LEFT JOIN (
-#                     SELECT order_id, SUM(amount) as amount
-#                     FROM orders_orderitem
-#                     GROUP BY order_id
-#                 ) oi ON oi.order_id = o.id
-#                 LEFT JOIN (
-#                     SELECT ocf.order_guid, SUM(ocf.amount) as paid
-#                     FROM orders_orderscf ocf
-#                     INNER JOIN orders_order o2 ON ocf.order_guid = o2.id
-#                     WHERE o2.status IN ('{statuses_str}') AND o2.is_cancelled = 0
-#                     GROUP BY ocf.order_guid
-#                 ) ocf ON ocf.order_guid = o.id
-#                 WHERE o.status IN ('{statuses_str}') AND o.is_cancelled = 0
-#                 HAVING debt > 0
-#                 ORDER BY debt DESC
-#             """)
-#             debtors = []
-#             for row in cursor.fetchall():
-#                 debtors.append({
-#                     'client': row[0],
-#                     'order_id': row[1],
-#                     'order_number': row[2],
-#                     'order_date': row[3],
-#                     'order_amount': float(row[4]),
-#                     'paid_amount': float(row[5]),
-#                     'debt': float(row[6])
-#                 })
-            
-#             # 6. Топ менеджеров
-#             cursor.execute(f"""
-#                 SELECT 
-#                     COALESCE(o.manager, 'Не назначен') as manager,
-#                     COUNT(DISTINCT o.id) as orders_count,
-#                     COALESCE(SUM(oi.amount), 0) as total_amount,
-#                     COALESCE(AVG(oi.amount), 0) as avg_check
-#                 FROM orders_order o
-#                 LEFT JOIN (
-#                     SELECT order_id, SUM(amount) as amount
-#                     FROM orders_orderitem
-#                     GROUP BY order_id
-#                 ) oi ON oi.order_id = o.id
-#                 WHERE o.status IN ('{statuses_str}') AND o.is_cancelled = 0
-#                 GROUP BY o.manager
-#                 ORDER BY total_amount DESC
-#                 LIMIT 100
-#             """)
-#             managers_top = []
-#             for row in cursor.fetchall():
-#                 managers_top.append({
-#                     'manager': row[0],
-#                     'orders_count': row[1],
-#                     'total_amount': float(row[2]),
-#                     'avg_check': float(row[3])
-#                 })
-            
-#             # 7. Топ клиентов
-#             cursor.execute(f"""
-#                 SELECT 
-#                     COALESCE(UPPER(o.client), 'НЕ УКАЗАН') as client,
-#                     COUNT(DISTINCT o.id) as orders_count,
-#                     COALESCE(SUM(oi.amount), 0) as total_amount,
-#                     COALESCE(AVG(oi.amount), 0) as avg_check
-#                 FROM orders_order o
-#                 LEFT JOIN (
-#                     SELECT order_id, SUM(amount) as amount
-#                     FROM orders_orderitem
-#                     GROUP BY order_id
-#                 ) oi ON oi.order_id = o.id
-#                 WHERE o.status IN ('{statuses_str}') AND o.is_cancelled = 0
-#                 GROUP BY o.client
-#                 ORDER BY total_amount DESC
-#                 LIMIT 15
-#             """)
-#             clients_top = []
-#             for row in cursor.fetchall():
-#                 clients_top.append({
-#                     'client': row[0],
-#                     'orders_count': row[1],
-#                     'total_amount': float(row[2]),
-#                     'avg_check': float(row[3])
-#                 })
-            
-#             return {
-#                 'kpi': {
-#                     'active_orders': int(kpi[0] or 0),
-#                     'active_amount': float(kpi[1] or 0),
-#                     'active_paid': float(kpi[2] or 0),
-#                     'active_avg_check': float(kpi[3] or 0),
-#                     'active_debt': float(kpi[4] or 0),
-#                     'cancelled_orders': int(cancelled[0] or 0),
-#                     'cancelled_amount': float(cancelled[1] or 0)
-#                 },
-#                 'ytd': {
-#                     'orders': int(ytd[0] or 0),
-#                     'amount': float(ytd[1] or 0),
-#                     'paid': float(ytd[2] or 0),
-#                     'debt': float(ytd[3] or 0)
-#                 },
-#                 'mtd': {
-#                     'orders': int(mtd[0] or 0),
-#                     'amount': float(mtd[1] or 0),
-#                     'paid': float(mtd[2] or 0),
-#                     'debt': float(mtd[3] or 0)
-#                 },
-#                 'debtors': debtors,
-#                 'managers_top': managers_top,
-#                 'clients_top': clients_top
-#             }
-            
-#     @classmethod
-#     def get_active_debtors(cls, request=None, filters=None):
-#         """Активная дебиторка - активные заказы с долгом > 0"""
-#         statuses_str = cls._format_statuses()
-        
-#         with connection.cursor() as cursor:
-#             cursor.execute(f"""
-#                 SELECT 
-#                     COALESCE(o.client, 'НЕ УКАЗАН') as client,
-#                     o.id as order_id,
-#                     o.fullname as order_number,
-#                     o.date_from as order_date,
-#                     o.status,
-#                     COALESCE(oi.amount, 0) as order_amount,
-#                     COALESCE(ocf.paid, 0) as paid_amount,
-#                     COALESCE(oi.amount, 0) - COALESCE(ocf.paid, 0) as debt
-#                 FROM orders_order o
-#                 LEFT JOIN (
-#                     SELECT order_id, SUM(amount) as amount
-#                     FROM orders_orderitem
-#                     GROUP BY order_id
-#                 ) oi ON oi.order_id = o.id
-#                 LEFT JOIN (
-#                     SELECT ocf.order_guid, SUM(ocf.amount) as paid
-#                     FROM orders_orderscf ocf
-#                     INNER JOIN orders_order o2 ON ocf.order_guid = o2.id
-#                     WHERE o2.status IN ('{statuses_str}') AND o2.is_cancelled = 0
-#                     GROUP BY ocf.order_guid
-#                 ) ocf ON ocf.order_guid = o.id
-#                 WHERE o.status IN ('{statuses_str}') 
-#                     AND o.is_cancelled = 0
-#                 HAVING debt > 0
-#                 ORDER BY debt DESC
-#             """)
-            
-#             debtors = []
-#             for row in cursor.fetchall():
-#                 debtors.append({
-#                     'client': row[0],
-#                     'order_id': row[1],
-#                     'order_number': row[2],
-#                     'order_date': row[3],
-#                     'status': row[4],
-#                     'order_amount': float(row[5]),
-#                     'paid_amount': float(row[6]),
-#                     'debt': float(row[7])
-#                 })
-#             return debtors
-    
-#     @classmethod
-#     def get_closed_debtors(cls, request=None, filters=None):
-#         """Закрытая дебиторка - закрытые/выполненные заказы с долгом > 0"""
-#         closed_statuses = ("Закрыт", "Выполнен", "Доставлен")
-#         closed_str = "', '".join(closed_statuses)
-        
-#         with connection.cursor() as cursor:
-#             cursor.execute(f"""
-#                 SELECT 
-#                     COALESCE(o.client, 'НЕ УКАЗАН') as client,
-#                     o.id as order_id,
-#                     o.fullname as order_number,
-#                     o.date_from as order_date,
-#                     o.status,
-#                     COALESCE(oi.amount, 0) as order_amount,
-#                     COALESCE(ocf.paid, 0) as paid_amount,
-#                     COALESCE(oi.amount, 0) - COALESCE(ocf.paid, 0) as debt
-#                 FROM orders_order o
-#                 LEFT JOIN (
-#                     SELECT order_id, SUM(amount) as amount
-#                     FROM orders_orderitem
-#                     GROUP BY order_id
-#                 ) oi ON oi.order_id = o.id
-#                 LEFT JOIN (
-#                     SELECT order_guid, SUM(amount) as paid
-#                     FROM orders_orderscf
-#                     GROUP BY order_guid
-#                 ) ocf ON ocf.order_guid = o.id
-#                 WHERE o.status IN ('{closed_str}') 
-#                     AND o.is_cancelled = 0
-#                 HAVING debt > 0
-#                 ORDER BY debt DESC
-#             """)
-            
-#             debtors = []
-#             for row in cursor.fetchall():
-#                 debtors.append({
-#                     'client': row[0],
-#                     'order_id': row[1],
-#                     'order_number': row[2],
-#                     'order_date': row[3],
-#                     'status': row[4],
-#                     'order_amount': float(row[5]),
-#                     'paid_amount': float(row[6]),
-#                     'debt': float(row[7])
-#                 })
-#             return debtors
-        
-        
-
-
-#         @classmethod
-#         def get_status_summary(cls, request=None, filters=None):
-#             """Получить сводку по статусам заказов (из DuckDB через orders_summary)"""
-#             # Если у вас уже есть orders_summary в DuckDB, используйте его
-#             # Или прямой SQL запрос
-            
-#             statuses_str = cls._format_statuses()
-            
-#             with connection.cursor() as cursor:
-#                 cursor.execute(f"""
-#                     SELECT 
-#                         o.status as "Статус заказа",
-#                         COUNT(DISTINCT o.id) as "Всего заказов",
-#                         SUM(CASE WHEN o.is_cancelled = 1 THEN 1 ELSE 0 END) as "в т.ч отменено",
-#                         SUM(CASE WHEN o.is_cancelled = 0 THEN 1 ELSE 0 END) as "в т.ч выполнено / выполняется",
-#                         COALESCE(SUM(oi.qty), 0) as "Ед заказано",
-#                         COALESCE(SUM(CASE WHEN o.is_cancelled = 1 THEN oi.qty ELSE 0 END), 0) as "в т.ч отменено_ед",
-#                         COALESCE(SUM(CASE WHEN o.is_cancelled = 0 THEN oi.qty ELSE 0 END), 0) as "в т.ч выполнено / выполняется_ед",
-#                         COALESCE(SUM(oi.amount), 0) as "Сумма заказов",
-#                         COALESCE(SUM(CASE WHEN o.is_cancelled = 1 THEN oi.amount ELSE 0 END), 0) as "в т.ч отменено_сумма",
-#                         COALESCE(SUM(CASE WHEN o.is_cancelled = 0 THEN oi.amount ELSE 0 END), 0) as "в т.ч выполнено / выполняется_сумма",
-#                         COALESCE(SUM(ocf.paid), 0) as "Оплачено на дату",
-#                         COALESCE(SUM(s.shiped), 0) as "Отгружено ед на дату",
-#                         COALESCE(SUM(s.returned), 0) as "Возвраты ед на дату",
-#                         COALESCE(SUM(s.shiped_amount), 0) as "Реализация на дату (руб)",
-#                         COALESCE(SUM(s.returned_amount), 0) as "Возвращено на дату (руб)",
-#                         COALESCE(SUM(s.shiped_amount - s.returned_amount), 0) as "Всего реализация"
-#                     FROM orders_order o
-#                     LEFT JOIN (
-#                         SELECT order_id, SUM(qty) as qty, SUM(amount) as amount
-#                         FROM orders_orderitem
-#                         GROUP BY order_id
-#                     ) oi ON oi.order_id = o.id
-#                     LEFT JOIN (
-#                         SELECT ocf.order_guid, SUM(ocf.amount) as paid
-#                         FROM orders_orderscf ocf
-#                         GROUP BY ocf.order_guid
-#                     ) ocf ON ocf.order_guid = o.id
-#                     LEFT JOIN (
-#                         SELECT order_guid, SUM(quant_dt) as shiped, SUM(quant_cr) as returned,
-#                             SUM(dt) as shiped_amount, SUM(cr) as returned_amount
-#                         FROM sales_salesdata
-#                         GROUP BY order_guid
-#                     ) s ON s.order_guid = o.id
-#                     GROUP BY o.status
-#                     ORDER BY "Всего заказов" DESC
-#                 """)
-                
-#                 columns = [col[0] for col in cursor.description]
-#                 status_summary = []
-#                 for row in cursor.fetchall():
-#                     status_summary.append(dict(zip(columns, row)))
-                
-#                 return status_summary
-            
-
-
-#     @classmethod
-#     def get_status_summary(cls, request=None, filters=None):
-#         """Получить сводку по статусам заказов"""
-        
-#         with connection.cursor() as cursor:
-#             cursor.execute("""
-#                 SELECT 
-#                     o.status as "Статус заказа",
-#                     COUNT(DISTINCT o.id) as "Всего заказов",
-#                     SUM(CASE WHEN o.is_cancelled = 1 THEN 1 ELSE 0 END) as "в т.ч отменено",
-#                     SUM(CASE WHEN o.is_cancelled = 0 THEN 1 ELSE 0 END) as "в т.ч выполнено / выполняется",
-#                     COALESCE(SUM(oi.qty), 0) as "Ед заказано",
-#                     COALESCE(SUM(CASE WHEN o.is_cancelled = 1 THEN oi.qty ELSE 0 END), 0) as "в т.ч отменено_ед",
-#                     COALESCE(SUM(CASE WHEN o.is_cancelled = 0 THEN oi.qty ELSE 0 END), 0) as "в т.ч выполнено / выполняется_ед",
-#                     COALESCE(SUM(oi.amount), 0) as "Сумма заказов",
-#                     COALESCE(SUM(CASE WHEN o.is_cancelled = 1 THEN oi.amount ELSE 0 END), 0) as "в т.ч отменено_сумма",
-#                     COALESCE(SUM(CASE WHEN o.is_cancelled = 0 THEN oi.amount ELSE 0 END), 0) as "в т.ч выполнено / выполняется_сумма",
-#                     COALESCE(SUM(ocf.paid), 0) as "Оплачено на дату",
-#                     COALESCE(SUM(s.shiped), 0) as "Отгружено ед на дату",
-#                     COALESCE(SUM(s.returned), 0) as "Возвраты ед на дату",
-#                     COALESCE(SUM(s.shiped_amount), 0) as "Реализация на дату (руб)",
-#                     COALESCE(SUM(s.returned_amount), 0) as "Возвращено на дату (руб)",
-#                     COALESCE(SUM(s.shiped_amount - s.returned_amount), 0) as "Всего реализация"
-#                 FROM orders_order o
-#                 LEFT JOIN (
-#                     SELECT order_id, SUM(qty) as qty, SUM(amount) as amount
-#                     FROM orders_orderitem
-#                     GROUP BY order_id
-#                 ) oi ON oi.order_id = o.id
-#                 LEFT JOIN (
-#                     SELECT ocf.order_guid, SUM(ocf.amount) as paid
-#                     FROM orders_orderscf ocf
-#                     GROUP BY ocf.order_guid
-#                 ) ocf ON ocf.order_guid = o.id
-#                 LEFT JOIN (
-#                     SELECT order_guid, 
-#                            SUM(quant_dt) as shiped, 
-#                            SUM(quant_cr) as returned,
-#                            SUM(dt) as shiped_amount, 
-#                            SUM(cr) as returned_amount
-#                     FROM sales_salesdata
-#                     GROUP BY order_guid
-#                 ) s ON s.order_guid = o.id
-#                 GROUP BY o.status
-#                 ORDER BY "Всего заказов" DESC
-#             """)
-            
-#             columns = [col[0] for col in cursor.description]
-#             status_summary = []
-#             for row in cursor.fetchall():
-#                 status_summary.append(dict(zip(columns, row)))
-            
-#             return status_summary
-
-
-
-
 # orders/reports/queries/dashboard_queries.py
-from django.db import connection
-from datetime import date
+from django.db.models import Sum, Count, Q, Avg, F
+from django.db.models.functions import TruncMonth, TruncDate, ExtractDay
+from orders.models import MV_Orders, OrdersCF
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 
 class DashboardQueries:
-    """Запросы для дашборда - через прямой SQL"""
+    def __init__(self, request=None):
+        self.request = request
+        self.today = datetime.now().date()
+        self.first_day_month = self.today.replace(day=1)
+        self.first_day_year = self.today.replace(month=1, day=1)
     
-    ACTIVE_STATUSES = ("На согласовании", "К выполнению / В резерве")
-    CLOSED_STATUSES = ("Закрыт", "Выполнен", "Доставлен")
+    def get_all_orders(self):
+        """Получить все заказы"""
+        return MV_Orders.objects.all().order_by('-date_from')
     
-    @classmethod
-    def _format_statuses(cls, statuses=None):
-        """Форматирует статусы для SQL IN"""
-        if statuses is None:
-            statuses = cls.ACTIVE_STATUSES
-        return "', '".join(statuses)
-    
-    @classmethod
-    def get_dashboard_data(cls, request=None, filters=None):
-        """Получить все данные для дашборда через прямой SQL"""
+    def get_orders_with_metrics(self):
+        """Получить заказы с метриками"""
+        orders = MV_Orders.objects.all().values(
+            'order_name', 'number', 'date_from', 'update_at',
+            'status', 'client', 'manager', 'store', 'change_status',
+            'qty_ordered', 'qty_cancelled', 'order_qty',
+            'order_amount', 'amount_delivery', 'amount_cancelled',
+            'amount_active', 'cash_recieved', 'cash_returned',
+            'cash_pmts', 'shiped', 'returned', 'shiped_qty',
+            'shiped_amount', 'returned_amount', 'total_shiped_amount',
+            'shiped_delivery_amount'
+        ).order_by('-date_from')
         
-        statuses_str = cls._format_statuses()
-        today = date.today()
-        year_start = date(today.year, 1, 1)
-        month_start = date(today.year, today.month, 1)
+        # Преобразуем в список для удобства
+        return list(orders)
+    
+    def get_status_summary(self):
+        """Сводка по статусам (все заказы)"""
+        return MV_Orders.objects.values('status').annotate(
+            count=Count('order_id'),
+            total_amount=Sum('amount_active'),
+            total_qty=Sum('order_qty'),
+            avg_amount=Avg('amount_active')
+        ).order_by('-total_amount')
+    
+    def get_manager_summary(self):
+        """Сводка по менеджерам"""
+        return MV_Orders.objects.values('manager').annotate(
+            orders_count=Count('order_id'),
+            total_amount=Sum('amount_active'),
+            avg_check=Avg('amount_active'),
+            total_qty=Sum('order_qty'),
+            debt_amount=Sum(F('amount_active') - F('cash_pmts'))
+        ).filter(manager__isnull=False).exclude(manager='').order_by('-total_amount')
+    
+    def get_client_summary(self):
+        """Сводка по клиентам"""
+        return MV_Orders.objects.values('client').annotate(
+            orders_count=Count('order_id'),
+            total_amount=Sum('amount_active'),
+            avg_check=Avg('amount_active')
+        ).filter(client__isnull=False).exclude(client='').order_by('-total_amount')[:50]
+    
+    def get_active_orders_stats(self):
+        """Статистика по ВСЕМ активным заказам (К выполнению / В резерве, На согласовании)"""
+        from django.db.models import Q, Sum, F
         
-        with connection.cursor() as cursor:
-            # 1. KPI по активным заказам (неотмененным)
-            cursor.execute(f"""
-                SELECT
-                    COUNT(*) as active_orders,
-                    COALESCE(SUM(t.order_amount), 0) as active_amount,
-                    COALESCE(SUM(t.paid_amount), 0) as active_paid,
-                    COALESCE(AVG(t.order_amount), 0) as active_avg_check,
-                    COALESCE(SUM(CASE WHEN t.debt > 0 THEN t.debt ELSE 0 END), 0) as active_debt
-                FROM (
-                    SELECT
-                        o.id,
-                        COALESCE(oi.amount, 0) as order_amount,
-                        COALESCE(ocf.paid, 0) as paid_amount,
-                        COALESCE(oi.amount, 0) - COALESCE(ocf.paid, 0) as debt
-                    FROM orders_order o
-                    LEFT JOIN (
-                        SELECT order_id, SUM(amount) as amount
-                        FROM orders_orderitem
-                        GROUP BY order_id
-                    ) oi ON oi.order_id = o.id
-                    LEFT JOIN (
-                        SELECT ocf.order_guid, SUM(ocf.amount) as paid
-                        FROM orders_orderscf ocf
-                        GROUP BY ocf.order_guid
-                    ) ocf ON ocf.order_guid = o.id
-                    WHERE o.status IN ('{statuses_str}')
-                    AND o.is_cancelled = 0
-                ) t
-            """)
-            kpi = cursor.fetchone()
+        # Заказы со статусом "К выполнению" или "В резерве"
+        to_do_orders = MV_Orders.objects.filter(
+            Q(status='К выполнению') | Q(status='К выполнению / В резерве')
+        )
+        
+        # Заказы со статусом "На согласовании"
+        pending_orders = MV_Orders.objects.filter(status='На согласовании')
+        
+        # Статистика по "К выполнению" (ВСЕ заказы, не только за месяц)
+        to_do_stats = to_do_orders.aggregate(
+            count=Count('order_id'),
+            qty=Sum('order_qty'),
+            paid=Sum('cash_pmts'),
+            shipped=Sum('shiped_qty'),
+            amount=Sum('amount_active'),
+            debt=Sum(F('amount_active') - F('cash_pmts'))
+        )
+        
+        # Статистика по "На согласовании" (ВСЕ заказы)
+        pending_stats = pending_orders.aggregate(
+            count=Count('order_id'),
+            qty=Sum('order_qty'),
+            paid=Sum('cash_pmts'),
+            shipped=Sum('shiped_qty'),
+            amount=Sum('amount_active'),
+            debt=Sum(F('amount_active') - F('cash_pmts'))
+        )
+        
+        # Общая статистика по всем активным заказам
+        all_active_orders = MV_Orders.objects.filter(
+            Q(status='К выполнению / В резерве')| Q(status='На согласовании')
+        )
+        
+        all_active_stats = all_active_orders.aggregate(
+            count=Count('order_id'),
+            qty=Sum('order_qty'),
+            paid=Sum('cash_pmts'),
+            shipped=Sum('shiped_qty'),
+            amount=Sum('amount_active'),
+            debt=Sum(F('amount_active') - F('cash_pmts'))
+        )
+        
+        return {
+            # Все активные заказы (итого)
+            'total_active_count': all_active_stats.get('count', 0) or 0,
+            'total_active_qty': float(all_active_stats.get('qty', 0) or 0),
+            'total_active_paid': float(all_active_stats.get('paid', 0) or 0),
+            'total_active_shipped': float(all_active_stats.get('shipped', 0) or 0),
+            'total_active_amount': float(all_active_stats.get('amount', 0) or 0),
+            'total_active_remaining_qty': float((all_active_stats.get('qty', 0) or 0) - (all_active_stats.get('shipped', 0) or 0)),
+            'total_active_debt': float(all_active_stats.get('debt', 0) or 0),
             
-            # 2. Отмененные заказы
-            cursor.execute(f"""
-                SELECT 
-                    COUNT(DISTINCT o.id) as cancelled_orders,
-                    COALESCE(SUM(oi.amount), 0) as cancelled_amount
-                FROM orders_order o
-                LEFT JOIN (
-                    SELECT order_id, SUM(amount) as amount
-                    FROM orders_orderitem
-                    GROUP BY order_id
-                ) oi ON oi.order_id = o.id
-                WHERE o.status IN ('{statuses_str}') AND o.is_cancelled = 0
-            """)
-            cancelled = cursor.fetchone()
+            # К выполнению / В резерве
+            'to_do_count': to_do_stats.get('count', 0) or 0,
+            'to_do_qty': float(to_do_stats.get('qty', 0) or 0),
+            'to_do_paid': float(to_do_stats.get('paid', 0) or 0),
+            'to_do_shipped': float(to_do_stats.get('shipped', 0) or 0),
+            'to_do_amount': float(to_do_stats.get('amount', 0) or 0),
+            'to_do_remaining_qty': float((to_do_stats.get('qty', 0) or 0) - (to_do_stats.get('shipped', 0) or 0)),
+            'to_do_debt': float(to_do_stats.get('debt', 0) or 0),
             
-            # 3. YTD (с начала года)
-            cursor.execute(f"""
-                SELECT 
-                    COUNT(DISTINCT o.id) as orders,
-                    COALESCE(SUM(oi.amount), 0) as amount,
-                    COALESCE(SUM(ocf.paid), 0) as paid,
-                    COALESCE(SUM(oi.amount), 0) - COALESCE(SUM(ocf.paid), 0) as debt
-                FROM orders_order o
-                LEFT JOIN (
-                    SELECT order_id, SUM(amount) as amount
-                    FROM orders_orderitem
-                    GROUP BY order_id
-                ) oi ON oi.order_id = o.id
-                LEFT JOIN (
-                    SELECT ocf.order_guid, SUM(ocf.amount) as paid
-                    FROM orders_orderscf ocf
-                    INNER JOIN orders_order o2 ON ocf.order_guid = o2.id
-                    WHERE o2.status IN ('{statuses_str}') 
-                        AND o2.is_cancelled = 0
-                        AND o2.date_from >= '{year_start}'
-                    GROUP BY ocf.order_guid
-                ) ocf ON ocf.order_guid = o.id
-                WHERE o.status IN ('{statuses_str}') 
-                    AND o.is_cancelled = 0
-                    AND o.date_from >= '{year_start}'
-            """)
-            ytd = cursor.fetchone()
+            # На согласовании
+            'pending_count': pending_stats.get('count', 0) or 0,
+            'pending_qty': float(pending_stats.get('qty', 0) or 0),
+            'pending_paid': float(pending_stats.get('paid', 0) or 0),
+            'pending_shipped': float(pending_stats.get('shipped', 0) or 0),
+            'pending_amount': float(pending_stats.get('amount', 0) or 0),
+            'pending_remaining_qty': float((pending_stats.get('qty', 0) or 0) - (pending_stats.get('shipped', 0) or 0)),
+            'pending_debt': float(pending_stats.get('debt', 0) or 0),
+        }
+    
+    
+    def get_delivery_metrics(self):
+        """Метрики по доставке"""
+        return MV_Orders.objects.aggregate(
+            total_delivery_amount=Sum('amount_delivery'),
+            total_shipped_delivery=Sum('shiped_delivery_amount'),
+            delivery_orders_count=Count('order_id', filter=Q(amount_delivery__gt=0)),
+            avg_delivery=Avg('amount_delivery', filter=Q(amount_delivery__gt=0))
+        )
+    
+    def get_changes_analysis(self):
+        """Анализ изменений в заказах"""
+        return MV_Orders.objects.values('change_status').annotate(
+            count=Count('order_id'),
+            total_amount=Sum('amount_active'),
+            total_cancelled_amount=Sum('amount_cancelled')
+        ).order_by('-count')
+    
+    def get_payment_analysis(self):
+        """Анализ оплат"""
+        # Оплаты из OrdersCF
+        payments = OrdersCF.objects.filter(
+            oper_type__in=['Оплата', 'Возврат']
+        ).aggregate(
+            total_payments=Sum('amount', filter=Q(oper_type='Оплата')),
+            total_returns=Sum('amount', filter=Q(oper_type='Возврат'))
+        )
+        
+        # Структура оплат по типам
+        payment_structure = OrdersCF.objects.values('oper_type').annotate(
+            total=Sum('amount'),
+            count=Count('id')
+        ).order_by('-total')
+        
+        return {
+            'totals': payments,
+            'structure': list(payment_structure)
+        }
+    
+    def get_monthly_trends(self):
+        """Тренды по месяцам"""
+        monthly = MV_Orders.objects.annotate(
+            month=TruncMonth('date_from')
+        ).values('month').annotate(
+            orders_count=Count('order_id'),
+            total_amount=Sum('amount_active'),
+            total_paid=Sum('cash_pmts'),
+            avg_check=Avg('amount_active')
+        ).order_by('month')
+        
+        return list(monthly)
+    
+    def get_top_debtors(self, limit=10):
+        """Топ должников (активные заказы с долгом) - ВСЕ активные заказы"""
+        return MV_Orders.objects.filter(
+            amount_active__gt=F('cash_pmts')
+        ).annotate(
+            debt=F('amount_active') - F('cash_pmts')
+        ).values(
+            'client', 'order_name', 'number', 'amount_active',
+            'cash_pmts', 'debt', 'status', 'manager'
+        ).filter(debt__gt=0).order_by('-debt')[:limit]
+        
+    
+    
+    def get_completed_orders_stats(self):
+        """Статистика по УСПЕШНО ЗАКРЫТЫМ заказам (status='Закрыт', не отменён)"""
+        from django.db.models import Q
+        
+        # Успешно закрытые заказы
+        completed = MV_Orders.objects.filter(
+            status='Закрыт'
+        ).exclude(
+            Q(change_status='Отменен') | Q(status='Отменен')
+        )
+        
+        # MTD (с начала месяца)
+        mtd_completed = completed.filter(
+            date_from__gte=self.first_day_month,
+            date_from__lte=self.today
+        ).aggregate(
+            count=Count('order_id'),
+            amount=Sum('amount_active')
+        )
+        
+        # YTD (с начала года)
+        ytd_completed = completed.filter(
+            date_from__gte=self.first_day_year,
+            date_from__lte=self.today
+        ).aggregate(
+            count=Count('order_id'),
+            amount=Sum('amount_active')
+        )
+        
+        return {
+            'total_count': completed.count(),
+            'total_amount': float(completed.aggregate(total=Sum('amount_active'))['total'] or 0),
+            'mtd_count': mtd_completed['count'] or 0,
+            'mtd_amount': float(mtd_completed['amount'] or 0),
+            'ytd_count': ytd_completed['count'] or 0,
+            'ytd_amount': float(ytd_completed['amount'] or 0),
+        }
+
+
+    def get_cancelled_orders_stats(self):
+        """Статистика по ОТМЕНЁННЫМ заказам"""
+        from django.db.models import Q
+        
+        # Отменённые заказы
+        cancelled = MV_Orders.objects.filter(
+            Q(change_status='Отменен') 
+        )
+        
+        # YTD (с начала года)
+        ytd_cancelled = cancelled.filter(
+            date_from__gte=self.first_day_year,
+            date_from__lte=self.today
+        ).aggregate(
+            count=Count('order_id'),
+            amount=Sum('amount_cancelled')
+        )
+        
+        return {
+            'total_count': cancelled.count(),
+            'total_amount': float(cancelled.aggregate(total=Sum('amount_cancelled'))['total'] or 0),
+            'ytd_count': ytd_cancelled['count'] or 0,
+            'ytd_amount': float(ytd_cancelled['amount'] or 0),
+        }
+    
+    def get_store_summary(self, limit=10):
+        """Сводка по магазинам (топ по сумме активных заказов)"""
+        return MV_Orders.objects.values('store').annotate(
+            orders_count=Count('order_id'),
+            total_amount=Sum('amount_active'),
+            paid_amount=Sum('cash_pmts'),
+            debt=Sum(F('amount_active') - F('cash_pmts')),
+            avg_check=Avg('amount_active')
+        ).filter(store__isnull=False).exclude(store='').order_by('-total_amount')[:limit]
+    
+
+    def get_stuck_orders(self, days_threshold=30):
+        """
+        Заказы, которые зависли (долго в работе, не отгружены, не оплачены)
+        days_threshold - сколько дней заказ считается "зависшим"
+        """
+        threshold_date = self.today - timedelta(days=days_threshold)
+        
+        # Получаем заказы, которые подходят под критерии
+        stuck_orders_qs = MV_Orders.objects.filter(
+            Q(status='К выполнению') | Q(status='К выполнению / В резерве') | Q(status='На согласовании'),
+            date_from__lte=threshold_date,
+            shiped_qty__lt=F('order_qty')
+        )
+        
+        result = []
+        for order in stuck_orders_qs[:20]:
+            if not order.date_from:
+                continue
             
-            # 4. MTD (с начала месяца)
-            cursor.execute(f"""
-                SELECT 
-                    COUNT(DISTINCT o.id) as orders,
-                    COALESCE(SUM(oi.amount), 0) as amount,
-                    COALESCE(SUM(ocf.paid), 0) as paid,
-                    COALESCE(SUM(oi.amount), 0) - COALESCE(SUM(ocf.paid), 0) as debt
-                FROM orders_order o
-                LEFT JOIN (
-                    SELECT order_id, SUM(amount) as amount
-                    FROM orders_orderitem
-                    GROUP BY order_id
-                ) oi ON oi.order_id = o.id
-                LEFT JOIN (
-                    SELECT ocf.order_guid, SUM(ocf.amount) as paid
-                    FROM orders_orderscf ocf
-                    INNER JOIN orders_order o2 ON ocf.order_guid = o2.id
-                    WHERE o2.status IN ('{statuses_str}') 
-                        AND o2.is_cancelled = 0
-                        AND o2.date_from >= '{month_start}'
-                    GROUP BY ocf.order_guid
-                ) ocf ON ocf.order_guid = o.id
-                WHERE o.status IN ('{statuses_str}') 
-                    AND o.is_cancelled = 0
-                    AND o.date_from >= '{month_start}'
-            """)
-            mtd = cursor.fetchone()
+            # Безопасное преобразование даты
+            order_date = order.date_from
+            if hasattr(order_date, 'date'):  # Если это datetime
+                order_date = order_date.date()
             
-            # 5. Дебиторы (все с долгом > 0) - ЕДИНЫЙ ЗАПРОС
-            debtors = cls._get_debtors_query(statuses_str, include_status=False)
+            days_stuck = (self.today - order_date).days
             
-            # 6. Топ менеджеров
-            cursor.execute(f"""
-                SELECT 
-                    COALESCE(o.manager, 'Не назначен') as manager,
-                    COUNT(DISTINCT o.id) as orders_count,
-                    COALESCE(SUM(oi.amount), 0) as total_amount,
-                    COALESCE(AVG(oi.amount), 0) as avg_check
-                FROM orders_order o
-                LEFT JOIN (
-                    SELECT order_id, SUM(amount) as amount
-                    FROM orders_orderitem
-                    GROUP BY order_id
-                ) oi ON oi.order_id = o.id
-                WHERE o.status IN ('{statuses_str}') AND o.is_cancelled = 0
-                GROUP BY o.manager
-                ORDER BY total_amount DESC
-                LIMIT 100
-            """)
-            managers_top = []
-            for row in cursor.fetchall():
-                managers_top.append({
-                    'manager': row[0],
-                    'orders_count': row[1],
-                    'total_amount': float(row[2]),
-                    'avg_check': float(row[3])
-                })
+            order_qty = float(order.order_qty or 0)
+            shiped_qty = float(order.shiped_qty or 0)
+            amount_active = float(order.amount_active or 0)
+            cash_pmts = float(order.cash_pmts or 0)
             
-            # 7. Топ клиентов
-            cursor.execute(f"""
-                SELECT 
-                    COALESCE(UPPER(o.client), 'НЕ УКАЗАН') as client,
-                    COUNT(DISTINCT o.id) as orders_count,
-                    COALESCE(SUM(oi.amount), 0) as total_amount,
-                    COALESCE(AVG(oi.amount), 0) as avg_check
-                FROM orders_order o
-                LEFT JOIN (
-                    SELECT order_id, SUM(amount) as amount
-                    FROM orders_orderitem
-                    GROUP BY order_id
-                ) oi ON oi.order_id = o.id
-                WHERE o.status IN ('{statuses_str}') AND o.is_cancelled = 0
-                GROUP BY o.client
-                ORDER BY total_amount DESC
-                LIMIT 15
-            """)
-            clients_top = []
-            for row in cursor.fetchall():
-                clients_top.append({
-                    'client': row[0],
-                    'orders_count': row[1],
-                    'total_amount': float(row[2]),
-                    'avg_check': float(row[3])
-                })
+            remaining_amount = amount_active - cash_pmts
             
-            return {
-                'kpi': {
-                    'active_orders': int(kpi[0] or 0),
-                    'active_amount': float(kpi[1] or 0),
-                    'active_paid': float(kpi[2] or 0),
-                    'active_avg_check': float(kpi[3] or 0),
-                    'active_debt': float(kpi[4] or 0),
-                    'cancelled_orders': int(cancelled[0] or 0),
-                    'cancelled_amount': float(cancelled[1] or 0)
-                },
-                'ytd': {
-                    'orders': int(ytd[0] or 0),
-                    'amount': float(ytd[1] or 0),
-                    'paid': float(ytd[2] or 0),
-                    'debt': float(ytd[3] or 0)
-                },
-                'mtd': {
-                    'orders': int(mtd[0] or 0),
-                    'amount': float(mtd[1] or 0),
-                    'paid': float(mtd[2] or 0),
-                    'debt': float(mtd[3] or 0)
-                },
-                'debtors': debtors,
-                'managers_top': managers_top,
-                'clients_top': clients_top
+            if remaining_amount <= 0:
+                continue
+            
+            result.append({
+                'order_name': order.order_name or '',
+                'number': order.number or '',
+                'client': order.client or '',
+                'manager': order.manager or '',
+                'store': order.store or '',
+                'date_from': order.date_from,
+                'days_stuck': days_stuck,
+                'order_qty': order_qty,
+                'shiped_qty': shiped_qty,
+                'remaining_qty': order_qty - shiped_qty,
+                'amount_active': amount_active,
+                'cash_pmts': cash_pmts,
+                'remaining_amount': remaining_amount,
+                'status': order.status or '',
+            })
+        
+        result.sort(key=lambda x: (-x['days_stuck'], -x['remaining_amount']))
+        
+        return result
+    
+    
+    def get_top_clients(self, limit=10):
+        """Топ клиентов по сумме активных заказов"""
+        return MV_Orders.objects.values('client').annotate(
+            orders_count=Count('order_id'),
+            total_amount=Sum('amount_active'),
+            paid_amount=Sum('cash_pmts'),
+            debt=Sum(F('amount_active') - F('cash_pmts')),
+            avg_check=Avg('amount_active')
+        ).filter(client__isnull=False).exclude(client='').order_by('-total_amount')[:limit]
+    
+    def get_financial_metrics(self):
+        """Финансовые метрики (обновлённая версия с исключением отменённых из среднего чека)"""
+        metrics = MV_Orders.objects.aggregate(
+            total_order_amount=Sum('order_amount'),
+            total_delivery=Sum('amount_delivery'),
+            total_cancelled=Sum('amount_cancelled'),
+            total_active=Sum('amount_active'),
+            total_cash_received=Sum('cash_recieved'),
+            total_cash_returned=Sum('cash_returned'),
+            total_cash_pmts=Sum('cash_pmts'),
+            total_shipped=Sum('shiped_amount'),
+            total_shipped_delivery=Sum('shiped_delivery_amount'),
+            total_returned_amount=Sum('returned_amount'),
+            total_debt=Sum(F('amount_active') - F('cash_pmts'))
+        )
+        completed_stats = self.get_completed_orders_stats()
+        cancelled_stats = self.get_cancelled_orders_stats()
+        
+        # MTD (Month to Date) — только НЕ отменённые заказы
+        mtd = MV_Orders.objects.filter(
+            date_from__gte=self.first_day_month,
+            date_from__lte=self.today
+        ).exclude(change_status='Отменен').exclude(status='Отменен').aggregate(
+            amount=Sum('amount_active'),
+            paid=Sum('cash_pmts'),
+            orders=Count('order_id')
+        )
+        
+        # YTD (Year to Date) — только НЕ отменённые
+        ytd = MV_Orders.objects.filter(
+            date_from__gte=self.first_day_year,
+            date_from__lte=self.today
+        ).exclude(change_status='Отменен').exclude(status='Отменен').aggregate(
+            amount=Sum('amount_active'),
+            paid=Sum('cash_pmts'),
+            orders=Count('order_id')
+        )
+        
+        # Средний чек (только по не отменённым)
+        avg_check_data = MV_Orders.objects.exclude(
+            change_status='Отменен'
+        ).exclude(status='Отменен').aggregate(
+            avg_check=Avg('amount_active')
+        )
+        
+        # Дебиторская задолженность по ВСЕМ заказам
+        debt_orders = MV_Orders.objects.filter(
+            amount_active__gt=F('cash_pmts')
+        ).aggregate(
+            debt_count=Count('order_id'),
+            debt_amount=Sum(F('amount_active') - F('cash_pmts'))
+        )
+        
+        active_stats = self.get_active_orders_stats()
+  
+        
+        return {
+            'total': metrics,
+            'mtd': mtd,
+            'ytd': ytd,
+            'debt': debt_orders,
+            'active_stats': active_stats,
+            'completed_stats': completed_stats,
+            'cancelled_stats': cancelled_stats,
+            'overall_avg_check': avg_check_data['avg_check'] or 0,
+        }
+        
+    
+    def get_yesterday_cancelled_details(self):
+        """Детализация отмен за вчера с номерами заказов и менеджерами"""
+        from django.db.models import Q
+        from datetime import datetime, timedelta
+        
+        yesterday = self.today - timedelta(days=1)
+        yesterday_start = datetime.combine(yesterday, datetime.min.time())
+        yesterday_end = datetime.combine(yesterday, datetime.max.time())
+        
+        cancelled_yesterday = MV_Orders.objects.filter(
+            Q(change_status='Отменен') | Q(status='Отменен'),
+            date_from__gte=yesterday_start,
+            date_from__lte=yesterday_end
+        ).values('order_name', 'number', 'manager', 'amount_active', 'client')
+        
+        return list(cancelled_yesterday)
+
+
+    def get_cancelled_stats_ytd(self):
+        """
+        Статистика по отменённым заказам с начала года
+        Отмена: change_status = 'Отменен' 
+        """
+        from django.db.models import Q
+        
+        # Отменённые заказы в текущем году
+        cancelled_ytd = MV_Orders.objects.filter(
+            Q(change_status='Отменен') | Q(status='Отменен'),
+            date_from__gte=self.first_day_year,
+            date_from__lte=self.today
+        )
+        
+        # Общая статистика
+        total_stats = cancelled_ytd.aggregate(
+            count=Count('order_id'),
+            total_amount=Sum('amount_cancelled'),
+            total_qty=Sum('order_qty')
+        )
+        
+        # Топ-5 самых крупных отмен (по сумме)
+        top_cancelled = cancelled_ytd.values(
+            'order_name', 'number', 'client', 'manager', 'store', 'date_from'
+        ).annotate(
+            cancelled_amount=Sum('amount_cancelled'),
+            cancelled_qty=Sum('order_qty')
+        ).order_by('-cancelled_amount')[:5]
+        
+        # Отмены за вчера
+        yesterday = self.today - timedelta(days=1)
+        yesterday_start = datetime.combine(yesterday, datetime.min.time())
+        yesterday_end = datetime.combine(yesterday, datetime.max.time())
+        
+        cancelled_yesterday = cancelled_ytd.filter(
+            date_from__gte=yesterday_start,
+            date_from__lte=yesterday_end
+        )
+        
+        # Статистика по вчерашним отменам
+        yesterday_stats = cancelled_yesterday.aggregate(
+            count=Count('order_id'),
+            amount=Sum('amount_cancelled')
+        )
+        
+        # Детализация по вчерашним отменам (заказы и менеджеры)
+        yesterday_details = cancelled_yesterday.values(
+            'order_name', 'number', 'manager', 'amount_cancelled', 'client', 'store'
+        ).order_by('-amount_cancelled')[:10]  # топ-10 по сумме
+        
+        return {
+            'total_count': total_stats['count'] or 0,
+            'total_amount': float(total_stats['total_amount'] or 0),
+            'total_qty': total_stats['total_qty'] or 0,
+            'top_cancelled': list(top_cancelled),
+            'yesterday_count': yesterday_stats['count'] or 0,
+            'yesterday_amount': float(yesterday_stats['amount'] or 0),
+            'yesterday_details': list(yesterday_details),  # <-- ДОБАВЛЕНО
+        }
+
+    def get_large_debt_orders(self, limit=5):
+        """
+        Крупные долги (активные заказы с суммой к оплате > 1 млн ₽)
+        """
+        from django.db.models import F
+        
+        large_debts = MV_Orders.objects.filter(
+            Q(status='К выполнению') | Q(status='К выполнению / В резерве') | Q(status='На согласовании'),
+            amount_active__gt=F('cash_pmts')
+        ).annotate(
+            debt=F('amount_active') - F('cash_pmts')
+        ).filter(
+            debt__gt=1000000  # больше 1 млн ₽
+        ).values(
+            'order_name', 'number', 'client', 'manager', 'store', 'date_from',
+            'amount_active', 'cash_pmts', 'debt', 'status'
+        ).order_by('-debt')[:limit]
+        
+        return list(large_debts)
+    
+    
+    
+
+
+    def get_orders_for_period(self, days_ago=1):
+        """
+        Получить заказы за указанный день (days_ago=1 - вчера, 2 - позавчера)
+        """
+        target_date = self.today - timedelta(days=days_ago)
+        target_start = datetime.combine(target_date, datetime.min.time())
+        target_end = datetime.combine(target_date, datetime.max.time())
+        
+        # Новые заказы (не отменённые)
+        new_orders = MV_Orders.objects.filter(
+            date_from__gte=target_start,
+            date_from__lte=target_end
+        ).exclude(change_status='Отменен').exclude(status='Отменен')
+        
+        new_stats = new_orders.aggregate(
+            count=Count('order_id'),
+            amount=Sum('amount_active')
+        )
+        
+        # Отмены за период
+        cancelled = MV_Orders.objects.filter(
+            Q(change_status='Отменен') | Q(status='Отменен'),
+            date_from__gte=target_start,
+            date_from__lte=target_end
+        )
+        
+        cancelled_stats = cancelled.aggregate(
+            count=Count('order_id'),
+            amount=Sum('amount_cancelled')
+        )
+        
+        cancelled_details = cancelled.values(
+            'order_name', 'number', 'manager', 'amount_cancelled'
+        ).order_by('-amount_cancelled')[:5]
+        
+        return {
+            'new_orders': {
+                'count': new_stats['count'] or 0,
+                'amount': float(new_stats['amount'] or 0),
+            },
+            'cancelled': {
+                'count': cancelled_stats['count'] or 0,
+                'amount': float(cancelled_stats['amount'] or 0),
+                'details': list(cancelled_details),
             }
-    
-    @classmethod
-    def _get_debtors_query(cls, statuses_str, include_status=False):
-        """Внутренний метод для получения дебиторов (единая логика)"""
-        with connection.cursor() as cursor:
-            status_field = ", o.status" if include_status else ""
-            
-            cursor.execute(f"""
-                SELECT 
-                    COALESCE(o.client, 'НЕ УКАЗАН') as client,
-                    o.id as order_id,
-                    o.fullname as order_number,
-                    o.date_from as order_date
-                    {status_field},
-                    COALESCE(oi.amount, 0) as order_amount,
-                    COALESCE(ocf.paid, 0) as paid_amount,
-                    COALESCE(oi.amount, 0) - COALESCE(ocf.paid, 0) as debt
-                FROM orders_order o
-                LEFT JOIN (
-                    SELECT order_id, SUM(amount) as amount
-                    FROM orders_orderitem
-                    GROUP BY order_id
-                ) oi ON oi.order_id = o.id
-                LEFT JOIN (
-                    SELECT ocf.order_guid, SUM(ocf.amount) as paid
-                    FROM orders_orderscf ocf
-                    INNER JOIN orders_order o2 ON ocf.order_guid = o2.id
-                    WHERE o2.status IN ('{statuses_str}') AND o2.is_cancelled = 0
-                    GROUP BY ocf.order_guid
-                ) ocf ON ocf.order_guid = o.id
-                WHERE o.status IN ('{statuses_str}') 
-                    AND o.is_cancelled = 0
-                HAVING debt > 0
-                ORDER BY debt DESC
-            """)
-            
-            debtors = []
-            for row in cursor.fetchall():
-                if include_status:
-                    # С полем status
-                    debtors.append({
-                        'client': row[0],
-                        'order_id': row[1],
-                        'order_number': row[2],
-                        'order_date': row[3],
-                        'status': row[4],
-                        'order_amount': float(row[5]),
-                        'paid_amount': float(row[6]),
-                        'debt': float(row[7])
-                    })
-                else:
-                    # Без поля status
-                    debtors.append({
-                        'client': row[0],
-                        'order_id': row[1],
-                        'order_number': row[2],
-                        'order_date': row[3],
-                        'order_amount': float(row[4]),
-                        'paid_amount': float(row[5]),
-                        'debt': float(row[6])
-                    })
-            return debtors
-    
-    @classmethod
-    def get_active_debtors(cls, request=None, filters=None):
-        """Активная дебиторка - активные заказы с долгом > 0"""
-        statuses_str = cls._format_statuses()
-        return cls._get_debtors_query(statuses_str, include_status=True)
-    
-    @classmethod
-    def get_closed_debtors(cls, request=None, filters=None):
-        """Закрытая дебиторка - закрытые/выполненные заказы с долгом > 0"""
-        closed_str = cls._format_statuses(cls.CLOSED_STATUSES)
+        }
+
+    def get_last_days_stats(self, days=1):
+        """
+        Универсальный метод для получения статистики за последние N дней
+        days=1 - вчера, days=2 - позавчера
+        """
+        result = {}
         
-        with connection.cursor() as cursor:
-            cursor.execute(f"""
-                SELECT 
-                    COALESCE(o.client, 'НЕ УКАЗАН') as client,
-                    o.id as order_id,
-                    o.fullname as order_number,
-                    o.date_from as order_date,
-                    o.status,
-                    COALESCE(oi.amount, 0) as order_amount,
-                    COALESCE(ocf.paid, 0) as paid_amount,
-                    COALESCE(oi.amount, 0) - COALESCE(ocf.paid, 0) as debt
-                FROM orders_order o
-                LEFT JOIN (
-                    SELECT order_id, SUM(amount) as amount
-                    FROM orders_orderitem
-                    GROUP BY order_id
-                ) oi ON oi.order_id = o.id
-                LEFT JOIN (
-                    SELECT order_guid, SUM(amount) as paid
-                    FROM orders_orderscf
-                    GROUP BY order_guid
-                ) ocf ON ocf.order_guid = o.id
-                WHERE o.status IN ('{closed_str}') 
-                    AND o.is_cancelled = 0
-                HAVING debt > 0
-                ORDER BY debt DESC
-            """)
-            
-            debtors = []
-            for row in cursor.fetchall():
-                debtors.append({
-                    'client': row[0],
-                    'order_id': row[1],
-                    'order_number': row[2],
-                    'order_date': row[3],
-                    'status': row[4],
-                    'order_amount': float(row[5]),
-                    'paid_amount': float(row[6]),
-                    'debt': float(row[7])
-                })
-            return debtors
-    
-    @classmethod
-    def get_status_summary(cls, request=None, filters=None):
-        """Получить сводку по статусам заказов"""
+        for i in range(1, days + 1):
+            period_data = self.get_orders_for_period(days_ago=i)
+            result[f'day_{i}'] = period_data
         
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT 
-                    o.status as "Статус заказа",
-                    COUNT(DISTINCT o.id) as "Всего заказов",
-                    SUM(CASE WHEN o.is_cancelled = 0 THEN 1 ELSE 0 END) as "в т.ч отменено",
-                    SUM(CASE WHEN o.is_cancelled = 0 THEN 1 ELSE 0 END) as "в т.ч выполнено / выполняется",
-                    COALESCE(SUM(oi.qty), 0) as "Ед заказано",
-                    COALESCE(SUM(CASE WHEN o.is_cancelled = 1 THEN oi.qty ELSE 0 END), 0) as "в т.ч отменено_ед",
-                    COALESCE(SUM(CASE WHEN o.is_cancelled = 0 THEN oi.qty ELSE 0 END), 0) as "в т.ч выполнено / выполняется_ед",
-                    COALESCE(SUM(oi.amount), 0) as "Сумма заказов",
-                    COALESCE(SUM(CASE WHEN o.is_cancelled = 1 THEN oi.amount ELSE 0 END), 0) as "в т.ч отменено_сумма",
-                    COALESCE(SUM(CASE WHEN o.is_cancelled = 0 THEN oi.amount ELSE 0 END), 0) as "в т.ч выполнено / выполняется_сумма",
-                    COALESCE(SUM(ocf.paid), 0) as "Оплачено на дату",
-                    COALESCE(SUM(s.shiped), 0) as "Отгружено ед на дату",
-                    COALESCE(SUM(s.returned), 0) as "Возвраты ед на дату",
-                    COALESCE(SUM(s.shiped_amount), 0) as "Реализация на дату (руб)",
-                    COALESCE(SUM(s.returned_amount), 0) as "Возвращено на дату (руб)",
-                    COALESCE(SUM(s.shiped_amount - s.returned_amount), 0) as "Всего реализация"
-                FROM orders_order o
-                LEFT JOIN (
-                    SELECT order_id, SUM(qty) as qty, SUM(amount) as amount
-                    FROM orders_orderitem
-                    GROUP BY order_id
-                ) oi ON oi.order_id = o.id
-                LEFT JOIN (
-                    SELECT ocf.order_guid, SUM(ocf.amount) as paid
-                    FROM orders_orderscf ocf
-                    GROUP BY ocf.order_guid
-                ) ocf ON ocf.order_guid = o.id
-                LEFT JOIN (
-                    SELECT order_guid, 
-                           SUM(quant_dt) as shiped, 
-                           SUM(quant_cr) as returned,
-                           SUM(dt) as shiped_amount, 
-                           SUM(cr) as returned_amount
-                    FROM sales_salesdata
-                    GROUP BY order_guid
-                ) s ON s.order_guid = o.id
-                GROUP BY o.status
-                ORDER BY "Всего заказов" DESC
-            """)
-            
-            columns = [col[0] for col in cursor.description]
-            status_summary = []
-            for row in cursor.fetchall():
-                status_summary.append(dict(zip(columns, row)))
-            
-            return status_summary
-    
-    @classmethod
-    def verify_debtors_match(cls):
-        """Проверяет, совпадают ли суммы в разных запросах (для отладки)"""
-        data = cls.get_dashboard_data()
-        debtors_from_dashboard = data.get('debtors', [])
-        debtors_from_method = cls.get_active_debtors()
-        
-        sum1 = sum(d.get('debt', 0) for d in debtors_from_dashboard)
-        sum2 = sum(d.get('debt', 0) for d in debtors_from_method)
-        
-        print("=" * 50)
-        print("ПРОВЕРКА СОВПАДЕНИЯ ДЕБИТОРОВ")
-        print("=" * 50)
-        print(f"Сумма долга из get_dashboard_data: {sum1:,.0f} ₽".replace(",", " "))
-        print(f"Сумма долга из get_active_debtors:   {sum2:,.0f} ₽".replace(",", " "))
-        print(f"Разница: {abs(sum1 - sum2):,.0f} ₽".replace(",", " "))
-        print(f"Количество записей: {len(debtors_from_dashboard)} vs {len(debtors_from_method)}")
-        
-        if sum1 == sum2:
-            print("✅ ДАННЫЕ СОВПАДАЮТ!")
-        else:
-            print("❌ ДАННЫЕ НЕ СОВПАДАЮТ! Проверьте фильтры.")
-            
-            # Найдем различия
-            debt_dict1 = {d['order_id']: d['debt'] for d in debtors_from_dashboard}
-            debt_dict2 = {d['order_id']: d['debt'] for d in debtors_from_method}
-            
-            all_ids = set(debt_dict1.keys()) | set(debt_dict2.keys())
-            diff_count = 0
-            for order_id in all_ids:
-                debt1 = debt_dict1.get(order_id, 0)
-                debt2 = debt_dict2.get(order_id, 0)
-                if abs(debt1 - debt2) > 1:  # ignore float rounding
-                    diff_count += 1
-                    if diff_count <= 5:  # покажем первые 5 отличий
-                        print(f"  Заказ {order_id}: {debt1:,.0f} ₽ vs {debt2:,.0f} ₽".replace(",", " "))
-            
-            if diff_count > 5:
-                print(f"  ... и еще {diff_count - 5} отличий")
-        
-        return sum1 == sum2
+        return result

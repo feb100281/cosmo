@@ -10,12 +10,22 @@ COLORS = {
     "back_fill": "E7F1ED",
     "border_gray": "D9D9D9",
     "text_gray": "666666",
+    "text_dark": "666666",
     "white": "FFFFFF",
     "black": "1F1F1F",
     "blue": "2F75B5",
     "back_text_green": "1F5E4E",
     "heat_light": "EEF6F2",
     "divider_fill": "E7F1ED",
+    "text_gray": "4F4F4F" ,
+    # Новые цвета для акцентов в зелёной гамме
+    "accent_green": "1A4D3F",      # для важных чисел
+    "warning_green": "6B8E23",     # для умеренных значений
+    "warning_red": "7B1F3A",
+    "muted_green": "B5C9B5",       # для фона карточек
+    "border_light": "C8D9C8",      # для разделителей
+     "orange": "E67E22",            # оранжевый для категории B
+    "light_blue": "3498DB",        # светло-синий для дата-баров
 }
 
 FILLS = {
@@ -28,6 +38,7 @@ FILLS = {
     "heat_light": PatternFill("solid", fgColor=COLORS["heat_light"]),
     "divider": PatternFill("solid", fgColor=COLORS["divider_fill"]),
     "none": PatternFill(fill_type=None),
+    "kpi_card": PatternFill("solid", fgColor=COLORS["muted_green"]),
 }
 
 FONTS = {
