@@ -165,7 +165,7 @@ class PaymentsAnalysisSheet(BaseSheet):
             {
                 'title': 'СУММА ОПЛАТ (MTD)',
                 'value': self._format_currency(mtd['total_amount']),
-                'subtitle': f"{self._format_dynamics(dynamics['amount_vs_last_month'])} к прошлому месяцу",
+                'subtitle': f"",
                 'color': COLORS["blue"],
                 'width': 2,
             },
