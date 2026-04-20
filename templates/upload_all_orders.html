@@ -1,0 +1,104 @@
+{% if messages %}
+  <div style="max-width: 980px; margin: 24px 0;">
+    {% for message in messages %}
+      <div style="
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        border: 1px solid #d6dbe3;
+        border-left: 4px solid #0d6efd;
+        border-radius: 12px;
+        background: #ffffff;
+        color: #1f2937;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+        font-size: 15px;
+        line-height: 1.5;
+      ">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div style="
+  max-width: 980px;
+  margin: 28px 0;
+  padding: 28px;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+">
+  <h2 style="
+    margin: 0 0 10px 0;
+    color: #111827;
+    font-size: 28px;
+    font-weight: 700;
+  ">
+    Загрузка файлов по заказам
+  </h2>
+
+  <p style="
+    margin: 0 0 24px 0;
+    color: #6b7280;
+    font-size: 15px;
+  ">
+    Выберите три файла и нажмите одну кнопку для общей загрузки.
+  </p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div style="margin-bottom: 22px;">
+      <label for="{{ form.orders_file.id_for_label }}" style="
+        display: block;
+        margin-bottom: 8px;
+        color: #111827;
+        font-size: 18px;
+        font-weight: 600;
+      ">
+        Файл заказов
+      </label>
+      {{ form.orders_file }}
+    </div>
+
+    <div style="margin-bottom: 22px;">
+      <label for="{{ form.cf_file.id_for_label }}" style="
+        display: block;
+        margin-bottom: 8px;
+        color: #111827;
+        font-size: 18px;
+        font-weight: 600;
+      ">
+        Файл оплат / CF
+      </label>
+      {{ form.cf_file }}
+    </div>
+
+    <div style="margin-bottom: 28px;">
+      <label for="{{ form.sales_file.id_for_label }}" style="
+        display: block;
+        margin-bottom: 8px;
+        color: #111827;
+        font-size: 18px;
+        font-weight: 600;
+      ">
+        Файл продаж
+      </label>
+      {{ form.sales_file }}
+    </div>
+
+    <button type="submit" style="
+      background: #0d6efd;
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(13, 110, 253, 0.22);
+    ">
+      Загрузить все файлы
+    </button>
+  </form>
+</div>

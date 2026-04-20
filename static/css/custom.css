@@ -354,20 +354,10 @@
 
 /* === ЦВЕТА ГРУПП ИКОНОК ПО СМЫСЛУ === */
 
-/* 1. Недвижимость: объекты, помещения, планы, документы, фото, стоимости */
-.fa-city,
-.fa-building,
-.fa-door-open,
-.fa-vector-square,
-.fa-stairs,
-.fa-project-diagram,
-.fa-th-large,
-.fa-layer-group,
-.fa-tags,
-.fa-circle-check,
-.fa-file-alt,
-.fa-image,
-.fa-search-dollar,
+/* 1. ЗАКАЗЫ */
+.fa-cart-shopping,
+.fa-file-lines,
+.fa-receipt,
 .fa-basket-shopping,
 .fa-balance-scale {
     color: var(--color-realestate) !important;

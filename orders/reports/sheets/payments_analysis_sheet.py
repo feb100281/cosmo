@@ -1,4 +1,6 @@
 # orders/reports/sheets/payments_analysis_sheet.py
+from datetime import datetime
+
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -13,6 +15,8 @@ from ..styles.theme import COLORS, BORDERS
 
 class PaymentsAnalysisSheet(BaseSheet):
     """Анализ оплат - полная аналитика по всем платежам"""
+
+    STORE_NOT_SPECIFIED = "МАГАЗИН НЕ УКАЗАН"
 
     def __init__(self, workbook, sheet_number, request=None):
         super().__init__(workbook, sheet_number)
@@ -47,9 +51,14 @@ class PaymentsAnalysisSheet(BaseSheet):
         return "→ 0%"
 
     def _format_store_name(self, name):
+        if name is None:
+            return self.STORE_NOT_SPECIFIED
+
+        name = str(name).strip()
         if not name:
-            return ""
-        return str(name).upper()
+            return self.STORE_NOT_SPECIFIED
+
+        return name.upper()
 
     def _format_register_name(self, name):
         """Форматирование названия регистра/документа"""
@@ -67,19 +76,42 @@ class PaymentsAnalysisSheet(BaseSheet):
             return date_value.strftime('%d.%m.%Y')
         return str(date_value)
 
-    def _format_month_name(self, month_str):
-        """Форматирует месяц из YYYY-MM в МММ YYYY"""
+    def _format_month_name(self, month_value):
+        """
+        Форматирует месяц в вид:
+        ЯНВ 2026, ФЕВ 2026 и т.д.
+
+        Поддерживает:
+        - строку YYYY-MM
+        - date/datetime
+        """
+        months_ru = {
+            1: 'ЯНВ',
+            2: 'ФЕВ',
+            3: 'МАР',
+            4: 'АПР',
+            5: 'МАЙ',
+            6: 'ИЮН',
+            7: 'ИЮЛ',
+            8: 'АВГ',
+            9: 'СЕН',
+            10: 'ОКТ',
+            11: 'НОЯ',
+            12: 'ДЕК',
+        }
+
+        if not month_value:
+            return ""
+
         try:
-            from datetime import datetime
-            date_obj = datetime.strptime(month_str, '%Y-%m')
-            months_ru = {
-                1: 'ЯНВ', 2: 'ФЕВ', 3: 'МАР', 4: 'АПР',
-                5: 'МАЙ', 6: 'ИЮН', 7: 'ИЮЛ', 8: 'АВГ',
-                9: 'СЕН', 10: 'ОКТ', 11: 'НОЯ', 12: 'ДЕК'
-            }
+            if isinstance(month_value, str):
+                date_obj = datetime.strptime(month_value, '%Y-%m')
+            else:
+                date_obj = month_value
+
             return f"{months_ru[date_obj.month]} {date_obj.year}"
         except Exception:
-            return month_str
+            return str(month_value)
 
     def _get_cell_font(self, is_header=False, is_bold=False, is_negative=False):
         """Возвращает стандартный шрифт для ячеек"""
@@ -209,7 +241,6 @@ class PaymentsAnalysisSheet(BaseSheet):
 
                 row += 1
 
-            # Итого
             cell_type = self.ws.cell(row=row, column=2, value=summary_by_type['net']['name'])
             cell_type.font = self._get_cell_font(is_bold=True)
 
@@ -273,16 +304,7 @@ class PaymentsAnalysisSheet(BaseSheet):
             start_data_row = row
 
             for t in trends:
-                month_name = t['month'].strftime('%b %Y').upper() if t['month'] else ""
-                month_map = {
-                    'JAN': 'ЯНВ', 'FEB': 'ФЕВ', 'MAR': 'МАР', 'APR': 'АПР',
-                    'MAY': 'МАЙ', 'JUN': 'ИЮН', 'JUL': 'ИЮЛ', 'AUG': 'АВГ',
-                    'SEP': 'СЕН', 'OCT': 'ОКТ', 'NOV': 'НОЯ', 'DEC': 'ДЕК'
-                }
-                for eng, rus in month_map.items():
-                    if eng in month_name:
-                        month_name = month_name.replace(eng, rus)
-                        break
+                month_name = self._format_month_name(t.get('month'))
 
                 cell_month = self.ws.cell(row=row, column=2, value=month_name)
                 cell_month.font = self._get_cell_font()
@@ -344,7 +366,6 @@ class PaymentsAnalysisSheet(BaseSheet):
             row += 1
             start_data_row = row
 
-            # Словарь для хранения итогов по месяцам
             monthly_totals = {month: 0 for month in monthly_by_store['months']}
             grand_total = 0
 
@@ -357,7 +378,7 @@ class PaymentsAnalysisSheet(BaseSheet):
                 for idx, month in enumerate(monthly_by_store['months']):
                     amount = months_data.get(month, 0)
                     total_by_store += amount
-                    monthly_totals[month] += amount  # Добавляем в общий итог по месяцу
+                    monthly_totals[month] += amount
 
                     is_negative = amount < 0
                     cell_amount = self.ws.cell(row=row, column=start_col + 1 + idx, value=amount)
@@ -375,15 +396,12 @@ class PaymentsAnalysisSheet(BaseSheet):
                     end_color=COLORS["light_green"],
                     fill_type="solid"
                 )
-                
+
                 grand_total += total_by_store
                 row += 1
 
-            # ==================== СТРОКА ИТОГО ====================
-            # Пустая строка для разделения
             row += 1
-            
-            # Ячейка "ИТОГО"
+
             cell_total_label = self.ws.cell(row=row, column=start_col, value="ИТОГО ПО ВСЕМ МАГАЗИНАМ")
             cell_total_label.font = Font(name="Roboto", size=9, bold=True, color=COLORS["white"])
             cell_total_label.fill = PatternFill(
@@ -392,8 +410,7 @@ class PaymentsAnalysisSheet(BaseSheet):
                 fill_type="solid"
             )
             cell_total_label.alignment = Alignment(horizontal="left", vertical="center")
-            
-            # Итоги по месяцам
+
             for idx, month in enumerate(monthly_by_store['months']):
                 month_total = monthly_totals[month]
                 is_negative = month_total < 0
@@ -406,8 +423,7 @@ class PaymentsAnalysisSheet(BaseSheet):
                     end_color=COLORS["light_green"],
                     fill_type="solid"
                 )
-            
-            # Общий итог
+
             cell_grand_total = self.ws.cell(row=row, column=start_col + num_months + 1, value=grand_total)
             cell_grand_total.font = Font(name="Roboto", size=9, bold=True, color=COLORS["white"])
             cell_grand_total.fill = PatternFill(
@@ -417,10 +433,9 @@ class PaymentsAnalysisSheet(BaseSheet):
             )
             cell_grand_total.number_format = '#,##0 ₽'
             cell_grand_total.alignment = Alignment(horizontal="right")
-            
+
             end_data_row = row
-            
-            # Рисуем границы для всех строк (включая итоговую)
+
             for col in range(start_col, start_col + len(headers)):
                 for r in range(start_data_row, end_data_row + 1):
                     self.ws.cell(row=r, column=col).border = BORDERS["thin"]
@@ -434,8 +449,7 @@ class PaymentsAnalysisSheet(BaseSheet):
             footnote_cell.font = Font(name="Roboto", size=8, color=COLORS["text_gray"], italic=True)
 
             row += 2
-            
-            # Ссылка 
+
             nav_link = NavigationLink(self.ws)
             row = nav_link.draw(
                 row=row,
@@ -470,7 +484,7 @@ class PaymentsAnalysisSheet(BaseSheet):
             start_data_row = row
 
             for s in stores:
-                cell_store = self.ws.cell(row=row, column=2, value=self._format_store_name(s['store']))
+                cell_store = self.ws.cell(row=row, column=2, value=self._format_store_name(s.get('store')))
                 cell_store.font = self._get_cell_font()
 
                 total_amount = s['total_amount'] or 0
@@ -530,7 +544,7 @@ class PaymentsAnalysisSheet(BaseSheet):
                 cell_date = self.ws.cell(row=row, column=2, value=self._format_date(p['date']))
                 cell_date.font = self._get_cell_font()
 
-                cell_store = self.ws.cell(row=row, column=3, value=self._format_store_name(p['store']))
+                cell_store = self.ws.cell(row=row, column=3, value=self._format_store_name(p.get('store')))
                 cell_store.font = self._get_cell_font()
 
                 cell_register = self.ws.cell(
@@ -555,10 +569,6 @@ class PaymentsAnalysisSheet(BaseSheet):
                     self.ws.cell(row=r, column=col).border = BORDERS["thin"]
 
             row += 2
-
-
-
-
 
         # ============================================================
         # НАСТРОЙКА КОЛОНОК

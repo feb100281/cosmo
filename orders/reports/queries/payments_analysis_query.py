@@ -1,4 +1,5 @@
 # orders/reports/queries/payments_analysis_query.py
+
 from datetime import datetime, timedelta
 
 from django.db.models import Avg, Case, CharField, Count, Q, Sum, Value, When
@@ -10,6 +11,8 @@ from ...models import OrdersCF
 
 class PaymentsAnalysisQueries:
     """Запросы для анализа оплат - все суммы берутся как есть в БД, со знаком"""
+
+    STORE_NOT_SPECIFIED = "МАГАЗИН НЕ УКАЗАН"
 
     def __init__(self, request=None):
         self.request = request
@@ -31,6 +34,17 @@ class PaymentsAnalysisQueries:
             )
 
         self.last_month_end = self.current_month_start - timedelta(days=1)
+
+    def _normalize_store_name(self, store_name):
+        """Нормализует название магазина для отображения"""
+        if store_name is None:
+            return self.STORE_NOT_SPECIFIED
+
+        store_name = str(store_name).strip()
+        if not store_name:
+            return self.STORE_NOT_SPECIFIED
+
+        return store_name
 
     def _get_base_queryset(self):
         """
@@ -138,10 +152,15 @@ class PaymentsAnalysisQueries:
             unique_registers=Count('register', distinct=True),
         ).order_by('-total_amount')
 
+        stores = list(stores)
+
+        for item in stores:
+            item['store'] = self._normalize_store_name(item.get('store'))
+
         if limit:
             stores = stores[:limit]
 
-        return list(stores)
+        return stores
 
     def get_payments_trend(self, months=6):
         """Месячный тренд"""
@@ -189,7 +208,12 @@ class PaymentsAnalysisQueries:
             'date', 'store', 'register', 'amount'
         ).order_by('-abs_amount')[:limit]
 
-        return list(large_payments)
+        large_payments = list(large_payments)
+
+        for item in large_payments:
+            item['store'] = self._normalize_store_name(item.get('store'))
+
+        return large_payments
 
     def get_payments_by_store_monthly(self, year=None):
         """Помесячная разбивка по магазинам"""
@@ -210,7 +234,7 @@ class PaymentsAnalysisQueries:
         months_order = []
 
         for item in monthly:
-            store = item['store'] or 'БЕЗ МАГАЗИНА'
+            store = self._normalize_store_name(item.get('store'))
             month = item['month'].strftime('%Y-%m') if item['month'] else None
             amount = item['total_amount'] or 0
 
@@ -294,8 +318,6 @@ class PaymentsAnalysisQueries:
         if previous == 0:
             return 100 if current > 0 else 0
         return round(((current - previous) / previous) * 100, 1)
-    
-
 
     def get_daily_payments_by_store(self, start_date=None, end_date=None):
         """
@@ -306,35 +328,31 @@ class PaymentsAnalysisQueries:
             start_date = self.current_year_start
         if end_date is None:
             end_date = self.today
-        
-        # Используем _get_classified_queryset() вместо _get_base_queryset()
-        # чтобы получить operation_group
+
         qs = self._filter_by_date_range(
-            self._get_classified_queryset(),  # ← ИСПРАВЛЕНО: используем классифицированный queryset
+            self._get_classified_queryset(),
             start_date,
             end_date
         )
-        
-        # Группируем по магазину, дате и типу операции
+
         daily_data = qs.values('store', 'date', 'operation_group').annotate(
             daily_amount=Sum('amount'),
             daily_count=Count('id')
         ).order_by('store', 'date')
-        
-        # Структурируем результат
+
         result = {}
         all_dates = set()
-        
+
         for item in daily_data:
-            store = item['store'] or 'БЕЗ МАГАЗИНА'
+            store = self._normalize_store_name(item.get('store'))
             date = item['date']
             amount = item['daily_amount'] or 0
             count = item['daily_count'] or 0
             operation_type = item['operation_group']
-            
+
             if store not in result:
                 result[store] = {}
-            
+
             if date not in result[store]:
                 result[store][date] = {
                     'total_amount': 0,
@@ -343,23 +361,21 @@ class PaymentsAnalysisQueries:
                     'outgoing': 0,
                     'store_revenue': 0
                 }
-            
-            # Суммируем по типам
+
             result[store][date]['total_amount'] += amount
             result[store][date]['total_count'] += count
-            
+
             if operation_type == 'incoming':
                 result[store][date]['incoming'] += amount
             elif operation_type == 'outgoing':
                 result[store][date]['outgoing'] += amount
             elif operation_type == 'store_revenue':
                 result[store][date]['store_revenue'] += amount
-            
+
             all_dates.add(date)
-        
-        # Сортируем даты
+
         all_dates = sorted(list(all_dates))
-        
+
         return {
             'data': result,
             'dates': all_dates,
@@ -375,27 +391,27 @@ class PaymentsAnalysisQueries:
             start_date = self.current_year_start
         if end_date is None:
             end_date = self.today
-        
+
+        normalized_store_name = self._normalize_store_name(store_name)
+
         qs = self._filter_by_date_range(
             self._get_base_queryset().filter(store=store_name),
             start_date,
             end_date
         )
-        
-        # Получаем все операции магазина
+
         operations = qs.values(
             'date', 'register', 'oper_type', 'amount', 'document_number'
         ).order_by('-date', '-amount')
-        
-        # Агрегируем по дням
+
         daily = qs.values('date').annotate(
             daily_total=Sum('amount'),
             daily_count=Count('id'),
             avg_amount=Avg('amount')
         ).order_by('-date')
-        
+
         return {
-            'store_name': store_name,
+            'store_name': normalized_store_name,
             'operations': list(operations),
             'daily_summary': list(daily),
             'total_amount': qs.aggregate(total=Sum('amount'))['total'] or 0,
@@ -403,10 +419,10 @@ class PaymentsAnalysisQueries:
             'start_date': start_date,
             'end_date': end_date,
         }
-        
+
     def get_last_data_date(self):
         """Возвращает последнюю дату, за которую есть данные по оплатам"""
         last_record = self._get_base_queryset().order_by('-date').first()
         if last_record and last_record.date:
             return last_record.date
-        return self.today  # fallback на сегодня, если данных нет
+        return self.today

@@ -15,7 +15,7 @@ urlpatterns = [
     path("admin/alerts-counts/", admin.site.admin_view(admin_alert_counts), name="admin_alert_counts"),
     path("admin/", admin.site.urls),
     path("apps/", include('django_plotly_dash.urls')), #ДЛЯ PLOTLY DASH
-    path("", include("orders.urls")),
+    path("orders/", include("orders.urls")),
     
     path("dashboard/", include("dashboard.urls")),  # ваш прокси-роут для /dashboard/dash/
     # ---- проксируем корневые урлы, которые генерирует Dash (static + служебные) ----
