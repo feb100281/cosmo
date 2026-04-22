@@ -15,6 +15,8 @@ from .queries.client_analysis_query import ClientAnalysisQueries
 from .queries.payments_analysis_query import PaymentsAnalysisQueries 
 from .queries.remaining_to_ship_query import RemainingToShipQueries
 from .queries.debt_analysis_query import DebtAnalysisQueries
+from .queries.negative_payments_query import NegativePaymentsQueries
+from .queries.unpaid_shipments_query import UnpaidShipmentsQueries
 
 
 from .sheets.toc_sheet import TOCSheet
@@ -26,7 +28,9 @@ from .sheets.payments_analysis_sheet import PaymentsAnalysisSheet
 from .sheets.daily_payments_sheet import DailyPaymentsSheet
 from .sheets.delivery_analysis_sheet import DeliveryAnalysisSheet
 from .sheets.remaining_to_ship_sheet import RemainingToShipSheet
-from .sheets.debt_analysis_sheet import DebtAnalysisSheet  
+from .sheets.debt_analysis_sheet import DebtAnalysisSheet
+from .sheets.negative_payments_sheet import NegativePaymentsSheet 
+from .sheets.unpaid_shipments_sheet import UnpaidShipmentsSheet 
 
 
 
@@ -241,6 +245,53 @@ def generate_orders_report(request):
     #     "description": f"Товары к отгрузке: {summary['total_qty'] or 0} шт на {summary['total_amount'] or 0:,.0f} ₽ в {summary['total_orders'] or 0} заказах"
     # })
     # sheet_counter += 1
+    
+    
+    
+    # ============================================================
+    # 9. ЗАКАЗЫ С ОТРИЦАТЕЛЬНЫМИ ОПЛАТАМИ (БЕЗ ПОЛОЖИТЕЛЬНЫХ)
+    # ============================================================
+    negative_payments_queries = NegativePaymentsQueries()
+    
+    # Получаем заказы с отрицательными оплатами без положительных, начиная с 01.04.2025
+    negative_orders = negative_payments_queries.get_orders_with_negative_payments_only(start_date='2025-04-01')
+    
+    # Получаем сводную статистику
+    negative_summary = negative_payments_queries.get_negative_payments_summary(negative_orders)
+    
+    # Строим лист
+    negative_payments_sheet = NegativePaymentsSheet(wb, str(sheet_counter))
+    negative_payments_sheet.build(negative_orders, negative_summary)
+    
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Проблемные возвраты",
+        "description": f"Заказы с возвратами без оплат: {negative_summary['total_orders']} заказов на {abs(negative_summary['total_negative_amount']):,.0f} ₽"
+    })
+    sheet_counter += 1
+    
+    
+    # ============================================================
+    # 10. ОТГРУЗКИ БЕЗ ОПЛАТЫ / НЕПОЛНАЯ ОПЛАТА
+    # ============================================================
+    unpaid_shipments_queries = UnpaidShipmentsQueries()
+    
+    # Получаем заказы с неоплаченными отгрузками
+    unpaid_orders = unpaid_shipments_queries.get_orders_with_unpaid_shipments()
+    
+    # Получаем сводную статистику
+    unpaid_summary = unpaid_shipments_queries.get_unpaid_shipments_summary(unpaid_orders)
+    
+    # Строим лист
+    unpaid_sheet = UnpaidShipmentsSheet(wb, str(sheet_counter))
+    unpaid_sheet.build(unpaid_orders, unpaid_summary)
+    
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Отгрузки без оплаты",
+        "description": f"Заказы с отгрузкой, но оплата меньше суммы: {unpaid_summary['total_orders']} заказов, недоплата {unpaid_summary['total_underpayment']:,.0f} ₽"
+    })
+    sheet_counter += 1
     
     
 
