@@ -1,3 +1,4 @@
+# utils/updater.py
 import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
@@ -52,6 +53,12 @@ FILE_COLUMNS = {
     "Марка (бренд)":'brend',
     "Штрихкод":"barcode"
 }
+
+
+def normalize_text(value):
+    if pd.isna(value):
+        return None
+    return " ".join(str(value).replace("\xa0", " ").strip().split())
 
 
 def set_data(d:dict):
@@ -178,8 +185,44 @@ def set_data(d:dict):
     
     del df
     
+    # q_insert = """
+    #         INSERT INTO corporate_items (
+    #         fullname,
+    #         name,
+    #         article,
+    #         init_date,
+    #         brend_id,
+    #         manufacturer_id,
+    #         im_id,
+    #         onec_cat,
+    #         onec_subcat
+    #     )
+    #     SELECT
+    #         fullname,
+    #         im_name AS name,
+    #         article,
+    #         init_date AS init_date,
+    #         brend_id,
+    #         manufacturer_id,
+    #         im_id_item AS im_id,
+    #         onec_cat,
+    #         onec_subcat
+    #     FROM temp_sales
+    #     AS src
+    #     ON DUPLICATE KEY UPDATE
+    #         name = VALUES(name),
+    #         article = VALUES(article),
+    #         brend_id = VALUES(brend_id),
+    #         manufacturer_id = VALUES(manufacturer_id),
+    #         im_id = VALUES(im_id),
+    #         onec_cat = VALUES(onec_cat),
+    #         onec_subcat = VALUES(onec_subcat);
+    # """
+    
+    
+    
     q_insert = """
-            INSERT INTO corporate_items (
+        INSERT INTO corporate_items (
             fullname,
             name,
             article,
@@ -191,27 +234,66 @@ def set_data(d:dict):
             onec_subcat
         )
         SELECT
-            fullname,
-            im_name AS name,
-            article,
-            init_date AS init_date,
-            brend_id,
-            manufacturer_id,
-            im_id_item AS im_id,
-            onec_cat,
-            onec_subcat
-        FROM temp_sales
-        AS src
-        ON DUPLICATE KEY UPDATE
-            name = VALUES(name),
-            article = VALUES(article),
-            brend_id = VALUES(brend_id),
-            manufacturer_id = VALUES(manufacturer_id),
-            im_id = VALUES(im_id),
-            onec_cat = VALUES(onec_cat),
-            onec_subcat = VALUES(onec_subcat);
+            src.fullname,
+            src.im_name AS name,
+            src.article,
+            src.init_date,
+            src.brend_id,
+            src.manufacturer_id,
+            src.im_id_item AS im_id,
+            src.onec_cat,
+            src.onec_subcat
+        FROM temp_sales AS src
+        LEFT JOIN corporate_items AS ci
+            ON ci.fullname = src.fullname
+        WHERE ci.id IS NULL;
     """
     
+    
+    
+    q_update_existing = """
+        UPDATE corporate_items AS ci
+        JOIN temp_sales AS src
+            ON ci.fullname = src.fullname
+        SET
+            ci.name = CASE
+                WHEN (ci.name IS NULL OR ci.name = '') AND src.im_name IS NOT NULL AND src.im_name <> ''
+                THEN src.im_name
+                ELSE ci.name
+            END,
+            ci.article = CASE
+                WHEN (ci.article IS NULL OR ci.article = '') AND src.article IS NOT NULL AND src.article <> ''
+                THEN src.article
+                ELSE ci.article
+            END,
+            ci.brend_id = CASE
+                WHEN ci.brend_id IS NULL AND src.brend_id IS NOT NULL
+                THEN src.brend_id
+                ELSE ci.brend_id
+            END,
+            ci.manufacturer_id = CASE
+                WHEN ci.manufacturer_id IS NULL AND src.manufacturer_id IS NOT NULL
+                THEN src.manufacturer_id
+                ELSE ci.manufacturer_id
+            END,
+            ci.im_id = CASE
+                WHEN ci.im_id IS NULL AND src.im_id_item IS NOT NULL
+                THEN src.im_id_item
+                ELSE ci.im_id
+            END,
+            ci.onec_cat = CASE
+                WHEN (ci.onec_cat IS NULL OR ci.onec_cat = '') AND src.onec_cat IS NOT NULL AND src.onec_cat <> ''
+                THEN src.onec_cat
+                ELSE ci.onec_cat
+            END,
+            ci.onec_subcat = CASE
+                WHEN (ci.onec_subcat IS NULL OR ci.onec_subcat = '') AND src.onec_subcat IS NOT NULL AND src.onec_subcat <> ''
+                THEN src.onec_subcat
+                ELSE ci.onec_subcat
+            END;
+    """
+
+
     # try:
     
     #     with connection.cursor() as cursor:
@@ -222,11 +304,22 @@ def set_data(d:dict):
     #     sucsess_list.append(f'{e} Ошибка')
     
     
+    # try:
+    #     with transaction.atomic():
+    #         with connection.cursor() as cursor:
+    #             cursor.execute(q_insert)
+    #     sucsess_list.append('Новые номенклатуры загружены в базу данных')
+
+    # except Exception as e:
+    #     sucsess_list.append(f'{e} Ошибка')
+    
+    
     try:
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute(q_insert)
-        sucsess_list.append('Новые номенклатуры загружены в базу данных')
+                cursor.execute(q_update_existing)
+        sucsess_list.append('Номенклатуры загружены и обновлены')
 
     except Exception as e:
         sucsess_list.append(f'{e} Ошибка')
@@ -604,12 +697,34 @@ class Updater:
         df.drop(columns=['Регистратор'], inplace=True)
         
         
-        df = df.rename(columns=FILE_COLUMNS)
+        # df = df.rename(columns=FILE_COLUMNS)
         
-        df["fullname"] = df.fullname.str.strip()
-        df['store_name'] = df['store_name'].str.strip()
-        df["date"] = pd.to_datetime(df["date"], format="%d.%m.%Y")
-        df["client_order_date"] = pd.to_datetime(df["client_order_date"], format="%d.%m.%Y")           
+        # df["fullname"] = df.fullname.str.strip()
+        # df['store_name'] = df['store_name'].str.strip()
+        # df["date"] = pd.to_datetime(df["date"], format="%d.%m.%Y")
+        # df["client_order_date"] = pd.to_datetime(df["client_order_date"], format="%d.%m.%Y")   
+        
+        
+        
+        df = df.rename(columns=FILE_COLUMNS)
+
+        df["fullname"] = df["fullname"].apply(normalize_text)
+        df["store_name"] = df["store_name"].apply(normalize_text)
+
+        if "manufacturer" in df.columns:
+            df["manufacturer"] = df["manufacturer"].apply(normalize_text)
+        if "manager" in df.columns:
+            df["manager"] = df["manager"].apply(normalize_text)
+        if "agent" in df.columns:
+            df["agent"] = df["agent"].apply(normalize_text)
+        if "brend" in df.columns:
+            df["brend"] = df["brend"].apply(normalize_text)
+        if "collection" in df.columns:
+            df["collection"] = df["collection"].apply(normalize_text)
+
+        df["date"] = pd.to_datetime(df["date"], format="%d.%m.%Y", errors="coerce")
+        df["client_order_date"] = pd.to_datetime(df["client_order_date"], format="%d.%m.%Y", errors="coerce")
+        
         df.to_sql(name='new_sales',con=engine,if_exists='replace')
         df.to_sql(name='_new_sales',con=engine,if_exists='replace')
         
@@ -620,54 +735,203 @@ class Updater:
         self.log["Всего записей"] = len(df.index)
         self.log["Всего заказов"] = df["client_order"].nunique()
         
-        manufacturer_list = df['manufacturer'].dropna().unique()
-        existant_manufacturer_list = set(ItemManufacturer.objects.values_list("name", flat=True)        )
-        new_manufacturers = [m for m in manufacturer_list if m not in existant_manufacturer_list]
-        if len(new_manufacturers) > 0:
-            self.log["Новые производители"] = len(new_manufacturers)        
-        self.new_manufactures = new_manufacturers
+        # manufacturer_list = df['manufacturer'].dropna().unique()
+        # existant_manufacturer_list = set(ItemManufacturer.objects.values_list("name", flat=True)        )
+        # new_manufacturers = [m for m in manufacturer_list if m not in existant_manufacturer_list]
+        # if len(new_manufacturers) > 0:
+        #     self.log["Новые производители"] = len(new_manufacturers)        
+        # self.new_manufactures = new_manufacturers
         
-        store_list = df['store_name'].dropna().unique()
-        existing_stores = set(Stores.objects.values_list("name", flat=True))
-        new_stores = [s for s in store_list if s not in existing_stores]
-        if len(new_stores) > 0:
-            self.log["Новые подразделения"] = len(new_stores)    
-        self.new_stores = new_stores
+        # store_list = df['store_name'].dropna().unique()
+        # existing_stores = set(Stores.objects.values_list("name", flat=True))
+        # new_stores = [s for s in store_list if s not in existing_stores]
+        # if len(new_stores) > 0:
+        #     self.log["Новые подразделения"] = len(new_stores)    
+        # self.new_stores = new_stores
         
-        items_list = df['fullname'].dropna().unique()
-        existing_items = set(Items.objects.values_list('fullname',flat=True))
-        new_items = [i for i in items_list if i not in existing_items]        
-        if len(new_items) > 0:
-            self.log["Новые номенклатуры"] = len(new_items) 
-        self.new_itemes = new_items
+        # # items_list = df['fullname'].dropna().unique()
+        # # existing_items = set(Items.objects.values_list('fullname',flat=True))
+        # # new_items = [i for i in items_list if i not in existing_items]        
+        # # if len(new_items) > 0:
+        # #     self.log["Новые номенклатуры"] = len(new_items) 
+        # # self.new_itemes = new_items
         
-        managers_list = df['manager'].dropna().unique()
-        existing_managers = set(Managers.objects.values_list('name',flat=True))
-        new_managers = [i for i in managers_list if i not in existing_managers]
-        if len(new_managers) > 0:
-            self.log["Новые менеджеры"] = len(new_managers) 
-        self.new_managers = new_managers
         
-        agents_list = df['agent'].dropna().unique()
-        existing_agents = set(Agents.objects.values_list('name',flat=True))
-        new_agents = [i for i in agents_list if i not in existing_agents]
-        if len(new_agents) > 0:
-            self.log["Новые агенты"] = len(new_agents) 
-        self.new_agents = new_agents
+        
+        # items_list = [x for x in df["fullname"].dropna().unique() if x]
+
+        # existing_items = {
+        #     normalize_text(x)
+        #     for x in Items.objects.values_list("fullname", flat=True)
+        #     if x is not None
+        # }
+
+        # new_items = [i for i in items_list if normalize_text(i) not in existing_items]
+
+        # if len(new_items) > 0:
+        #     self.log["Новые номенклатуры"] = len(new_items)
+
+        # self.new_itemes = new_items
+        
+        # managers_list = df['manager'].dropna().unique()
+        # existing_managers = set(Managers.objects.values_list('name',flat=True))
+        # new_managers = [i for i in managers_list if i not in existing_managers]
+        # if len(new_managers) > 0:
+        #     self.log["Новые менеджеры"] = len(new_managers) 
+        # self.new_managers = new_managers
+        
+        # agents_list = df['agent'].dropna().unique()
+        # existing_agents = set(Agents.objects.values_list('name',flat=True))
+        # new_agents = [i for i in agents_list if i not in existing_agents]
+        # if len(new_agents) > 0:
+        #     self.log["Новые агенты"] = len(new_agents) 
+        # self.new_agents = new_agents
         
 
-        brend_list = df['brend'].dropna().unique()
-        existing_brends = set(ItemBrend.objects.values_list('name',flat=True))
-        new_brend = [i for i in brend_list if i not in existing_brends]
-        if len(new_brend) > 0:
-            self.log["Новые бренды"] = len(new_brend) 
-        self.new_brends = new_brend
+        # brend_list = df['brend'].dropna().unique()
+        # existing_brends = set(ItemBrend.objects.values_list('name',flat=True))
+        # new_brend = [i for i in brend_list if i not in existing_brends]
+        # if len(new_brend) > 0:
+        #     self.log["Новые бренды"] = len(new_brend) 
+        # self.new_brends = new_brend
         
-        collection_list = df['collection'].dropna().unique()
-        existing_collection = set(ItemCollections.objects.values_list('name',flat=True))
-        new_collection = [i for i in collection_list if i not in existing_collection]
+        # collection_list = df['collection'].dropna().unique()
+        # existing_collection = set(ItemCollections.objects.values_list('name',flat=True))
+        # new_collection = [i for i in collection_list if i not in existing_collection]
+        # if len(new_collection) > 0:
+        #     self.log["Новые колеекции"] = len(new_collection) 
+        # self.new_collection = new_collection
+        
+        
+        
+        
+        manufacturer_list = [x for x in df["manufacturer"].dropna().unique() if x]
+
+        existant_manufacturer_list = {
+            normalize_text(x)
+            for x in ItemManufacturer.objects.values_list("name", flat=True)
+            if x is not None
+        }
+
+        new_manufacturers = [
+            m for m in manufacturer_list
+            if normalize_text(m) not in existant_manufacturer_list
+        ]
+
+        if len(new_manufacturers) > 0:
+            self.log["Новые производители"] = len(new_manufacturers)
+
+        self.new_manufactures = new_manufacturers
+
+
+        store_list = [x for x in df["store_name"].dropna().unique() if x]
+
+        existing_stores = {
+            normalize_text(x)
+            for x in Stores.objects.values_list("name", flat=True)
+            if x is not None
+        }
+
+        new_stores = [
+            s for s in store_list
+            if normalize_text(s) not in existing_stores
+        ]
+
+        if len(new_stores) > 0:
+            self.log["Новые подразделения"] = len(new_stores)
+
+        self.new_stores = new_stores
+
+
+        items_list = [x for x in df["fullname"].dropna().unique() if x]
+
+        existing_items = {
+            normalize_text(x)
+            for x in Items.objects.values_list("fullname", flat=True)
+            if x is not None
+        }
+
+        new_items = [i for i in items_list if normalize_text(i) not in existing_items]
+
+        if len(new_items) > 0:
+            self.log["Новые номенклатуры"] = len(new_items)
+
+        self.new_itemes = new_items
+
+
+        managers_list = [x for x in df["manager"].dropna().unique() if x]
+
+        existing_managers = {
+            normalize_text(x)
+            for x in Managers.objects.values_list("name", flat=True)
+            if x is not None
+        }
+
+        new_managers = [
+            i for i in managers_list
+            if normalize_text(i) not in existing_managers
+        ]
+
+        if len(new_managers) > 0:
+            self.log["Новые менеджеры"] = len(new_managers)
+
+        self.new_managers = new_managers
+
+
+        agents_list = [x for x in df["agent"].dropna().unique() if x]
+
+        existing_agents = {
+            normalize_text(x)
+            for x in Agents.objects.values_list("name", flat=True)
+            if x is not None
+        }
+
+        new_agents = [
+            i for i in agents_list
+            if normalize_text(i) not in existing_agents
+        ]
+
+        if len(new_agents) > 0:
+            self.log["Новые агенты"] = len(new_agents)
+
+        self.new_agents = new_agents
+
+
+        brend_list = [x for x in df["brend"].dropna().unique() if x]
+
+        existing_brends = {
+            normalize_text(x)
+            for x in ItemBrend.objects.values_list("name", flat=True)
+            if x is not None
+        }
+
+        new_brend = [
+            i for i in brend_list
+            if normalize_text(i) not in existing_brends
+        ]
+
+        if len(new_brend) > 0:
+            self.log["Новые бренды"] = len(new_brend)
+
+        self.new_brends = new_brend
+
+
+        collection_list = [x for x in df["collection"].dropna().unique() if x]
+
+        existing_collection = {
+            normalize_text(x)
+            for x in ItemCollections.objects.values_list("name", flat=True)
+            if x is not None
+        }
+
+        new_collection = [
+            i for i in collection_list
+            if normalize_text(i) not in existing_collection
+        ]
+
         if len(new_collection) > 0:
-            self.log["Новые колеекции"] = len(new_collection) 
+            self.log["Новые колеекции"] = len(new_collection)
+
         self.new_collection = new_collection
         
         
