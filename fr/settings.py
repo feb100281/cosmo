@@ -110,10 +110,11 @@ JAZZMIN_SETTINGS = {
         {"model": "auth.User"},
         {"model": "sales.MV_Daily_Sales"},
         # ссылка на Dash Upload Form
-        {"name": "Upload Form", "url": "/upload-sales", "new_window": True},
+        # {"name": "Upload Form", "url": "/upload-sales", "new_window": True},
         # {"name": "Redis update", "url": "/redis-form", "new_window": True},
-        {"name": "Upload orders", "url": "/upload-orders", "new_window": True},
-        {"name": "Upload cf", "url": "/upload-cf", "new_window": True},
+        # {"name": "Upload orders", "url": "/upload-orders", "new_window": True},
+        # {"name": "Upload cf", "url": "/upload-cf", "new_window": True},
+         {"name": "Upload Form", "url": "/orders/upload-all-orders/"},
     ],
     
 
@@ -185,6 +186,18 @@ JAZZMIN_SETTINGS = {
 
         "budgets.Forecasts": "fa-solid fa-file-invoice-dollar",
         "budgets.ForecastData": "fa-solid fa-table-cells",
+        
+        
+        ### --- ЗАКАЗЫ --- 
+        "orders": "fa-solid fa-cart-shopping",
+
+        "orders.Order": "fa-solid fa-file-lines",
+        "orders.OrderItem": "fa-solid fa-boxes-stacked",
+
+        "orders.MV_Orders": "fa-solid fa-receipt",
+        "orders.MV_OrdersItems": "fa-solid fa-list-check",
+
+        "orders.OrdersCF": "fa-solid fa-money-bill-transfer",
 
 
      },
@@ -194,6 +207,7 @@ JAZZMIN_SETTINGS = {
     "order_with_respect_to": [
         'dashboard',       # Дэшбоард 
         'sales',           # Продажи 
+        'orders',          # Заказы 
         'corporate',       # Справочники 
         "budgets",         # Бюджетирование
         "auth",            # Пользователи и группы

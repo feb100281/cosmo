@@ -109,7 +109,8 @@ def mv_orders_summary(conn: DuckDBPyConnection):
         as order_qty,
         
         
-        COALESCE(sum(t.amount) FILTER (where t.pid_id != 86), 0) as order_amount,
+        COALESCE(sum(t.amount) FILTER (where t.pid_id != 86), 0) +
+            COALESCE(sum(t.amount) FILTER (where t.pid_id = 86), 0) as order_amount,
 
         COALESCE(sum(t.amount) FILTER (where t.pid_id = 86), 0) as amount_delivery,
 
@@ -117,10 +118,10 @@ def mv_orders_summary(conn: DuckDBPyConnection):
             where cancellation_reason is not null and t.pid_id != 86
         ), 0) as amount_cancelled,
 
+    (
         COALESCE(sum(t.amount) FILTER (where t.pid_id != 86), 0) -
-        COALESCE(sum(t.amount) FILTER (
-            where cancellation_reason is not null and t.pid_id != 86
-        ), 0) as amount_active,
+        COALESCE(sum(t.amount) FILTER (where cancellation_reason is not null and t.pid_id != 86), 0)
+    ) + COALESCE(sum(t.amount) FILTER (where t.pid_id = 86), 0) as amount_active,
         
         max(COALESCE(ocf.cash_recieved)) as cash_recieved,
         max(COALESCE(ocf.cash_returned)) as cash_returned,

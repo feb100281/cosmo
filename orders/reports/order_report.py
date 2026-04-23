@@ -3,87 +3,318 @@ from django.http import HttpResponse
 from openpyxl import Workbook
 from datetime import datetime
 import io
-
+from django.db.models import Sum, Count, Q, Avg
+from django.db.models.functions import TruncMonth
 
 from .queries.dashboard_queries import DashboardQueries
+from .queries.executive_queries import ExecutiveQueries
+from .queries.orders_detail_queries import OrdersDetailQueries
+from .queries.delivery_analysis_query import DeliveryAnalysisQueries  
+from .queries.manager_queries import ManagerQueries 
+from .queries.client_analysis_query import ClientAnalysisQueries
+from .queries.payments_analysis_query import PaymentsAnalysisQueries 
+from .queries.remaining_to_ship_query import RemainingToShipQueries
+from .queries.debt_analysis_query import DebtAnalysisQueries
+from .queries.negative_payments_query import NegativePaymentsQueries
+from .queries.unpaid_shipments_query import UnpaidShipmentsQueries
+
 
 from .sheets.toc_sheet import TOCSheet
-from .sheets.dashboard_sheet import DashboardSheet
-from .sheets.debtors_sheet import ActiveDebtorsSheet, ClosedDebtorsSheet
+from .sheets.executive_sheet import ExecutiveSheet
+from .sheets.orders_detail_sheet import OrdersDetailSheet
+from .sheets.manager_analysis_sheet import ManagerAnalysisSheet
+from .sheets.client_analysis_sheet import ClientAnalysisSheet
+from .sheets.payments_analysis_sheet import PaymentsAnalysisSheet
+from .sheets.daily_payments_sheet import DailyPaymentsSheet
+from .sheets.delivery_analysis_sheet import DeliveryAnalysisSheet
+from .sheets.remaining_to_ship_sheet import RemainingToShipSheet
+from .sheets.debt_analysis_sheet import DebtAnalysisSheet
+from .sheets.negative_payments_sheet import NegativePaymentsSheet 
+from .sheets.unpaid_shipments_sheet import UnpaidShipmentsSheet 
 
 
 
 def generate_orders_report(request):
-    # Получаем данные
-    dashboard_data = DashboardQueries.get_dashboard_data(request=request)
-    active_debtors = DashboardQueries.get_active_debtors(request=request)
-    closed_debtors = DashboardQueries.get_closed_debtors(request=request)
-    status_summary = DashboardQueries.get_status_summary(request=request) 
-
+    """Главная функция генерации отчета"""
+    
+    # Создаем workbook
     wb = Workbook()
-
+    
     # Удаляем дефолтный лист
     if "Sheet" in wb.sheetnames:
         wb.remove(wb["Sheet"])
-
-    # Список для оглавления
+    
     sheets_info = []
     sheet_counter = 1
     
-    # Лист TOC (оглавление)
+    # ============================================================
+    # 1. Executive Summary - использует ExecutiveQueries
+    # ============================================================
+    exec_queries = ExecutiveQueries(request)
+    
+    exec_sheet = ExecutiveSheet(wb, str(sheet_counter), request=request)
+    exec_sheet.build()
+    
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Executive Summary",
+        "description": "Ключевые показатели, тренды, топ-менеджеры"
+    })
+    sheet_counter += 1
+    
+    # ============================================================
+    # 2. Детализация АКТИВНЫХ заказов
+    # ============================================================
+    orders_detail_queries = OrdersDetailQueries()
+    active_orders_data = orders_detail_queries.get_active_orders_detail()
+    
+    orders_sheet = OrdersDetailSheet(wb, str(sheet_counter))
+    orders_sheet.build(active_orders_data)
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Детализация заказов",
+        "description": f"Активные заказы ({len(active_orders_data)} шт.)"
+    })
+    sheet_counter += 1
+    
+    # ============================================================
+    # 3. АНАЛИЗ ДОСТАВКИ
+    # ============================================================
+    delivery_analysis_queries = DeliveryAnalysisQueries(request)
+    
+    delivery_analysis_sheet = DeliveryAnalysisSheet(wb, str(sheet_counter), request=request)
+    delivery_analysis_sheet.build()
+    
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Анализ доставки",
+        "description": "Аналитика по услугам доставки: менеджеры, тренды, клиенты"
+    })
+    sheet_counter += 1
+    
+    # ============================================================
+    # 4. Остальные листы - используют DashboardQueries
+    # ============================================================
+    queries = DashboardQueries(request)
+    
+    # Базовые данные для остальных листов
+    all_orders = queries.get_all_orders()
+    
+    status_summary = queries.get_status_summary()
+    manager_summary = queries.get_manager_summary()
+    client_summary = queries.get_client_summary()
+    financial_metrics = queries.get_financial_metrics()
+    changes_analysis = queries.get_changes_analysis()
+    payment_analysis = queries.get_payment_analysis()
+    monthly_trends = queries.get_monthly_trends()
+    top_debtors = queries.get_top_debtors(limit=10)
+    
+    # Дополнительные данные
+    store_summary = queries.get_store_summary(limit=5)
+    stuck_orders = queries.get_stuck_orders(days_threshold=30)
+    top_clients = queries.get_top_clients(limit=10)
+    
+    # ============================================================
+    # 5. Анализ по менеджерам - ОБЪЕДИНЯЕМ ДАННЫЕ
+    # ============================================================
+    manager_queries = ManagerQueries(request)
+    
+    # Получаем базовую сводку по всем менеджерам
+    all_managers_data = manager_queries.get_all_managers_summary()
+    
+    # ДЛЯ КАЖДОГО МЕНЕДЖЕРА ДОБАВЛЯЕМ ДЕТАЛЬНУЮ ИНФОРМАЦИЮ
+    enhanced_managers_data = []
+    for manager in all_managers_data:
+        manager_name = manager.get('manager')
+        if manager_name:
+            # Получаем детальную информацию
+            details = manager_queries.get_manager_details(manager_name)
+            
+            # Объединяем данные
+            enhanced_manager = {
+                **manager,  # Базовые MTD/YTD показатели
+                'remaining_to_ship': details.get('remaining_to_ship', 0),
+                'top_clients': details.get('top_clients', []),
+                'oldest_unpaid_invoice': details.get('oldest_unpaid_invoice'),
+            }
+            enhanced_managers_data.append(enhanced_manager)
+        else:
+            enhanced_managers_data.append(manager)
+    
+    # Строим лист с обогащенными данными
+    manager_sheet = ManagerAnalysisSheet(wb, str(sheet_counter))
+    manager_sheet.build(enhanced_managers_data)
+
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Анализ по менеджерам",
+        "description": f"Портфолио менеджеров ({len(enhanced_managers_data)} чел.) - MTD, YTD, топ-клиенты, старые счета"
+    })
+    sheet_counter += 1
+    
+    # ============================================================
+    # 6. Анализ клиентской базы 
+    # ============================================================
+    client_analysis_queries = ClientAnalysisQueries(request)
+    client_analysis_sheet = ClientAnalysisSheet(wb, str(sheet_counter), request=request)
+    client_analysis_sheet.build()
+    
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Анализ клиентов",
+        "description": "ABC-анализ, топ-клиенты, риски, распределение по менеджерам"
+    })
+    sheet_counter += 1
+    
+    
+ 
+    
+    
+    
+    # ============================================================
+    # 7. АНАЛИЗ ОПЛАТ (НОВЫЙ ЛИСТ)
+    # ============================================================
+    payments_analysis_queries = PaymentsAnalysisQueries(request)
+    
+    payments_analysis_sheet = PaymentsAnalysisSheet(wb, str(sheet_counter), request=request)
+    payments_analysis_sheet.build()
+    
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Анализ оплат",
+        "description": "Полная аналитика по всем платежам: тренды, магазины, типы операций"
+    })
+    sheet_counter += 1
+    
+    
+    # ============================================================
+    # 8. ПОДНЕВНАЯ ДИНАМИКА ОПЛАТ ПО МАГАЗИНАМ
+    # ============================================================
+    daily_payments_data = payments_analysis_queries.get_daily_payments_by_store()
+
+    daily_payments_sheet = DailyPaymentsSheet(wb, str(sheet_counter), request=request)
+    daily_payments_sheet.build(daily_payments_data)
+
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Подневная динамика оплат",
+        "description": f"Детальная разбивка оплат по дням: {len(daily_payments_data['data'])} магазинов, {len(daily_payments_data['dates'])} дней"
+    })
+    sheet_counter += 1
+    
+    
+    
+    # # ============================================================
+    # # 9. АНАЛИЗ ДЕБИТОРСКОЙ ЗАДОЛЖЕННОСТИ (ЗАКАЗЫ С ДОЛГАМИ)
+    # # ============================================================
+    # debt_queries = DebtAnalysisQueries()
+    
+    # # Получаем все заказы с долгами
+    # debt_orders = debt_queries.get_orders_with_debt()
+    
+    # # Получаем сводную статистику
+    # debt_summary = debt_queries.get_debt_summary()
+    
+    # # Строим лист
+    # debt_sheet = DebtAnalysisSheet(wb, str(sheet_counter), request=request)
+    # debt_sheet.build(debt_orders, debt_summary)
+    
+    # sheets_info.append({
+    #     "number": sheet_counter,
+    #     "name": "Дебиторская задолженность",
+    #     "description": f"Заказы с долгами: {debt_summary['total_debt_orders']} заказов на {debt_summary['total_debt_amount']:,.0f} ₽"
+    # })
+    # sheet_counter += 1
+    
+    
+    # # ============================================================
+    # # 9. ОСТАТКИ К ОТГРУЗКЕ ПО КАТЕГОРИЯМ
+    # # ============================================================
+    # remaining_queries = RemainingToShipQueries(request)
+
+    # remaining_data = remaining_queries.get_remaining_by_category()
+    # parent_cat_summary = remaining_queries.get_remaining_by_parent_cat()
+    # summary = remaining_queries.get_remaining_summary()
+
+    # remaining_sheet = RemainingToShipSheet(wb, str(sheet_counter), request=request)
+    # remaining_sheet.build(remaining_data, summary, parent_cat_summary)
+
+    # sheets_info.append({
+    #     "number": sheet_counter,
+    #     "name": "Остатки к отгрузке",
+    #     "description": f"Товары к отгрузке: {summary['total_qty'] or 0} шт на {summary['total_amount'] or 0:,.0f} ₽ в {summary['total_orders'] or 0} заказах"
+    # })
+    # sheet_counter += 1
+    
+    
+    
+    # ============================================================
+    # 9. ЗАКАЗЫ С ОТРИЦАТЕЛЬНЫМИ ОПЛАТАМИ (БЕЗ ПОЛОЖИТЕЛЬНЫХ)
+    # ============================================================
+    negative_payments_queries = NegativePaymentsQueries()
+    
+    # Получаем заказы с отрицательными оплатами без положительных, начиная с 01.04.2025
+    negative_orders = negative_payments_queries.get_orders_with_negative_payments_only(start_date='2025-04-01')
+    
+    # Получаем сводную статистику
+    negative_summary = negative_payments_queries.get_negative_payments_summary(negative_orders)
+    
+    # Строим лист
+    negative_payments_sheet = NegativePaymentsSheet(wb, str(sheet_counter))
+    negative_payments_sheet.build(negative_orders, negative_summary)
+    
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Проблемные возвраты",
+        "description": f"Заказы с возвратами без оплат: {negative_summary['total_orders']} заказов на {abs(negative_summary['total_negative_amount']):,.0f} ₽"
+    })
+    sheet_counter += 1
+    
+    
+    # ============================================================
+    # 10. ОТГРУЗКИ БЕЗ ОПЛАТЫ / НЕПОЛНАЯ ОПЛАТА
+    # ============================================================
+    unpaid_shipments_queries = UnpaidShipmentsQueries()
+    
+    # Получаем заказы с неоплаченными отгрузками
+    unpaid_orders = unpaid_shipments_queries.get_orders_with_unpaid_shipments()
+    
+    # Получаем сводную статистику
+    unpaid_summary = unpaid_shipments_queries.get_unpaid_shipments_summary(unpaid_orders)
+    
+    # Строим лист
+    unpaid_sheet = UnpaidShipmentsSheet(wb, str(sheet_counter))
+    unpaid_sheet.build(unpaid_orders, unpaid_summary)
+    
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Отгрузки без оплаты",
+        "description": f"Заказы с отгрузкой, но оплата меньше суммы: {unpaid_summary['total_orders']} заказов, недоплата {unpaid_summary['total_underpayment']:,.0f} ₽"
+    })
+    sheet_counter += 1
+    
+    
+
+    
+    # ============================================================
+    # СОЗДАЕМ ОГЛАВЛЕНИЕ
+    # ============================================================
     toc_sheet = TOCSheet(wb)
-    
-    # Лист 1: Общая аналитика (Dashboard)
-    dashboard_sheet = DashboardSheet(wb, str(sheet_counter))
-    dashboard_sheet.build(
-        dashboard_data=dashboard_data, 
-        active_debtors=active_debtors,
-        status_summary=status_summary  # НОВЫЙ ПАРАМЕТР
-    )
-    sheets_info.append({
-        "number": sheet_counter,
-        "name": "ОБЩАЯ_АНАЛИТИКА",
-        "description": "Ключевые показатели, статусы заказов, топы и предупреждения"
-    })
-    sheet_counter += 1
-    
-    # Лист 2: Активная дебиторка
-    active_debtors_sheet = ActiveDebtorsSheet(wb, str(sheet_counter))
-    active_debtors_sheet.build(active_debtors)
-    sheets_info.append({
-        "number": sheet_counter,
-        "name": "АКТИВНАЯ_ДЕБИТОРКА",
-        "description": f"Активные заказы с долгом ({len(active_debtors)} шт.)"
-    })
-    sheet_counter += 1
-    
-    # Лист 3: Закрытая дебиторка (отгружено, но не оплачено)
-    if closed_debtors:
-        closed_debtors_sheet = ClosedDebtorsSheet(wb, str(sheet_counter))
-        closed_debtors_sheet.build(closed_debtors)
-        sheets_info.append({
-            "number": sheet_counter,
-            "name": "ЗАКРЫТАЯ_ДЕБИТОРКА",
-            "description": f"Отгружено, но не оплачено ({len(closed_debtors)} шт.)"
-        })
-        sheet_counter += 1
+    toc_sheet.build(sheets_info, request=request)
     
     # Переставляем TOC на первое место
     toc_index = wb.sheetnames.index("TOC")
     wb.move_sheet(wb["TOC"], offset=-toc_index)
     
-    # Строим оглавление
-    toc_sheet.build(sheets_info, request=request, filters=None)
-
     # Сохраняем отчет
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    filename = f'orders_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    filename = f'Orders_Report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
+    
     with io.BytesIO() as output:
         wb.save(output)
         response.write(output.getvalue())
-
+    
     return response
