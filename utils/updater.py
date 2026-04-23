@@ -6,6 +6,7 @@ import pymysql
 from django.conf import settings
 from django.db import connection
 from django.db import transaction
+from .orders_reporter import main as rebuild_orders_summary
 
 db_settings = settings.DATABASES["default"]
 
@@ -649,6 +650,12 @@ def set_data(d:dict):
     update_sales_with_client_orders()
     update_salesorders()
     update_mv_orders()
+    
+        
+    # ========== ДОБАВЬТЕ ЭТИ 2 СТРОЧКИ ==========
+    print("Перестраиваем mv_orders_summary_table...")
+    rebuild_orders_summary()  # <-- ЭТО ВЫЗОВЕТ orders_reporter.main()
+    # ===========================================
     
     return sucsess_list
 

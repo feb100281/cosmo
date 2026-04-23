@@ -33,7 +33,8 @@ def advance_items(conn:DuckDBPyConnection):
     items_joined = conn.sql(
         """ 
         SELECT
-        t.*,        
+        t.*,   
+        t.order_guid,            
         i.id as item_id,
         i.name,        
         pid_cat.id as pid_id,
