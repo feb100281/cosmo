@@ -17,6 +17,8 @@ from .queries.remaining_to_ship_query import RemainingToShipQueries
 from .queries.debt_analysis_query import DebtAnalysisQueries
 from .queries.negative_payments_query import NegativePaymentsQueries
 from .queries.unpaid_shipments_query import UnpaidShipmentsQueries
+from .queries.completed_orders_wrong_status_query import CompletedOrdersWrongStatusQueries
+from .queries.cancelled_analysis_query import CancelledAnalysisQueries
 
 
 from .sheets.toc_sheet import TOCSheet
@@ -30,7 +32,9 @@ from .sheets.delivery_analysis_sheet import DeliveryAnalysisSheet
 from .sheets.remaining_to_ship_sheet import RemainingToShipSheet
 from .sheets.debt_analysis_sheet import DebtAnalysisSheet
 from .sheets.negative_payments_sheet import NegativePaymentsSheet 
-from .sheets.unpaid_shipments_sheet import UnpaidShipmentsSheet 
+from .sheets.unpaid_shipments_sheet import UnpaidShipmentsSheet
+from .sheets.completed_orders_wrong_status_sheet import CompletedOrdersWrongStatusSheet
+from .sheets.cancelled_analysis_sheet import CancelledAnalysisSheet 
 
 
 
@@ -290,6 +294,69 @@ def generate_orders_report(request):
         "number": sheet_counter,
         "name": "Отгрузки без оплаты",
         "description": f"Заказы с отгрузкой, но оплата меньше суммы: {unpaid_summary['total_orders']} заказов, недоплата {unpaid_summary['total_underpayment']:,.0f} ₽"
+    })
+    sheet_counter += 1
+    
+    
+    # ============================================================
+    # 11. ЗАКАЗЫ ГОТОВЫЕ К ЗАКРЫТИЮ (полностью выполнены, но статус не Закрыт)
+    # ============================================================
+    wrong_status_queries = CompletedOrdersWrongStatusQueries()
+    
+    # Получаем заказы
+    wrong_status_orders = wrong_status_queries.get_orders_completed_wrong_status()
+    
+    # Получаем сводную статистику
+    wrong_status_summary = wrong_status_queries.get_summary(wrong_status_orders)
+    
+    # Строим лист
+    wrong_status_sheet = CompletedOrdersWrongStatusSheet(wb, str(sheet_counter))
+    wrong_status_sheet.build(wrong_status_orders, wrong_status_summary)
+    
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Заказы к закрытию",
+        "description": f"Полностью выполненные заказы со статусом не 'Закрыт': {wrong_status_summary['total_orders']} заказов на {wrong_status_summary['total_amount']:,.0f} ₽"
+    })
+    sheet_counter += 1
+    
+    
+    
+    # ============================================================
+    # 12. АНАЛИЗ ОТМЕНЁННЫХ ЗАКАЗОВ
+    # ============================================================
+    cancelled_queries = CancelledAnalysisQueries(request)
+
+    # Получаем отменённые заказы за последние 6 месяцев (или за весь 2025 год)
+    # Можно настроить период по необходимости
+    cancelled_orders = cancelled_queries.get_cancelled_orders_detail(start_date='2025-01-01')
+
+    # Получаем сводную статистику
+    cancelled_summary = cancelled_queries.get_cancelled_summary(cancelled_orders)
+
+    # Получаем breakdown по причинам
+    cancelled_by_reason = cancelled_queries.get_cancelled_by_reason(cancelled_orders)
+
+    # Получаем breakdown по менеджерам
+    cancelled_by_manager = cancelled_queries.get_cancelled_by_manager(cancelled_orders)
+
+    # Получаем топ отменённых заказов
+    top_cancelled_orders = cancelled_queries.get_top_cancelled_orders(cancelled_orders, limit=50)
+
+    # Строим лист
+    cancelled_sheet = CancelledAnalysisSheet(wb, str(sheet_counter))
+    cancelled_sheet.build(
+        cancelled_orders, 
+        cancelled_summary, 
+        cancelled_by_reason, 
+        cancelled_by_manager,
+        top_cancelled_orders
+    )
+
+    sheets_info.append({
+        "number": sheet_counter,
+        "name": "Анализ отмен",
+        "description": f"Детальный анализ отмен: {cancelled_summary['total_orders']} заказов на {cancelled_summary['total_cancelled_amount']:,.0f} ₽"
     })
     sheet_counter += 1
     

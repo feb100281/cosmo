@@ -34,7 +34,7 @@ def advance_items(conn:DuckDBPyConnection):
         """ 
         SELECT
         t.*,   
-        t.order_guid,            
+        --t.order_guid,            
         i.id as item_id,
         i.name,        
         pid_cat.id as pid_id,
