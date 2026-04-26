@@ -2,7 +2,7 @@
 from django.db.models import Q, Sum, F, FloatField
 from django.db.models.functions import Coalesce
 from orders.models import MV_Orders
-from sales.models import SalesData  # Добавьте импорт модели SalesData
+from sales.models import SalesData  
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 
