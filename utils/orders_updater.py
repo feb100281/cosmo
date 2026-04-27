@@ -102,35 +102,43 @@ def update_orders(conn: DuckDBPyConnection):
 
     mysql_conn = get_mysql_conn()
 
-    with mysql_conn.cursor() as cur:
-        cur.execute("SET FOREIGN_KEY_CHECKS = 0")
-        cur.execute("TRUNCATE TABLE orders_orderitem")
-        cur.execute("TRUNCATE TABLE orders_order")
-        cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+    try:
+        with mysql_conn.cursor() as cur:
+            cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+            cur.execute("TRUNCATE TABLE orders_orderitem")
+            cur.execute("TRUNCATE TABLE orders_order")
+            cur.execute("SET FOREIGN_KEY_CHECKS = 1")
 
-        cur.executemany(
-            """
-            INSERT INTO orders_order(
-                id,
-                fullname,
-                number,
-                date_from,
-                update_at,
-                is_cancelled,
-                cancellation_reason,
-                status,
-                client,
-                manager,
-                oper_type,
-                store
+            cur.executemany(
+                """
+                INSERT INTO orders_order(
+                    id,
+                    fullname,
+                    number,
+                    date_from,
+                    update_at,
+                    is_cancelled,
+                    cancellation_reason,
+                    status,
+                    client,
+                    manager,
+                    oper_type,
+                    store
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                rows,
             )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """,
-            rows,
-        )
 
-    mysql_conn.commit()
-    return "Orders перезаписаны"
+        mysql_conn.commit()
+        return "Orders перезаписаны"
+
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
 
 
 def update_items(conn: DuckDBPyConnection):
@@ -170,22 +178,32 @@ def update_items(conn: DuckDBPyConnection):
     rows = list(df.itertuples(index=False, name=None))
     l_items = ", ".join(df["fullname"].astype(str).tolist())
 
-    with mysql_conn.cursor() as cur:
-        cur.executemany(
-            """
-            INSERT INTO corporate_items (
-                fullname,
-                name,
-                article,
-                init_date
-            )
-            VALUES (%s, %s, %s, %s)
-            """,
-            rows,
-        )
+    mysql_conn = get_mysql_conn()
 
-    mysql_conn.commit()
-    return f"{len(rows)} номенклатур было добавлено ({l_items})"
+    try:
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT IGNORE INTO corporate_items (
+                    fullname,
+                    name,
+                    article,
+                    init_date
+                )
+                VALUES (%s, %s, %s, %s)
+                """,
+                rows,
+            )
+
+        mysql_conn.commit()
+        return f"{len(rows)} номенклатур было добавлено ({l_items})"
+
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
 
 
 def update_barcodes(conn: DuckDBPyConnection):
@@ -213,23 +231,33 @@ def update_barcodes(conn: DuckDBPyConnection):
         return "Нет новых баркодов для добавления"
 
     else:
-        mysql_conn = get_mysql_conn()
+        
         rows = new_barcodes.fetchall()
         l_stores = new_barcodes.df()
         l_stores = l_stores["barcode"].tolist()
         l_stores = ", ".join(l_stores)
 
-        with mysql_conn.cursor() as cur:
-            cur.executemany(
-                """
-                INSERT INTO corporate_barcode (barcode)
-                VALUES (%s)
-                
-            """,
-                rows,
-            )
-        mysql_conn.commit()
-        return f"{len(rows)} баркодов было добавлено ({(l_stores)})"
+        mysql_conn = get_mysql_conn()
+
+        try:
+            with mysql_conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    INSERT IGNORE INTO corporate_barcode (barcode)
+                    VALUES (%s)
+                    """,
+                    rows,
+                )
+
+            mysql_conn.commit()
+            return f"{len(rows)} баркодов было добавлено ({l_stores})"
+
+        except Exception:
+            mysql_conn.rollback()
+            raise
+
+        finally:
+            mysql_conn.close()
 
 
 def update_orders_items(conn: DuckDBPyConnection):
@@ -254,9 +282,10 @@ def update_orders_items(conn: DuckDBPyConnection):
 
     mysql_conn = get_mysql_conn()
 
-    with mysql_conn.cursor() as cur:
-        cur.executemany(
-            """
+    try:
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
                 INSERT INTO orders_orderitem (
                     qty,
                     price,
@@ -265,17 +294,23 @@ def update_orders_items(conn: DuckDBPyConnection):
                     order_id,
                     barcode_id                    
                 )
-                VALUES (%s,%s,%s,%s,%s,%s)                
-            """,
-            rows,
-        )
+                VALUES (%s,%s,%s,%s,%s,%s)
+                """,
+                rows,
+            )
 
-    mysql_conn.commit()
-    return "НОМЕНКЛАТУРЫ В ЗАКАЗАХ ОБНОВЛЕНЫ"
+        mysql_conn.commit()
+        return "НОМЕНКЛАТУРЫ В ЗАКАЗАХ ОБНОВЛЕНЫ"
 
-def create_raw_orders(conn:DuckDBPyConnection):
-    raw_orders = conn.sql(
-        """ 
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
+
+def create_raw_orders(conn: DuckDBPyConnection):
+    raw_orders = conn.sql(""" 
         select
             t."GUID_ЗК"::text as order_id,	
             t."Номер Заказа"::text as number,
@@ -298,28 +333,44 @@ def create_raw_orders(conn:DuckDBPyConnection):
             t."Дата и время изменения"::date as update_at,
             t."Статус"::text as status
         from raw t
-        """
-    ).df()
-    my_sql = get_engine()
-    raw_orders.to_sql("raw_orders",con=my_sql,if_exists='replace',index=False)
-    return "Таблица raw_orders обновлена"
-    
+    """).df()
 
+    engine = get_engine()
+
+    try:
+        raw_orders.to_sql(
+            "raw_orders",
+            con=engine,
+            if_exists="replace",
+            index=False,
+            chunksize=5000,
+            method="multi",
+        )
+        return "Таблица raw_orders обновлена"
+
+    finally:
+        engine.dispose()
+    
 def main(file):
     conn: DuckDBPyConnection = get_duckdb_conn()
     log = []
+
+    
     conn.register("raw", read_excel(file))
+
     log.append(update_orders(conn))
     log.append(update_items(conn))
     log.append(update_barcodes(conn))
     log.append(update_orders_items(conn))
     create_raw_orders(conn)
-    # conn.close()
-    rep =  final_mv()
+
+    rep = final_mv()
     a = "; \n".join(log)
-    
 
     return a + rep
+
+    # finally:
+    #     conn.close()
 
 
 # print(main(file2))

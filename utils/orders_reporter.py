@@ -175,12 +175,25 @@ def mv_orders_summary(conn: DuckDBPyConnection):
         """
     )
     
-    my_sql = get_engine()
-    mv.df().to_sql('mv_orders_summary_table',con=my_sql,index=False,if_exists='replace')
-    
+    engine = get_engine()
 
-    #  conn.register("orders_summary", orders_sum)
-    return "orders_summary registered"
+    try:
+        with engine.begin() as con:
+            con.exec_driver_sql("TRUNCATE TABLE mv_orders_summary_table")
+
+        mv.df().to_sql(
+            "mv_orders_summary_table",
+            con=engine,
+            index=False,
+            if_exists="append",
+            chunksize=5000,
+            method="multi",
+        )
+
+        return "orders_summary registered"
+
+    finally:
+        engine.dispose()
 
 def get_summary_by_orders_status(conn:DuckDBPyConnection):
     return conn.sql(

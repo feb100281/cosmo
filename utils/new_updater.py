@@ -82,53 +82,58 @@ def update_sales(conn: DuckDBPyConnection):
         left join agents as a on a.name = t."Агент"
         left join managers as m on m.name = t."Менеджер"
         left join barcodes as b on b.barcode = t."Штрихкод"
-        
+        where i.id is not null
     """
     )
 
     conn.register("sales", sales.df())
 
+    rows = sales.fetchall()
     mysql_conn = get_mysql_conn()
 
-    rows = sales.fetchall()
-
-    with mysql_conn.cursor() as cur:
-
-        cur.execute(
-            "DELETE FROM sales_salesdata WHERE date BETWEEN %s AND %s",
-            (min_date, max_date),
-        )
-        mysql_conn.commit()
-
-        cur.executemany(
-            """
-            INSERT INTO sales_salesdata (
-                date,
-                operation,
-                dt,
-                cr,
-                quant_dt,
-                quant_cr,
-                item_id,
-                store_id,
-                agent_id,
-                client_order,
-                client_order_date,
-                client_order_number,
-                manager_id,
-                warehouse,
-                barcode_id,
-                spec,
-                order_guid
-                
+    try:
+        with mysql_conn.cursor() as cur:
+            cur.execute("SET SESSION innodb_lock_wait_timeout = 500")
+            cur.execute(
+                "DELETE FROM sales_salesdata WHERE date BETWEEN %s AND %s",
+                (min_date, max_date),
             )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """,
-            rows,
-        )
 
-    mysql_conn.commit()
-    return f"добавлена реализация с {min_date} по {max_date}"
+            cur.executemany(
+                """
+                INSERT INTO sales_salesdata (
+                    date,
+                    operation,
+                    dt,
+                    cr,
+                    quant_dt,
+                    quant_cr,
+                    item_id,
+                    store_id,
+                    agent_id,
+                    client_order,
+                    client_order_date,
+                    client_order_number,
+                    manager_id,
+                    warehouse,
+                    barcode_id,
+                    spec,
+                    order_guid
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                rows,
+            )
+
+        mysql_conn.commit()
+        return f"добавлена реализация с {min_date} по {max_date}"
+
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
 
 
 # Обновление справочника номенклатур
@@ -182,27 +187,37 @@ def update_items(conn: DuckDBPyConnection):
     rows = list(df.itertuples(index=False, name=None))
     l_items = ", ".join(df["name"].astype(str).tolist())
 
-    with mysql_conn.cursor() as cur:
-        cur.executemany(
-            """
-            INSERT INTO corporate_items (
-                fullname,
-                name,
-                article,
-                init_date,
-                brend_id,
-                manufacturer_id,
-                im_id,
-                onec_cat,
-                onec_subcat
-            )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """,
-            rows,
-        )
+    mysql_conn = get_mysql_conn()
 
-    mysql_conn.commit()
-    return f"{len(rows)} номенклатур было добавлено ({l_items})"
+    try:
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT IGNORE INTO corporate_items (
+                    fullname,
+                    name,
+                    article,
+                    init_date,
+                    brend_id,
+                    manufacturer_id,
+                    im_id,
+                    onec_cat,
+                    onec_subcat
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                rows,
+            )
+
+        mysql_conn.commit()
+        return f"{len(rows)} номенклатур было добавлено ({l_items})"
+
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
 
 
 # Обновление справочника бренда
@@ -227,18 +242,27 @@ def update_brand(conn: DuckDBPyConnection):
         l_stores = l_stores["name"].tolist()
         l_stores = ", ".join(l_stores)
 
-        with mysql_conn.cursor() as cur:
-            cur.executemany(
-                """
-                INSERT INTO corporate_itemcollections (name)
-                VALUES (%s)
-                
-            """,
-                rows,
-            )
+        mysql_conn = get_mysql_conn()
 
-        mysql_conn.commit()
-        return f"{len(rows)} брендов было добавлено ({(l_stores)})"
+        try:
+            with mysql_conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    INSERT IGNORE INTO corporate_itembrend (name)
+                    VALUES (%s)
+                    """,
+                    rows,
+                )
+
+            mysql_conn.commit()
+            return f"{len(rows)} брендов было добавлено ({l_stores})"
+
+        except Exception:
+            mysql_conn.rollback()
+            raise
+
+        finally:
+            mysql_conn.close()
 
 
 # Обновление справочника бренда
@@ -271,18 +295,27 @@ def update_manufacturer(conn: DuckDBPyConnection):
         l_stores = l_stores["name"].tolist()
         l_stores = ", ".join(l_stores)
 
-        with mysql_conn.cursor() as cur:
-            cur.executemany(
-                """
-                INSERT INTO corporate_itemmanufacturer (name, country)
-                VALUES (%s, %s )
-                
-            """,
-                rows,
-            )
+        mysql_conn = get_mysql_conn()
 
-        mysql_conn.commit()
-        return f"{len(rows)} производителей было добавлено ({(l_stores)})"
+        try:
+            with mysql_conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    INSERT IGNORE INTO corporate_itemmanufacturer (name, country)
+                    VALUES (%s, %s)
+                    """,
+                    rows,
+                )
+
+            mysql_conn.commit()
+            return f"{len(rows)} производителей было добавлено ({l_stores})"
+
+        except Exception:
+            mysql_conn.rollback()
+            raise
+
+        finally:
+            mysql_conn.close()
 
 
 # Обновление справочника коллекции
@@ -310,18 +343,27 @@ def update_collections(conn: DuckDBPyConnection):
         l_stores = l_stores["name"].tolist()
         l_stores = ", ".join(l_stores)
 
-        with mysql_conn.cursor() as cur:
-            cur.executemany(
-                """
-                INSERT INTO corporate_itemcollections (name)
-                VALUES (%s)
-                
-            """,
-                rows,
-            )
+        mysql_conn = get_mysql_conn()
 
-        mysql_conn.commit()
-        return f"{len(rows)} коллекций было добавлено ({(l_stores)})"
+        try:
+            with mysql_conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    INSERT IGNORE INTO corporate_itemcollections (name)
+                    VALUES (%s)
+                    """,
+                    rows,
+                )
+
+            mysql_conn.commit()
+            return f"{len(rows)} коллекций было добавлено ({l_stores})"
+
+        except Exception:
+            mysql_conn.rollback()
+            raise
+
+        finally:
+            mysql_conn.close()
 
 
 # Обновление справочника менеджеров
@@ -355,18 +397,27 @@ def update_managers(conn: DuckDBPyConnection):
         l_stores = l_stores["name"].tolist()
         l_stores = ", ".join(l_stores)
 
-        with mysql_conn.cursor() as cur:
-            cur.executemany(
-                """
-                INSERT INTO corporate_managers (name, report_name)
-                VALUES (%s, %s )
-                
-            """,
-                rows,
-            )
+        mysql_conn = get_mysql_conn()
 
-        mysql_conn.commit()
-        return f"{len(rows)} менеджеров было добавлено ({(l_stores)})"
+        try:
+            with mysql_conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    INSERT IGNORE INTO corporate_managers (name, report_name)
+                    VALUES (%s, %s)
+                    """,
+                    rows,
+                )
+
+            mysql_conn.commit()
+            return f"{len(rows)} менеджеров было добавлено ({l_stores})"
+
+        except Exception:
+            mysql_conn.rollback()
+            raise
+
+        finally:
+            mysql_conn.close()
 
 
 # Обновление справочника агентов
@@ -400,18 +451,27 @@ def update_agents(conn: DuckDBPyConnection):
         l_stores = l_stores["name"].tolist()
         l_stores = ", ".join(l_stores)
 
-        with mysql_conn.cursor() as cur:
-            cur.executemany(
-                """
-                INSERT INTO corporate_agents (name, report_name)
-                VALUES (%s, %s )
-                
-            """,
-                rows,
-            )
+        mysql_conn = get_mysql_conn()
 
-        mysql_conn.commit()
-        return f"{len(rows)} агентов было добавлено ({(l_stores)})"
+        try:
+            with mysql_conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    INSERT IGNORE INTO corporate_agents (name, report_name)
+                    VALUES (%s, %s)
+                    """,
+                    rows,
+                )
+
+            mysql_conn.commit()
+            return f"{len(rows)} агентов было добавлено ({l_stores})"
+
+        except Exception:
+            mysql_conn.rollback()
+            raise
+
+        finally:
+            mysql_conn.close()
 
 
 # Обновление справочника магазинов
@@ -449,18 +509,27 @@ def update_stores(conn: DuckDBPyConnection):
         l_stores = l_stores["name"].tolist()
         l_stores = ", ".join(l_stores)
 
-        with mysql_conn.cursor() as cur:
-            cur.executemany(
-                """
-                INSERT INTO corporate_stores (name, chanel, adress, gr_id)
-                VALUES (%s, %s, %s, %s )
-                
-            """,
-                rows,
-            )
+        mysql_conn = get_mysql_conn()
 
-        mysql_conn.commit()
-        return f"{len(rows)} магазинов было добавлено ({(l_stores)})"
+        try:
+            with mysql_conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    INSERT IGNORE INTO corporate_stores (name, chanel, adress, gr_id)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    rows,
+                )
+
+            mysql_conn.commit()
+            return f"{len(rows)} магазинов было добавлено ({l_stores})"
+
+        except Exception:
+            mysql_conn.rollback()
+            raise
+
+        finally:
+            mysql_conn.close()
 
 
 # Обновление справочника баркодов
@@ -496,17 +565,27 @@ def update_barcodes(conn: DuckDBPyConnection):
         l_stores = l_stores["barcode"].tolist()
         l_stores = ", ".join(l_stores)
 
-        with mysql_conn.cursor() as cur:
-            cur.executemany(
-                """
-                INSERT INTO corporate_barcode (barcode, spec)
-                VALUES (%s, %s)
-                
-            """,
-                rows,
-            )
-        mysql_conn.commit()
-        return f"{len(rows)} баркодов было добавлено ({(l_stores)})"
+        mysql_conn = get_mysql_conn()
+
+        try:
+            with mysql_conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    INSERT IGNORE INTO corporate_barcode (barcode, spec)
+                    VALUES (%s, %s)
+                    """,
+                    rows,
+                )
+
+            mysql_conn.commit()
+            return f"{len(rows)} баркодов было добавлено ({l_stores})"
+
+        except Exception:
+            mysql_conn.rollback()
+            raise
+
+        finally:
+            mysql_conn.close()
 
 
 # Обновление m2m
@@ -526,48 +605,60 @@ def m2m_update(conn: DuckDBPyConnection):
 
     mysql_conn = get_mysql_conn()
 
-    with mysql_conn.cursor() as cur:
+    try:
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT IGNORE INTO corporate_items_barcode (items_id, barcode_id)
+                VALUES (%s,%s)
+                """,
+                item_barcode,
+            )
 
-        cur.executemany(
-            """
-            INSERT IGNORE INTO corporate_items_barcode (items_id, barcode_id)
-            VALUES (%s,%s)
-            """,
-            item_barcode,
-        )
-        mysql_conn.commit()
-        cur.executemany(
-            """
-            INSERT IGNORE INTO corporate_items_collection (items_id, itemcollections_id)
-            VALUES (%s,%s)
-            """,
-            item_collection,
-        )
-        mysql_conn.commit()
+            cur.executemany(
+                """
+                INSERT IGNORE INTO corporate_items_collection (items_id, itemcollections_id)
+                VALUES (%s,%s)
+                """,
+                item_collection,
+            )
 
-    return "M2M обновлены"
+        mysql_conn.commit()
+        return "M2M обновлены"
+
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
 
 
 # Обновление MV
 def refresh_mv_daily_sales():
     mysql_conn = get_mysql_conn()
 
-    with mysql_conn.cursor() as cur:
-        cur.execute("DROP TABLE IF EXISTS mv_daily_sales")
-        cur.execute(
-            """
+    try:
+        with mysql_conn.cursor() as cur:
+            cur.execute("DROP TABLE IF EXISTS mv_daily_sales")
+            cur.execute("""
                 CREATE TABLE mv_daily_sales AS
                 SELECT * FROM daily_sales
-            """
-        )
-        cur.execute(
-            """
+            """)
+            cur.execute("""
                 ALTER TABLE mv_daily_sales
                 ADD UNIQUE KEY ux_mv_daily_sales_date (`date`)
-            """
-        )
+            """)
+
         mysql_conn.commit()
-    return "MV UPDATED"
+        return "MV UPDATED"
+
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
 
 def update_mv_orders():
         q = """
@@ -622,14 +713,23 @@ def update_mv_orders():
         
         """
         mysql_conn = get_mysql_conn()
-        with mysql_conn.cursor() as cursor:
-            cursor.execute("DROP TABLE IF EXISTS mv_orders")
-            cursor.execute(q)
-            cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_manager (manager_name(100));")
-            cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_date (client_order_date);")
-            cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_order_date (client_order, client_order_date);")
-            
-        return 'all good'
+        try:
+            with mysql_conn.cursor() as cursor:
+                cursor.execute("DROP TABLE IF EXISTS mv_orders")
+                cursor.execute(q)
+                cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_manager (manager_name(100));")
+                cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_date (client_order_date);")
+                cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_order_date (client_order, client_order_date);")
+
+            mysql_conn.commit()
+            return "all good"
+
+        except Exception:
+            mysql_conn.rollback()
+            raise
+
+        finally:
+            mysql_conn.close()
 
 def update_salesorders():
         
@@ -665,15 +765,23 @@ def update_salesorders():
         
         """
         mysql_conn = get_mysql_conn()
+        try:
+            with mysql_conn.cursor() as cursor:
+                cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+                cursor.execute("TRUNCATE TABLE sales_salesorders;")
+                cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+                cursor.execute(q_update_salesorders)
+                cursor.execute(q_update_relations)
 
-        with mysql_conn.cursor() as cursor:
-            cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
-            cursor.execute("TRUNCATE TABLE sales_salesorders;")
-            cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
-            cursor.execute(q_update_salesorders)
-            cursor.execute(q_update_relations)
-            
-        return 'all good'
+            mysql_conn.commit()
+            return "all good"
+
+        except Exception:
+            mysql_conn.rollback()
+            raise
+
+        finally:
+            mysql_conn.close()
 
 def update_sales_with_client_orders():
         q = """
@@ -720,16 +828,26 @@ def update_sales_with_client_orders():
             );
         """
         mysql_conn = get_mysql_conn()
-        with mysql_conn.cursor() as cursor:
-            cursor.execute(q)
-            return 'all good'
+        try:
+            with mysql_conn.cursor() as cursor:
+                cursor.execute(q)
+            mysql_conn.commit()
+            return "all good"
+        except Exception:
+            mysql_conn.rollback()
+            raise
+        finally:
+            mysql_conn.close()
 
 
 # Запускаем халабуду
 def main(file):
     conn: DuckDBPyConnection = get_duckdb_conn()
     log = []
+
+    
     conn.register("raw", read_excel(file))
+
     log.append(update_brand(conn))
     log.append(update_manufacturer(conn))
     log.append(update_collections(conn))
@@ -744,14 +862,13 @@ def main(file):
     log.append(update_sales_with_client_orders())
     log.append(update_salesorders())
     log.append(update_mv_orders())
-    
-    # ========== ДОБАВЬТЕ ЭТИ 2 СТРОЧКИ ==========
+
     print("Перестраиваем mv_orders_summary_table...")
     log.append(rebuild_orders_summary())
-    # ===========================================
-    
 
     return "; \n".join(log)
+
+   
 
 
 # print(main(file))
