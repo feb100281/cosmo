@@ -39,6 +39,8 @@ FILLS = {
     "divider": PatternFill("solid", fgColor=COLORS["divider_fill"]),
     "none": PatternFill(fill_type=None),
     "kpi_card": PatternFill("solid", fgColor=COLORS["muted_green"]),
+    "odd_row": PatternFill("solid", fgColor=COLORS["light_gray"]),     
+    "even_row": PatternFill(fill_type=None),  
 }
 
 FONTS = {

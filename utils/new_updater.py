@@ -4,6 +4,7 @@ import duckdb
 from duckdb import DuckDBPyConnection
 from .db_engine import get_duckdb_conn, get_mysql_conn
 from pprint import pprint
+from .orders_reporter import main as rebuild_orders_summary
 
 
 file = '/Users/daria/Desktop/2026-04-15/Sales_2026-04-15.xlsx'
@@ -743,6 +744,11 @@ def main(file):
     log.append(update_sales_with_client_orders())
     log.append(update_salesorders())
     log.append(update_mv_orders())
+    
+    # ========== ДОБАВЬТЕ ЭТИ 2 СТРОЧКИ ==========
+    print("Перестраиваем mv_orders_summary_table...")
+    log.append(rebuild_orders_summary())
+    # ===========================================
     
 
     return "; \n".join(log)
