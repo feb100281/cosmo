@@ -140,6 +140,36 @@ def upload_cf_view(request):
     return render(request, "upload_orders.html", {"form": form})
 
 
+# def upload_all_orders_view(request):
+#     if request.method == "POST":
+#         form = UploadAllOrdersForm(request.POST, request.FILES)
+
+#         if form.is_valid():
+#             sales_file = form.cleaned_data["sales_file"]
+
+#             from utils.new_updater import main as sales_main
+
+#             try:
+#                 sales_log = sales_main(sales_file)
+
+#                 if sales_log:
+#                     for line in str(sales_log).split(";"):
+#                         line = line.strip()
+#                         if line:
+#                             messages.success(request, f"Продажи: {line}")
+
+#                 messages.success(request, "Продажи успешно обработаны.")
+
+#             except Exception as e:
+#                 messages.error(request, f"Ошибка загрузки продаж: {e}")
+
+#             return redirect(request.path)
+#     else:
+#         form = UploadAllOrdersForm()
+
+#     return render(request, "upload_all_orders.html", {"form": form})
+
+
 def upload_all_orders_view(request):
     if request.method == "POST":
         form = UploadAllOrdersForm(request.POST, request.FILES)

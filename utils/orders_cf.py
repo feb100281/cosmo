@@ -67,31 +67,37 @@ def update_cashflow(conn:DuckDBPyConnection):
     
     mysql_conn = get_mysql_conn()
 
-    with mysql_conn.cursor() as cur:
-        cur.execute("SET FOREIGN_KEY_CHECKS = 0")
-        cur.execute("TRUNCATE TABLE orders_orderscf")
-        cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+    try:
+        with mysql_conn.cursor() as cur:
+            cur.execute("DELETE FROM orders_orderscf")
 
-        cur.executemany(
-            """ 
-            INSERT INTO orders_orderscf(
-                order_guid,
-                date,
-                oper_type,
-                oper_name,
-                cash_deck,
-                doc_number,
-                amount,
-                store,
-                register
+            cur.executemany(
+                """ 
+                INSERT INTO orders_orderscf(
+                    order_guid,
+                    date,
+                    oper_type,
+                    oper_name,
+                    cash_deck,
+                    doc_number,
+                    amount,
+                    store,
+                    register
                 )
-            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)               
-            
-            """,
-            rows,
-        )
-    mysql_conn.commit()
-    return "ALL DONE"
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                rows,
+            )
+
+        mysql_conn.commit()
+        return "ALL DONE"
+
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
 
 def main(file):
     conn: DuckDBPyConnection = get_duckdb_conn()
