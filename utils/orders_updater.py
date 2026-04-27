@@ -65,6 +65,75 @@ def read_excel(file):
     return df
 
 
+# def update_orders(conn: DuckDBPyConnection):
+#     orders = conn.sql(
+#         """
+#         SELECT DISTINCT
+#             "GUID_ЗК" AS id,
+#             "Номер Заказа" || ' от ' || strftime("ДатаИВремяСоздания", '%d.%m.%Y')::TEXT AS fullname,
+#             "Номер Заказа"::TEXT AS number,
+#             "ДатаИВремяСоздания"::DATE AS date_from,
+#             MAX("Дата и время изменения")::DATE AS update_at,
+#             CASE
+#                 WHEN string_agg(DISTINCT "ПричинаОтмены", ', ' ORDER BY "ПричинаОтмены") IS NULL
+#                 THEN FALSE
+#                 ELSE TRUE
+#             END AS is_cancelled,
+#             string_agg(DISTINCT "ПричинаОтмены", ', ' ORDER BY "ПричинаОтмены") AS cancellation_reason,
+#             string_agg(DISTINCT "Статус", ', ' ORDER BY "Статус") AS status,
+#             string_agg(DISTINCT "Клиент", ', ' ORDER BY "Клиент") AS client,
+#             string_agg(DISTINCT "Менеджер", ', ' ORDER BY "Менеджер") AS manager,
+#             string_agg(DISTINCT "Тип операции", ', ' ORDER BY "Тип операции") AS oper_type,
+#             string_agg(DISTINCT "Подразделение", ', ' ORDER BY "Подразделение") AS store
+#         FROM raw
+#         WHERE "GUID_ЗК" IS NOT NULL
+#         GROUP BY
+#             "GUID_ЗК",
+#             "Номер Заказа",
+#             "ДатаИВремяСоздания"
+#         """
+#     )
+
+#     rows = orders.fetchall()
+#     conn.register("orders", orders)
+
+#     if not rows:
+#         return "No orders found"
+
+#     mysql_conn = get_mysql_conn()
+
+#     with mysql_conn.cursor() as cur:
+#         cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+#         cur.execute("TRUNCATE TABLE orders_orderitem")
+#         cur.execute("TRUNCATE TABLE orders_order")
+#         cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+
+#         cur.executemany(
+#             """
+#             INSERT INTO orders_order(
+#                 id,
+#                 fullname,
+#                 number,
+#                 date_from,
+#                 update_at,
+#                 is_cancelled,
+#                 cancellation_reason,
+#                 status,
+#                 client,
+#                 manager,
+#                 oper_type,
+#                 store
+#             )
+#             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+#             """,
+#             rows,
+#         )
+
+#     mysql_conn.commit()
+#     return "Orders перезаписаны"
+
+
+
 def update_orders(conn: DuckDBPyConnection):
     orders = conn.sql(
         """
