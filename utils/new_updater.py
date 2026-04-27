@@ -50,6 +50,89 @@ def read_excel(file):
     return df
 
 
+# # Обновление продаж
+# def update_sales(conn: DuckDBPyConnection):
+#     df = conn.sql('select "Дата документа" as date  from raw').df()
+#     min_date = df["date"].min().date()
+#     max_date = df["date"].max().date()
+
+#     sales = conn.sql(
+#         """
+#         SELECT
+#     t."Дата документа"::date as date,
+#     case when COALESCE(t."Выручка", 0) > 0 then 'Sales' else 'Return' end as operation,
+#     case when COALESCE(t."Выручка", 0) > 0 then COALESCE(t."Выручка", 0)::double else 0::double end as dt,
+#     case when COALESCE(t."Выручка", 0) < 0 then abs(COALESCE(t."Выручка", 0))::double else 0::double end as cr,
+#     case when COALESCE(t."Выручка", 0) > 0 then COALESCE(t."Количество", 0)::double else 0::double end as quant_dt,
+#     case when COALESCE(t."Выручка", 0) < 0 then abs(COALESCE(t."Количество", 0))::double else 0::double end as quant_cr,
+#         i.id::bigint as item_id,
+#         s.id::bigint as store_id,
+#         a.id::bigint as agent_id,
+#         t."Заказ клиента"::text as client_order,
+#         t."Дата Заказа клиента"::text as client_order_date,
+#         t."Номер Заказа клиента"::text as client_order_number,
+#         m.id::bigint as manager_id,
+#         t."Склад"::text as warehouse,
+#         b.id::bigint as barcode_id,
+#         t."Характеристика"::text as spec,
+#         t."УИД"::text as order_guid
+#         FROM raw t
+#         left join items as i on i.fullname = t."Номенклатура"
+#         left join stores as s on LOWER(s.name) = LOWER(t."Подразделение")
+#         left join agents as a on a.name = t."Агент"
+#         left join managers as m on m.name = t."Менеджер"
+#         left join barcodes as b on b.barcode = t."Штрихкод"
+        
+#     """
+#     )
+
+#     conn.register("sales", sales.df())
+
+#     mysql_conn = get_mysql_conn()
+
+#     rows = sales.fetchall()
+
+#     with mysql_conn.cursor() as cur:
+
+#         cur.execute(
+#             "DELETE FROM sales_salesdata WHERE date BETWEEN %s AND %s",
+#             (min_date, max_date),
+#         )
+#         mysql_conn.commit()
+
+#         cur.executemany(
+#             """
+#             INSERT INTO sales_salesdata (
+#                 date,
+#                 operation,
+#                 dt,
+#                 cr,
+#                 quant_dt,
+#                 quant_cr,
+#                 item_id,
+#                 store_id,
+#                 agent_id,
+#                 client_order,
+#                 client_order_date,
+#                 client_order_number,
+#                 manager_id,
+#                 warehouse,
+#                 barcode_id,
+#                 spec,
+#                 order_guid
+                
+#             )
+#             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+#             """,
+#             rows,
+#         )
+
+#     mysql_conn.commit()
+#     return f"добавлена реализация с {min_date} по {max_date}"
+
+
+
+
 # Обновление продаж
 def update_sales(conn: DuckDBPyConnection):
     df = conn.sql('select "Дата документа" as date  from raw').df()
@@ -82,24 +165,28 @@ def update_sales(conn: DuckDBPyConnection):
         left join agents as a on a.name = t."Агент"
         left join managers as m on m.name = t."Менеджер"
         left join barcodes as b on b.barcode = t."Штрихкод"
-        
     """
     )
 
-    conn.register("sales", sales.df())
-
+    # Получаем строки ДО начала транзакции с MySQL
+    # rows = sales.fetchall()
+    
+    sales_df = sales.df()
+    conn.register("sales", sales_df)
+    rows = list(sales_df.itertuples(index=False, name=None))
+    
     mysql_conn = get_mysql_conn()
 
-    rows = sales.fetchall()
-
+    # Первая транзакция: удаление
     with mysql_conn.cursor() as cur:
-
         cur.execute(
             "DELETE FROM sales_salesdata WHERE date BETWEEN %s AND %s",
             (min_date, max_date),
         )
         mysql_conn.commit()
 
+    # Вторая транзакция: вставка
+    with mysql_conn.cursor() as cur:
         cur.executemany(
             """
             INSERT INTO sales_salesdata (
@@ -120,14 +207,13 @@ def update_sales(conn: DuckDBPyConnection):
                 barcode_id,
                 spec,
                 order_guid
-                
             )
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """,
             rows,
         )
-
-    mysql_conn.commit()
+        mysql_conn.commit()
+    mysql_conn.close()
     return f"добавлена реализация с {min_date} по {max_date}"
 
 
@@ -230,7 +316,7 @@ def update_brand(conn: DuckDBPyConnection):
         with mysql_conn.cursor() as cur:
             cur.executemany(
                 """
-                INSERT INTO corporate_itemcollections (name)
+                INSERT IGNORE INTO corporate_itembrend (name)
                 VALUES (%s)
                 
             """,
@@ -621,62 +707,246 @@ def update_mv_orders():
             order by ord.client_order_date desc;  
         
         """
-        mysql_conn = get_mysql_conn()
-        with mysql_conn.cursor() as cursor:
-            cursor.execute("DROP TABLE IF EXISTS mv_orders")
-            cursor.execute(q)
-            cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_manager (manager_name(100));")
-            cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_date (client_order_date);")
-            cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_order_date (client_order, client_order_date);")
+        # mysql_conn = get_mysql_conn()
+        # with mysql_conn.cursor() as cursor:
+        #     cursor.execute("DROP TABLE IF EXISTS mv_orders")
+        #     cursor.execute(q)
+        #     cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_manager (manager_name(100));")
+        #     cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_date (client_order_date);")
+        #     cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_order_date (client_order, client_order_date);")
             
-        return 'all good'
+        # return 'all good'
+        
+        
+        mysql_conn = get_mysql_conn()
+
+        try:
+            with mysql_conn.cursor() as cursor:
+                cursor.execute("DROP TABLE IF EXISTS mv_orders")
+                cursor.execute(q)
+                cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_manager (manager_name(100));")
+                cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_date (client_order_date);")
+                cursor.execute("ALTER TABLE mv_orders ADD INDEX idx_mv_orders_order_date (client_order, client_order_date);")
+
+            mysql_conn.commit()
+            return "mv_orders updated"
+
+        except Exception:
+            mysql_conn.rollback()
+            raise
+
+        finally:
+            mysql_conn.close()
+
+# def update_salesorders():
+        
+#         q_update_salesorders = """
+#         INSERT IGNORE INTO sales_salesorders
+#         (client_order, client_order_date, client_order_number, client_order_type)
+#         SELECT DISTINCT
+#         client_order,
+#         client_order_date,
+#         client_order_number,
+
+#         CASE
+#             WHEN client_order_number RLIKE '^(Реализация товаров и услуг|Возврат товаров от клиента)'
+#             THEN 'Продажи без заказа'
+#             WHEN client_order_number RLIKE '^Отчет комиссионера \\(агента\\) о продажах'
+#             THEN 'Комиссионные продажи'
+#             WHEN client_order_number RLIKE '^(Отчет о розничных возвратах|Отчет о розничных продажах)'
+#             THEN 'Розничные продажи'
+#             ELSE 'Заказ клиента'
+#         END AS client_order_type
+#         FROM sales_salesdata
+#         WHERE client_order IS NOT NULL
+#         AND client_order_number IS NOT NULL;  
+#         """
+        
+#         q_update_relations = """
+#         UPDATE sales_salesdata AS t
+#             JOIN sales_salesorders AS s
+#             ON t.client_order <=> s.client_order
+#             AND t.client_order_date <=> s.client_order_date
+#             AND t.client_order_number <=> s.client_order_number
+#             SET t.orders_id = s.id;
+        
+#         """
+#         mysql_conn = get_mysql_conn()
+
+#         with mysql_conn.cursor() as cursor:
+#             cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+#             cursor.execute("TRUNCATE TABLE sales_salesorders;")
+#             cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+#             cursor.execute(q_update_salesorders)
+#             cursor.execute(q_update_relations)
+            
+#         return 'all good'
+
+
+
+# def update_salesorders():
+        
+#     q_update_salesorders = """
+#     INSERT IGNORE INTO sales_salesorders
+#     (client_order, client_order_date, client_order_number, client_order_type)
+#     SELECT DISTINCT
+#     client_order,
+#     client_order_date,
+#     client_order_number,
+
+#     CASE
+#         WHEN client_order_number RLIKE '^(Реализация товаров и услуг|Возврат товаров от клиента)'
+#         THEN 'Продажи без заказа'
+#         WHEN client_order_number RLIKE '^Отчет комиссионера \\(агента\\) о продажах'
+#         THEN 'Комиссионные продажи'
+#         WHEN client_order_number RLIKE '^(Отчет о розничных возвратах|Отчет о розничных продажах)'
+#         THEN 'Розничные продажи'
+#         ELSE 'Заказ клиента'
+#     END AS client_order_type
+#     FROM sales_salesdata
+#     WHERE client_order IS NOT NULL
+#     AND client_order_number IS NOT NULL;  
+#     """
+        
+#     q_update_relations = """
+#     UPDATE sales_salesdata AS t
+#         JOIN sales_salesorders AS s
+#         ON t.client_order <=> s.client_order
+#         AND t.client_order_date <=> s.client_order_date
+#         AND t.client_order_number <=> s.client_order_number
+#         SET t.orders_id = s.id;
+#     """
+
+#     mysql_conn = get_mysql_conn()
+
+#     try:
+#         with mysql_conn.cursor() as cursor:
+#             cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+#             cursor.execute("TRUNCATE TABLE sales_salesorders;")
+#             cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+#             cursor.execute(q_update_salesorders)
+#             cursor.execute(q_update_relations)
+
+#         mysql_conn.commit()
+#         return "sales_salesorders updated"
+
+#     except Exception:
+#         mysql_conn.rollback()
+#         raise
+
+#     finally:
+#         mysql_conn.close()
+
+
+
 
 def update_salesorders():
         
-        q_update_salesorders = """
-        INSERT IGNORE INTO sales_salesorders
-        (client_order, client_order_date, client_order_number, client_order_type)
-        SELECT DISTINCT
-        client_order,
-        client_order_date,
-        client_order_number,
+    q_update_salesorders = """
+    INSERT IGNORE INTO sales_salesorders
+    (client_order, client_order_date, client_order_number, client_order_type)
+    SELECT DISTINCT
+    client_order,
+    client_order_date,
+    client_order_number,
 
-        CASE
-            WHEN client_order_number RLIKE '^(Реализация товаров и услуг|Возврат товаров от клиента)'
-            THEN 'Продажи без заказа'
-            WHEN client_order_number RLIKE '^Отчет комиссионера \\(агента\\) о продажах'
-            THEN 'Комиссионные продажи'
-            WHEN client_order_number RLIKE '^(Отчет о розничных возвратах|Отчет о розничных продажах)'
-            THEN 'Розничные продажи'
-            ELSE 'Заказ клиента'
-        END AS client_order_type
-        FROM sales_salesdata
-        WHERE client_order IS NOT NULL
-        AND client_order_number IS NOT NULL;  
-        """
+    CASE
+        WHEN client_order_number RLIKE '^(Реализация товаров и услуг|Возврат товаров от клиента)'
+        THEN 'Продажи без заказа'
+        WHEN client_order_number RLIKE '^Отчет комиссионера \\(агента\\) о продажах'
+        THEN 'Комиссионные продажи'
+        WHEN client_order_number RLIKE '^(Отчет о розничных возвратах|Отчет о розничных продажах)'
+        THEN 'Розничные продажи'
+        ELSE 'Заказ клиента'
+    END AS client_order_type
+    FROM sales_salesdata
+    WHERE client_order IS NOT NULL
+    AND client_order_number IS NOT NULL;  
+    """
         
-        q_update_relations = """
-        UPDATE sales_salesdata AS t
-            JOIN sales_salesorders AS s
-            ON t.client_order <=> s.client_order
-            AND t.client_order_date <=> s.client_order_date
-            AND t.client_order_number <=> s.client_order_number
-            SET t.orders_id = s.id;
-        
-        """
-        mysql_conn = get_mysql_conn()
+    q_update_relations = """
+    UPDATE sales_salesdata AS t
+        JOIN sales_salesorders AS s
+        ON t.client_order <=> s.client_order
+        AND t.client_order_date <=> s.client_order_date
+        AND t.client_order_number <=> s.client_order_number
+        SET t.orders_id = s.id;
+    """
 
+    mysql_conn = get_mysql_conn()
+
+    try:
         with mysql_conn.cursor() as cursor:
-            cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
-            cursor.execute("TRUNCATE TABLE sales_salesorders;")
-            cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+            cursor.execute("DELETE FROM sales_salesorders;")
             cursor.execute(q_update_salesorders)
             cursor.execute(q_update_relations)
-            
-        return 'all good'
+
+        mysql_conn.commit()
+        return "sales_salesorders updated"
+
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
+        
+        
+        
+
+# def update_sales_with_client_orders():
+#         q = """
+#         UPDATE sales_salesdata
+#             SET
+#             client_order = CASE
+#                 WHEN (client_order IS NULL OR client_order = '<Продажи без заказа>')
+#                     AND client_order_number RLIKE '^Реализация товаров и услуг'
+#                 THEN TRIM(REPLACE(client_order_number, 'Реализация товаров и услуг', ''))
+
+#                 WHEN (client_order IS NULL OR client_order = '<Продажи без заказа>')
+#                     AND client_order_number RLIKE '^Возврат товаров от клиента'
+#                 THEN TRIM(REPLACE(client_order_number, 'Возврат товаров от клиента', ''))
+
+#                 WHEN (client_order IS NULL OR client_order = '<Продажи без заказа>')
+#                     AND client_order_number RLIKE '^Отчет комиссионера \\(агента\\) о продажах'
+#                 THEN TRIM(REPLACE(client_order_number, 'Отчет комиссионера (агента) о продажах', ''))
+
+#                 WHEN (client_order IS NULL OR client_order = '<Продажи без заказа>')
+#                     AND client_order_number RLIKE '^Отчет о розничных возвратах'
+#                 THEN TRIM(REPLACE(client_order_number, 'Отчет о розничных возвратах', ''))
+
+#                 WHEN (client_order IS NULL OR client_order = '<Продажи без заказа>')
+#                     AND client_order_number RLIKE '^Отчет о розничных продажах'
+#                 THEN TRIM(REPLACE(client_order_number, 'Отчет о розничных продажах', ''))
+
+#                 ELSE client_order
+#             END,
+
+#             client_order_date = CASE
+#                 WHEN client_order_date IS NULL THEN
+#                 DATE(
+#                     STR_TO_DATE(
+#                     SUBSTRING_INDEX(client_order_number, 'от ', -1),
+#                     '%d.%m.%Y %H:%i:%s'
+#                     )
+#                 )
+#                 ELSE client_order_date
+#             END
+#             WHERE client_order_number IS NOT NULL
+#             AND (
+#                 client_order IS NULL OR client_order = '<Продажи без заказа>'
+#                 OR client_order_date IS NULL
+#             );
+#         """
+#         mysql_conn = get_mysql_conn()
+#         with mysql_conn.cursor() as cursor:
+#             cursor.execute(q)
+#             return 'all good'
+
+
 
 def update_sales_with_client_orders():
-        q = """
+    q = """
         UPDATE sales_salesdata
             SET
             client_order = CASE
@@ -719,17 +989,63 @@ def update_sales_with_client_orders():
                 OR client_order_date IS NULL
             );
         """
-        mysql_conn = get_mysql_conn()
+
+    mysql_conn = get_mysql_conn()
+
+    try:
         with mysql_conn.cursor() as cursor:
             cursor.execute(q)
-            return 'all good'
+
+        mysql_conn.commit()
+        return "sales_salesdata client_order updated"
+
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
+        
+        
+
+# # Запускаем халабуду
+# def main(file):
+#     conn: DuckDBPyConnection = get_duckdb_conn()
+#     log = []
+#     conn.register("raw", read_excel(file))
+#     log.append(update_brand(conn))
+#     log.append(update_manufacturer(conn))
+#     log.append(update_collections(conn))
+#     log.append(update_managers(conn))
+#     log.append(update_agents(conn))
+#     log.append(update_stores(conn))
+#     log.append(update_barcodes(conn))
+#     log.append(update_items(conn))
+#     log.append(update_sales(conn))
+#     log.append(m2m_update(conn))
+#     log.append(refresh_mv_daily_sales())
+#     log.append(update_sales_with_client_orders())
+#     log.append(update_salesorders())
+#     log.append(update_mv_orders())
+    
+#     # ========== ДОБАВЬТЕ ЭТИ 2 СТРОЧКИ ==========
+#     print("Перестраиваем mv_orders_summary_table...")
+#     log.append(rebuild_orders_summary())
+#     # ===========================================
+    
+
+#     return "; \n".join(log)
+
 
 
 # Запускаем халабуду
 def main(file):
     conn: DuckDBPyConnection = get_duckdb_conn()
     log = []
+
     conn.register("raw", read_excel(file))
+
+    # 1. Справочники
     log.append(update_brand(conn))
     log.append(update_manufacturer(conn))
     log.append(update_collections(conn))
@@ -738,18 +1054,24 @@ def main(file):
     log.append(update_stores(conn))
     log.append(update_barcodes(conn))
     log.append(update_items(conn))
+
+    # 2. Основная загрузка продаж
     log.append(update_sales(conn))
     log.append(m2m_update(conn))
-    log.append(refresh_mv_daily_sales())
+
+    # 3. Обновление заказов
+    print("Продажи загружены. Обновляем заказы...")
     log.append(update_sales_with_client_orders())
     log.append(update_salesorders())
+
+    # 4. Перестройка витрин
+    print("Заказы обновлены. Перестраиваем витрины...")
+    log.append(refresh_mv_daily_sales())
     log.append(update_mv_orders())
-    
-    # ========== ДОБАВЬТЕ ЭТИ 2 СТРОЧКИ ==========
+
+    # 5. Перестройка summary
     print("Перестраиваем mv_orders_summary_table...")
     log.append(rebuild_orders_summary())
-    # ===========================================
-    
 
     return "; \n".join(log)
 
