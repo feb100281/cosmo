@@ -883,27 +883,82 @@ def update_mv_orders():
 
 
 
-def update_salesorders():
+# def update_salesorders():
         
-        """
-        mysql_conn = get_mysql_conn()
-        try:
-            with mysql_conn.cursor() as cursor:
-                cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
-                cursor.execute("TRUNCATE TABLE sales_salesorders;")
-                cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
-                cursor.execute(q_update_salesorders)
-                cursor.execute(q_update_relations)
+#         """
+#         mysql_conn = get_mysql_conn()
+#         try:
+#             with mysql_conn.cursor() as cursor:
+#                 cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+#                 cursor.execute("TRUNCATE TABLE sales_salesorders;")
+#                 cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+#                 cursor.execute(q_update_salesorders)
+#                 cursor.execute(q_update_relations)
 
-            mysql_conn.commit()
-            return "all good"
+#             mysql_conn.commit()
+#             return "all good"
 
-        except Exception:
-            mysql_conn.rollback()
-            raise
+#         except Exception:
+#             mysql_conn.rollback()
+#             raise
 
-        finally:
-            mysql_conn.close()
+#         finally:
+#             mysql_conn.close()
+#                  """
+
+
+
+def update_salesorders():
+    q_update_salesorders = """
+    INSERT IGNORE INTO sales_salesorders
+    (client_order, client_order_date, client_order_number, client_order_type)
+    SELECT DISTINCT
+        client_order,
+        client_order_date,
+        client_order_number,
+        CASE
+            WHEN client_order_number RLIKE '^(Реализация товаров и услуг|Возврат товаров от клиента)'
+            THEN 'Продажи без заказа'
+            WHEN client_order_number RLIKE '^Отчет комиссионера \\(агента\\) о продажах'
+            THEN 'Комиссионные продажи'
+            WHEN client_order_number RLIKE '^(Отчет о розничных возвратах|Отчет о розничных продажах)'
+            THEN 'Розничные продажи'
+            ELSE 'Заказ клиента'
+        END AS client_order_type
+    FROM sales_salesdata
+    WHERE client_order IS NOT NULL
+      AND client_order_number IS NOT NULL;
+    """
+
+    q_update_relations = """
+    UPDATE sales_salesdata AS t
+    JOIN sales_salesorders AS s
+      ON t.client_order <=> s.client_order
+     AND t.client_order_date <=> s.client_order_date
+     AND t.client_order_number <=> s.client_order_number
+    SET t.orders_id = s.id;
+    """
+
+    mysql_conn = get_mysql_conn()
+
+    try:
+        with mysql_conn.cursor() as cursor:
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+            cursor.execute("TRUNCATE TABLE sales_salesorders;")
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+            cursor.execute(q_update_salesorders)
+            cursor.execute(q_update_relations)
+
+        mysql_conn.commit()
+        return "sales_salesorders updated"
+
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
+        
 
 def update_sales_with_client_orders():
     q = """
@@ -949,17 +1004,17 @@ def update_sales_with_client_orders():
                 OR client_order_date IS NULL
             );
         """
-        mysql_conn = get_mysql_conn()
-        try:
-            with mysql_conn.cursor() as cursor:
-                cursor.execute(q)
-            mysql_conn.commit()
-            return "all good"
-        except Exception:
-            mysql_conn.rollback()
-            raise
-        finally:
-            mysql_conn.close()
+    mysql_conn = get_mysql_conn()
+    try:
+        with mysql_conn.cursor() as cursor:
+            cursor.execute(q)
+        mysql_conn.commit()
+        return "all good"
+    except Exception:
+        mysql_conn.rollback()
+        raise
+    finally:
+        mysql_conn.close()
 
 
 # Запускаем халабуду
