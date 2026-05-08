@@ -1,3 +1,4 @@
+# corporate/admin.py
 from django.contrib import admin
 from .models import (Companies, 
                      Projects, 
@@ -56,6 +57,14 @@ from corporate.reports.agents.agents_revenue import get_agents_metrics
 from corporate.reports.agents.utils import fmt_money_ru, fmt_int
 from decimal import Decimal
 from datetime import date
+from django.http import HttpResponse, JsonResponse
+
+
+
+
+from django.contrib import messages
+
+
 
 def _d(x):
     try:
@@ -115,6 +124,8 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
             empty=Count("id", filter=Q(_items=0), distinct=True),
         )
         extra_context["mf_stats"] = stats
+        from django.urls import reverse
+        extra_context['assouline_url'] = reverse('assouline:analyze')
         return super().changelist_view(request, extra_context=extra_context)
 
     @admin.display(description="Производитель", ordering="report_name")
@@ -163,6 +174,18 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
             chips.append(format_html('<a class="chip chip--muted" href="{}">+{}</a>', url, more))
 
         return mark_safe(" ".join(chips))
+    
+    
+    
+    def assouline_analyze_view(self, request):
+        """Перенаправление на модуль анализа Assouline"""
+        from django.shortcuts import redirect
+        return redirect('assouline:analyze')
+    
+    def assouline_export_excel_view(self, request):
+        """Перенаправление на модуль экспорта Assouline"""
+        from django.shortcuts import redirect
+        return redirect('assouline:export_excel')
 
     @admin.display(description="Подкатегории")
     def subcats_eye(self, obj):
@@ -175,9 +198,24 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
             url
         )
 
+
+    
+    
+    
     def get_urls(self):
         urls = super().get_urls()
-        custom = [
+        custom_urls = [
+            path(
+                'assouline-analyze/',
+                self.admin_site.admin_view(self.assouline_analyze_view),
+                name='corporate_itemmanufacturer_assouline_analyze'
+            ),
+            path(
+                'assouline-export-excel/',
+                self.admin_site.admin_view(self.assouline_export_excel_view),
+                name='assouline_export_excel'
+            ),
+           
             path(
                 "<int:pk>/subcats/",
                 self.admin_site.admin_view(self.subcats_view),
@@ -189,7 +227,8 @@ class ItemManufacturerAdmin(admin.ModelAdmin):
                 name="corporate_itemmanufacturer_print_manufacturers",
             ),
         ]
-        return custom + urls
+        return custom_urls + urls
+
 
     def subcats_view(self, request, pk: int):
         m = (

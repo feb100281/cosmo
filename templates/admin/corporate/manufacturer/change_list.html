@@ -46,6 +46,13 @@
     .mf-btn:hover{ background:#e5e7eb; color:#111827; }
     .mf-btn-primary{ border:1px solid rgba(2,132,199,.22); background:rgba(2,132,199,.10); }
     .mf-btn-primary:hover{ background:rgba(2,132,199,.16); }
+    .mf-btn-assouline{ 
+      border:1px solid rgba(139,92,246,.3); 
+      background:linear-gradient(135deg, rgba(139,92,246,.08), rgba(168,85,247,.05));
+    }
+    .mf-btn-assouline:hover{ 
+      background:linear-gradient(135deg, rgba(139,92,246,.15), rgba(168,85,247,.1));
+    }
     .mf-divider{ height:1px; background:rgba(148,163,184,0.35); margin:2px 0 4px; }
     .mf-foot{ font-size:11px;color:#9ca3af; }
     .mf-foot strong{ color:#4b5563; }
@@ -71,6 +78,7 @@
 {% block content_title %}
   {% url cl.opts|admin_urlname:'add' as add_url %}
   {% url 'admin:corporate_itemmanufacturer_print_manufacturers' as print_url %}
+  {% url 'admin:corporate_itemmanufacturer_assouline_analyze' as assouline_url %}
 
   <div class="mf-hero">
     <div class="mf-left">
@@ -95,6 +103,15 @@
         {% if has_add_permission %}
           <a href="{{ add_url }}" class="mf-btn mf-btn-primary">➕ Добавить производителя</a>
         {% endif %}
+        
+        <!-- Кнопка анализа ASSOULINE -->
+        <a href="{{ assouline_url }}" class="mf-btn mf-btn-assouline">
+          📚 Анализ каталога ASSOULINE
+        </a>
+        
+        <a href="{{ print_url }}" class="mf-btn">
+          🖨️ Аналитика по выбранным
+        </a>
       </div>
 
       <div class="mf-divider"></div>
