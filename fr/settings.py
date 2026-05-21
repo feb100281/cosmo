@@ -149,6 +149,7 @@ JAZZMIN_SETTINGS = {
         "sales": "fa-solid fa-chart-column",
         "sales.MV_Daily_Sales": "fa-solid fa-calendar-day",
         "sales.MVSalesOrder": "fa-solid fa-truck-fast",
+        "sales.StoreSalesPlan": "fa-solid fa-bullseye",
         
         ### --- СПРАВОЧНИКИ --- 
         "corporate": "fa-solid fa-book",

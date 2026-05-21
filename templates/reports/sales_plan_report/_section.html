@@ -1,0 +1,202 @@
+{% if sales_plan and sales_plan.rows %}
+
+<div class="section-header">
+    <div class="section-number">I.</div>
+    <div class="section-title-with-num">Итого по cash-плану</div>
+</div>
+
+<div class="hero-block">
+    <div class="hero-main">
+        <div class="hero-label">Выполнение cash-плана</div>
+        <div class="hero-value {% if sales_plan.totals.is_done %}positive-text{% else %}negative-text{% endif %}">
+            {{ sales_plan.totals.exec_pct_fmt }}%
+        </div>
+
+        <div class="plan-progress">
+            <div class="plan-progress-fill {% if sales_plan.totals.is_on_track %}progress-good{% else %}progress-bad{% endif %}"
+                 style="width: {{ sales_plan.totals.progress_width }}%;"></div>
+        </div>
+
+        <div class="hero-note">
+            Факт {{ sales_plan.totals.fact_fmt }} ₽ из плана {{ sales_plan.totals.plan_fmt }} ₽
+        </div>
+    </div>
+
+    <div class="hero-side">
+        <div class="side-row">
+            <span>Осталось до плана</span>
+            <strong class="{% if sales_plan.totals.remaining > 0 %}negative-text{% else %}positive-text{% endif %}">
+                {{ sales_plan.totals.remaining_fmt }} ₽
+            </strong>
+        </div>
+        <div class="side-row">
+            <span>Дней прошло / осталось</span>
+            <strong>{{ sales_plan.days_passed }} / {{ sales_plan.days_left }}</strong>
+        </div>
+        <div class="side-row">
+            <span>Текущий средний cash-in в день</span>
+            <strong>{{ sales_plan.totals.avg_daily_fact_fmt }} ₽</strong>
+        </div>
+        <div class="side-row">
+            <span>Нужно в день до плана</span>
+            <strong class="accent-text">{{ sales_plan.totals.required_daily_fmt }} ₽</strong>
+        </div>
+    </div>
+</div>
+
+<div class="kpi-grid-4">
+    <div class="kpi-card-compact">
+        <div class="kpi-label-compact">План месяца</div>
+        <div class="kpi-value-compact">{{ sales_plan.totals.plan_fmt }} ₽</div>
+    </div>
+    <div class="kpi-card-compact">
+        <div class="kpi-label-compact">Факт на дату</div>
+        <div class="kpi-value-compact">{{ sales_plan.totals.fact_fmt }} ₽</div>
+    </div>
+    <div class="kpi-card-compact">
+        <div class="kpi-label-compact">Прогноз на конец месяца</div>
+        <div class="kpi-value-compact {% if sales_plan.totals.is_on_track %}positive-text{% else %}negative-text{% endif %}">
+            {{ sales_plan.totals.projected_month_fact_fmt }} ₽
+        </div>
+    </div>
+    <div class="kpi-card-compact">
+        <div class="kpi-label-compact">Отклонение прогноза</div>
+        <div class="kpi-value-compact {% if sales_plan.totals.projected_diff >= 0 %}positive-text{% else %}negative-text{% endif %}">
+            {% if sales_plan.totals.projected_diff >= 0 %}+{% else %}-{% endif %}{{ sales_plan.totals.projected_diff_fmt }} ₽
+        </div>
+    </div>
+</div>
+
+<div class="forecast-box {% if sales_plan.totals.is_on_track %}forecast-good{% else %}forecast-risk{% endif %}">
+    {% if sales_plan.totals.is_on_track %}
+        <strong>Темп достаточный.</strong>
+        При текущем среднем cash-in план месяца прогнозно будет выполнен.
+    {% else %}
+        <strong>План под риском.</strong>
+        Для выхода на месячный cash-план нужно обеспечить средний cash-in
+        <strong>{{ sales_plan.totals.required_daily_fmt }} ₽ в день</strong>
+        до конца месяца.
+    {% endif %}
+</div>
+
+<div class="section-header">
+    <div class="section-number">II.</div>
+    <div class="section-title-with-num">Выполнение cash-плана по магазинам</div>
+</div>
+
+<table class="data plan-table">
+    <thead>
+        <tr>
+            <th class="col-store">Магазин</th>
+            <th>План, ₽</th>
+            <th>Факт, ₽</th>
+            <th>Выполнение</th>
+            <th>Осталось, ₽</th>
+            <th>Нужно / день</th>
+            <th>Прогноз</th>
+            <th>Статус</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in sales_plan.rows %}
+        <tr>
+            <td class="left">
+                <strong>{{ row.store_name }}</strong>
+                {% comment %} <div class="store-sub">{{ row.group_name }}</div> {% endcomment %}
+            </td>
+            <td class="right">{{ row.plan_fmt }}</td>
+            <td class="right">{{ row.fact_fmt }}</td>
+            <td class="progress-cell">
+                <div class="mini-progress">
+                    <div class="mini-progress-fill {% if row.is_on_track %}progress-good{% else %}progress-bad{% endif %}"
+                         style="width: {{ row.progress_width }}%;"></div>
+                    <div class="mini-progress-text">{{ row.exec_pct_fmt }}%</div>
+                </div>
+            </td>
+            <td class="right negative-text">{{ row.remaining_fmt }}</td>
+            <td class="right">{{ row.required_daily_fmt }}</td>
+            <td class="right {% if row.is_on_track %}positive-text{% else %}negative-text{% endif %}">
+                {{ row.projected_month_fact_fmt }}
+            </td>
+            <td class="center">
+                {% if row.is_done %}
+                    <span class="status-badge status-good">Выполнен</span>
+                {% elif row.is_on_track %}
+                    <span class="status-badge status-watch">В темпе</span>
+                {% else %}
+                    <span class="status-badge status-bad">Риск</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="small-note">
+    * Cash-in считается за период с {{ sales_plan.month_start|date:"d.m.Y" }}
+    по {{ sales_plan.report_date|date:"d.m.Y" }}. Прогноз рассчитан исходя из текущего среднедневного поступления.
+</div>
+
+
+
+<div class="page-break"></div>
+
+<div class="section-header">
+    <div class="section-number">III.</div>
+    <div class="section-title-with-num">Календарь поступлений cash-in</div>
+</div>
+
+<div class="calendar-note">
+    Суммы по дням отражают фактические поступления денежных средств за текущий месяц.
+    Цвет дня показывает выполнение относительно необходимого среднедневного cash-in:
+    <strong>{{ sales_plan.totals.required_daily_fmt }} ₽/день</strong>.
+</div>
+
+<table class="cash-calendar">
+    <thead>
+        <tr>
+            {% for weekday in sales_plan.cash_calendar.weekdays %}
+                <th>{{ weekday }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for week in sales_plan.cash_calendar.weeks %}
+        <tr>
+            {% for day in week %}
+            <td class="
+                calendar-day
+                {{ day.level_class }}
+                {% if not day.is_current_month %}day-outside{% endif %}
+                {% if day.is_report_date %}day-current{% endif %}
+            ">
+                {% if day.is_current_month %}
+                    <div class="calendar-date">{{ day.day }}</div>
+                    <div class="calendar-weekday">{{ day.weekday }}</div>
+                    <div class="calendar-amount">{{ day.amount_fmt }}</div>
+
+                    {% if day.is_report_date %}
+                        <div class="calendar-marker">дата отчета</div>
+                    {% elif day.is_future %}
+                        <div class="calendar-marker muted">плановый день</div>
+                    {% endif %}
+                {% endif %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="calendar-legend">
+    <span><i class="legend-box legend-excellent"></i> выше плана дня</span>
+    <span><i class="legend-box legend-good"></i> в темпе</span>
+    <span><i class="legend-box legend-warning"></i> ниже темпа</span>
+    <span><i class="legend-box legend-bad"></i> слабый день</span>
+    <span><i class="legend-box legend-empty"></i> нет поступлений</span>
+</div>
+
+
+{% else %}
+<p class="muted">Нет данных по cash-планам за выбранный месяц.</p>
+{% endif %}

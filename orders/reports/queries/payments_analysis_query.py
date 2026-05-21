@@ -46,17 +46,26 @@ class PaymentsAnalysisQueries:
 
         return store_name
 
+    # def _get_base_queryset(self):
+    #     """
+    #     Все операции, участвующие в анализе.
+    #     НИКАКОЙ фильтрации по знаку amount здесь нет.
+    #     """
+    #     return OrdersCF.objects.filter(
+    #         Q(oper_type='Поступление оплаты от клиента') |
+    #         Q(oper_type='Возврат или иная оплата клиенту') |
+    #         Q(register__startswith='Отчет о розничных продажах') |
+    #         Q(register__startswith='Отчет о розничных возвратах')
+    #     )
+    
+    
+    
     def _get_base_queryset(self):
         """
-        Все операции, участвующие в анализе.
-        НИКАКОЙ фильтрации по знаку amount здесь нет.
+        Все операции из orders_orderscf.
+        Суммы берутся как есть, со знаком.
         """
-        return OrdersCF.objects.filter(
-            Q(oper_type='Поступление оплаты от клиента') |
-            Q(oper_type='Возврат или иная оплата клиенту') |
-            Q(register__startswith='Отчет о розничных продажах') |
-            Q(register__startswith='Отчет о розничных возвратах')
-        )
+        return OrdersCF.objects.all()
 
     def _filter_by_date_range(self, queryset, start_date, end_date):
         return queryset.filter(date__gte=start_date, date__lte=end_date)
