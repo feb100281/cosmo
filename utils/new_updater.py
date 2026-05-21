@@ -401,6 +401,58 @@ def update_manufacturer(conn: DuckDBPyConnection):
             mysql_conn.close()
 
 
+def update_items_manufacturer(conn: DuckDBPyConnection):
+    # обновляем список производителей уже после INSERT новых производителей
+    manu = conn.sql(
+        """
+        select distinct id, name 
+        from mysql_db.djangodb.corporate_itemmanufacturer 
+        WHERE name IS NOT NULL
+        """
+    )
+    conn.register("manu", manu.df())
+
+    rows = conn.sql("""
+        SELECT DISTINCT
+            i.id::bigint as item_id,
+            m.id::bigint as manufacturer_id
+        FROM raw t
+        JOIN items i 
+            ON i.fullname = t."Номенклатура"
+        JOIN manu m 
+            ON m.name = t."Производитель"
+        WHERE t."Производитель" IS NOT NULL
+          AND i.id IS NOT NULL
+          AND m.id IS NOT NULL
+    """).fetchall()
+
+    if not rows:
+        return "Нет производителей для обновления у существующих товаров"
+
+    mysql_conn = get_mysql_conn()
+
+    try:
+        with mysql_conn.cursor() as cur:
+            cur.executemany(
+                """
+                UPDATE corporate_items
+                SET manufacturer_id = %s
+                WHERE id = %s
+                  AND manufacturer_id IS NULL
+                """,
+                [(manufacturer_id, item_id) for item_id, manufacturer_id in rows],
+            )
+
+        mysql_conn.commit()
+        return f"Производители обновлены у {len(rows)} товаров"
+
+    except Exception:
+        mysql_conn.rollback()
+        raise
+
+    finally:
+        mysql_conn.close()
+
 # Обновление справочника коллекции
 def update_collections(conn: DuckDBPyConnection):
 
@@ -1033,6 +1085,7 @@ def main(file):
     log.append(update_stores(conn))
     log.append(update_barcodes(conn))
     log.append(update_items(conn))
+    log.append(update_items_manufacturer(conn))
 
     # 2. Основная загрузка продаж
     log.append(update_sales(conn))
