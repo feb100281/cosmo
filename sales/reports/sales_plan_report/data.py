@@ -65,14 +65,20 @@ def get_sales_plan_data(report_date):
                 COALESCE(SUM(amount), 0) AS fact
             FROM orders_orderscf
             WHERE date >= %s
-              AND date <= %s
+            AND date <= %s
+            AND (
+                    oper_type = 'Поступление оплаты от клиента'
+                    OR oper_type = 'Возврат или иная оплата клиенту'
+                    OR register LIKE 'Отчет о розничных продажах%%'
+                    OR register LIKE 'Отчет о розничных возвратах%%'
+            )
             GROUP BY LOWER(TRIM(store))
             """,
             [month_start, report_date],
         )
 
         facts_map = {
-            row[0]: to_decimal(row[1])
+            row[0]: Decimal(str(row[1] or 0))
             for row in cursor.fetchall()
         }
 
