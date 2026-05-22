@@ -495,3 +495,296 @@ th,
 .legend-empty {
     background: #f1f1f1;
 }
+
+
+
+.share-mini {
+    position: relative;
+    height: 18px;
+    background: #eeeeee;
+    border: 1px solid #dddddd;
+    overflow: hidden;
+}
+
+.share-mini-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: #2f6656;
+}
+
+.share-mini-text {
+    position: relative;
+    z-index: 2;
+    text-align: right;
+    padding: 2px 5px 0 0;
+    font-size: 8px;
+    font-weight: 800;
+    color: #1f1f1f;
+}
+
+.share-chart {
+    border: 1px solid #d9d9d9;
+    padding: 10px 12px;
+    background: #fbfbfb;
+    page-break-inside: avoid;
+}
+
+.share-row {
+    display: grid;
+    grid-template-columns: 145px 1fr 45px 85px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 8px;
+}
+
+.share-store {
+    font-weight: 800;
+    color: #1a3f3a;
+}
+
+.share-bar {
+    height: 13px;
+    background: #eeeeee;
+    border: 1px solid #dddddd;
+    overflow: hidden;
+}
+
+.share-bar-fill {
+    height: 13px;
+    background: #2f6656;
+}
+
+.share-percent {
+    text-align: right;
+    font-weight: 800;
+}
+
+.share-money {
+    text-align: right;
+    color: #555;
+}
+
+
+
+
+
+
+/* LARGE CASH SHARE PAGE */
+
+.cash-share-page {
+    display: grid;
+    grid-template-columns: 74% 26%;
+    gap: 14px;
+    min-height: 430px;
+    page-break-inside: avoid;
+}
+
+.cash-share-main {
+    display: grid;
+    grid-template-columns: 38% 62%;
+    gap: 14px;
+}
+
+.large-donut-card,
+.share-list-card-large,
+.share-info-card-large {
+    border: 1px solid #d9d9d9;
+    background: #ffffff;
+}
+
+.donut-svg-large {
+    width: 100%;
+    height: 340px;
+}
+
+.large-donut-card {
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.donut-segment-label {
+    fill: #ffffff;
+    font-size: 13px;
+    font-weight: 900;
+    paint-order: stroke;
+    stroke: rgba(0, 0, 0, 0.22);
+    stroke-width: 2px;
+    stroke-linejoin: round;
+}
+
+.donut-label-muted {
+    fill: #5f6764;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.donut-value-accent {
+    fill: #1a3f3a;
+    font-size: 23px;
+    font-weight: 900;
+}
+
+.share-list-card-large {
+    padding: 18px 18px 12px 18px;
+}
+
+.share-chart-row-large {
+    display: grid;
+    grid-template-columns: 12px 160px 95px 48px 1fr;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 11px;
+    font-size: 9px;
+}
+
+.share-color-large {
+    width: 11px;
+    height: 16px;
+}
+
+.share-name-large {
+    font-weight: 900;
+    color: #1a3f3a;
+}
+
+.share-fact-large {
+    text-align: right;
+    color: #444444;
+}
+
+.share-percent-large {
+    text-align: right;
+    font-weight: 900;
+    color: #1f1f1f;
+}
+
+.share-bar-large {
+    height: 17px;
+    background: #eeeeee;
+    border: 1px solid #d6d6d6;
+    overflow: hidden;
+}
+
+.share-bar-fill-large {
+    height: 17px;
+}
+
+.share-axis-large {
+    margin-left: 325px;
+    display: flex;
+    justify-content: space-between;
+    color: #777777;
+    font-size: 8px;
+    border-top: 1px solid #dddddd;
+    padding-top: 4px;
+}
+
+.cash-share-side {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.share-info-card-large {
+    padding: 16px;
+    flex: 1;
+}
+
+.share-info-title-large {
+    font-size: 13px;
+    font-weight: 900;
+    color: #1a3f3a;
+    margin-bottom: 14px;
+}
+
+.top-row-large {
+    display: grid;
+    grid-template-columns: 22px 1fr 45px 80px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 11px;
+    font-size: 9px;
+}
+
+.top-num-large {
+    background: #e0f0e7;
+    color: #1a3f3a;
+    font-weight: 900;
+    text-align: center;
+    padding: 3px 0;
+    border-radius: 2px;
+}
+
+.top-name-large {
+    font-weight: 900;
+    color: #1f1f1f;
+}
+
+.top-percent-large {
+    font-weight: 900;
+    text-align: right;
+}
+
+.top-money-large {
+    color: #444444;
+    text-align: right;
+}
+
+.concentration-note-large {
+    color: #444444;
+    font-size: 9px;
+    margin-bottom: 7px;
+}
+
+.concentration-value-large {
+    font-size: 34px;
+    font-weight: 900;
+    color: #1a3f3a;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.concentration-sub-large {
+    font-size: 9px;
+    color: #555555;
+}
+
+.share-note-large {
+    margin-top: 12px;
+    border: 1px solid #d9d9d9;
+    background: #f7f9f8;
+    padding: 10px 12px;
+    font-size: 9px;
+    color: #555555;
+}
+
+.share-note-large strong {
+    display: inline-block;
+    background: #2f6656;
+    color: #ffffff;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 16px;
+    margin-right: 7px;
+}
+
+
+.concentration-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.concentration-icon {
+    position: absolute;
+    right: 18px;
+    bottom: 14px;
+    width: 78px;
+    height: 78px;
+}

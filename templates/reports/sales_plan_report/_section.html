@@ -90,6 +90,8 @@
             <th class="col-store">Магазин</th>
             <th>План, ₽</th>
             <th>Факт, ₽</th>
+            <th>К прошл. мес.</th>
+            <th>К прошл. году</th>
             <th>Выполнение</th>
             <th>Осталось, ₽</th>
             <th>Нужно / день</th>
@@ -97,15 +99,43 @@
             <th>Статус</th>
         </tr>
     </thead>
+
     <tbody>
         {% for row in sales_plan.rows %}
         <tr>
             <td class="left">
                 <strong>{{ row.store_name }}</strong>
-                {% comment %} <div class="store-sub">{{ row.group_name }}</div> {% endcomment %}
             </td>
+
             <td class="right">{{ row.plan_fmt }}</td>
             <td class="right">{{ row.fact_fmt }}</td>
+
+            <td class="compare-cell {% if row.mom_diff >= 0 %}positive-text{% else %}negative-text{% endif %}">
+                {% if row.prev_month_fact > 0 %}
+                    <div>
+                        {% if row.mom_diff >= 0 %}+{% else %}-{% endif %}{{ row.mom_diff_fmt }} ₽
+                    </div>
+                    <span>
+                        ({% if row.mom_diff >= 0 %}+{% else %}-{% endif %}{{ row.mom_pct_fmt }}%)
+                    </span>
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+
+            <td class="compare-cell {% if row.yoy_diff >= 0 %}positive-text{% else %}negative-text{% endif %}">
+                {% if row.prev_year_fact > 0 %}
+                    <div>
+                        {% if row.yoy_diff >= 0 %}+{% else %}-{% endif %}{{ row.yoy_diff_fmt }} ₽
+                    </div>
+                    <span>
+                        ({% if row.yoy_diff >= 0 %}+{% else %}-{% endif %}{{ row.yoy_pct_fmt }}%)
+                    </span>
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+
             <td class="progress-cell">
                 <div class="mini-progress">
                     <div class="mini-progress-fill {% if row.is_on_track %}progress-good{% else %}progress-bad{% endif %}"
@@ -113,11 +143,14 @@
                     <div class="mini-progress-text">{{ row.exec_pct_fmt }}%</div>
                 </div>
             </td>
+
             <td class="right negative-text">{{ row.remaining_fmt }}</td>
             <td class="right">{{ row.required_daily_fmt }}</td>
+
             <td class="right {% if row.is_on_track %}positive-text{% else %}negative-text{% endif %}">
                 {{ row.projected_month_fact_fmt }}
             </td>
+
             <td class="center">
                 {% if row.is_done %}
                     <span class="status-badge status-good">Выполнен</span>
@@ -135,21 +168,198 @@
 <div class="small-note">
     * Cash-in считается за период с {{ sales_plan.month_start|date:"d.m.Y" }}
     по {{ sales_plan.report_date|date:"d.m.Y" }}. Прогноз рассчитан исходя из текущего среднедневного поступления.
+    Сравнение с прошлым месяцем и прошлым годом рассчитано за аналогичный период месяца.
 </div>
-
-
 
 <div class="page-break"></div>
 
 <div class="section-header">
     <div class="section-number">III.</div>
+    <div class="section-title-with-num">Структура cash-in по магазинам</div>
+</div>
+
+<div class="cash-share-page">
+
+    <div class="cash-share-main">
+
+<div class="donut-card large-donut-card">
+    <svg class="donut-svg-large" viewBox="0 0 320 320">
+        {% for segment in sales_plan.cash_share_chart.segments %}
+            <path d="{{ segment.path }}"
+                  fill="{{ segment.color }}"
+                  stroke="#ffffff"
+                  stroke-width="2.2"
+                  stroke-linejoin="round"></path>
+
+            {% if segment.show_label %}
+            <text x="{{ segment.label_x }}"
+                  y="{{ segment.label_y }}"
+                  text-anchor="middle"
+                  dominant-baseline="middle"
+                  fill="#ffffff"
+                  font-size="13"
+                  font-weight="900"
+                  stroke="#174036"
+                  stroke-width="0.7"
+                  paint-order="stroke">
+                {{ segment.share_pct_fmt }}%
+            </text>
+            {% endif %}
+        {% endfor %}
+
+        <circle cx="160"
+                cy="160"
+                r="76"
+                fill="#ffffff"
+                stroke="#ffffff"
+                stroke-width="2"></circle>
+
+        <text x="160"
+              y="138"
+              text-anchor="middle"
+              fill="#6f7774"
+              font-size="13"
+              font-weight="400">
+            Всего факт
+        </text>
+
+        <text x="160"
+              y="160"
+              text-anchor="middle"
+              fill="#6f7774"
+              font-size="13"
+              font-weight="400">
+            на дату
+        </text>
+
+        <text x="160"
+              y="195"
+              text-anchor="middle"
+              fill="#1a3f3a"
+              font-size="18"
+              font-weight="900">
+            {{ sales_plan.cash_share_chart.total_fact_mln }}
+        </text>
+    </svg>
+</div>
+
+        <div class="share-list-card share-list-card-large">
+            {% for item in sales_plan.cash_share_chart.items %}
+            <div class="share-chart-row-large">
+                <div class="share-color-large" style="background: {{ item.color }};"></div>
+
+                <div class="share-name-large">{{ item.store_name }}</div>
+
+                <div class="share-fact-large">{{ item.fact_fmt }} ₽</div>
+
+                <div class="share-percent-large">{{ item.share_pct_fmt }}%</div>
+
+                <div class="share-bar-large">
+                    <div class="share-bar-fill-large"
+                         style="width: {{ item.bar_width }}%; background: {{ item.color }};"></div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="share-axis-large">
+    Шкала относительно лидера по cash-in
+</div>
+        </div>
+
+    </div>
+
+    <div class="cash-share-side">
+
+        <div class="share-info-card share-info-card-large">
+            <div class="share-info-title-large">ТОП-3 по доле cash-in</div>
+
+            {% for item in sales_plan.cash_share_chart.top3 %}
+            <div class="top-row-large">
+                <div class="top-num-large">{{ forloop.counter }}</div>
+                <div class="top-name-large">{{ item.store_name }}</div>
+                <div class="top-percent-large">{{ item.share_pct_fmt }}%</div>
+                <div class="top-money-large">{{ item.fact_fmt }} ₽</div>
+            </div>
+            {% endfor %}
+        </div>
+
+<div class="share-info-card share-info-card-large concentration-card">
+    <div class="share-info-title-large">Концентрация cash-in</div>
+
+    <div class="concentration-note-large">На ТОП-3 магазина приходится</div>
+
+    <div class="concentration-value-large">
+        {{ sales_plan.cash_share_chart.top3_share_fmt }}%
+    </div>
+
+    <div class="concentration-sub-large">
+        {{ sales_plan.cash_share_chart.top3_fact_fmt }}
+        из {{ sales_plan.cash_share_chart.total_fact_mln }}
+    </div>
+
+    <svg class="concentration-icon"
+     viewBox="0 0 64 64"
+     xmlns="http://www.w3.org/2000/svg">
+
+    <!-- outer ring -->
+    <circle cx="32"
+            cy="32"
+            r="22"
+            fill="none"
+            stroke="#2f6656"
+            stroke-width="3"
+            opacity="0.16"/>
+
+    <!-- main concentration segment -->
+    <path d="
+        M32 32
+        L32 10
+        A22 22 0 0 1 52 40
+        Z"
+        fill="#2f6656"
+        opacity="0.92"/>
+
+    <!-- secondary segment -->
+    <path d="
+        M32 32
+        L52 40
+        A22 22 0 0 1 42 52
+        Z"
+        fill="#2f6656"
+        opacity="0.45"/>
+
+    <!-- center hole -->
+    <circle cx="32"
+            cy="32"
+            r="8"
+            fill="#ffffff"/>
+
+</svg>
+</div>
+
+    </div>
+
+</div>
+
+<div class="share-note share-note-large">
+    <strong>i</strong>
+    График показывает долю каждого магазина в общем cash-in на дату отчета.
+    Горизонтальные бары масштабированы относительно магазина с максимальной долей, чтобы визуально лучше сравнивать структуру.
+</div>
+
+<div class="page-break"></div>
+
+
+
+<div class="section-header">
+    <div class="section-number">IV.</div>
     <div class="section-title-with-num">Календарь поступлений cash-in</div>
 </div>
 
 <div class="calendar-note">
     Суммы по дням отражают фактические поступления денежных средств за текущий месяц.
-    Цвет дня показывает выполнение относительно необходимого среднедневного cash-in:
-    <strong>{{ sales_plan.totals.required_daily_fmt }} ₽/день</strong>.
+    Цвет дня показывает выполнение относительно плановой дневной нормы месяца:
+    <strong>{{ sales_plan.cash_calendar.daily_plan_fmt }} ₽/день</strong>.
 </div>
 
 <table class="cash-calendar">
@@ -160,6 +370,7 @@
             {% endfor %}
         </tr>
     </thead>
+
     <tbody>
         {% for week in sales_plan.cash_calendar.weeks %}
         <tr>
@@ -171,15 +382,26 @@
                 {% if day.is_report_date %}day-current{% endif %}
             ">
                 {% if day.is_current_month %}
-                    <div class="calendar-date">{{ day.day }}</div>
-                    <div class="calendar-weekday">{{ day.weekday }}</div>
+
+                    <div class="calendar-top">
+                        <div>
+                            <div class="calendar-date">{{ day.day }}</div>
+                            <div class="calendar-weekday">{{ day.weekday }}</div>
+                        </div>
+
+                        {% if day.day_ratio_fmt %}
+                            <div class="calendar-ratio">{{ day.day_ratio_fmt }}</div>
+                        {% endif %}
+                    </div>
+
                     <div class="calendar-amount">{{ day.amount_fmt }}</div>
 
                     {% if day.is_report_date %}
-                        <div class="calendar-marker">дата отчета</div>
+                        <div class="calendar-marker calendar-marker-current">дата отчета</div>
                     {% elif day.is_future %}
                         <div class="calendar-marker muted">плановый день</div>
                     {% endif %}
+
                 {% endif %}
             </td>
             {% endfor %}
@@ -195,7 +417,6 @@
     <span><i class="legend-box legend-bad"></i> слабый день</span>
     <span><i class="legend-box legend-empty"></i> нет поступлений</span>
 </div>
-
 
 {% else %}
 <p class="muted">Нет данных по cash-планам за выбранный месяц.</p>
