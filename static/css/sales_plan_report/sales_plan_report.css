@@ -376,7 +376,7 @@ th,
 }
 
 .cash-calendar td {
-    height: 78px;
+    height: 82px;
     vertical-align: top;
     border: 1px solid #d9d9d9;
     padding: 6px;
@@ -461,6 +461,97 @@ th,
     flex-wrap: wrap;
     font-size: 8px;
     color: #666;
+}
+
+
+/* CALENDAR WITH COMPACT WEEK SUMMARY */
+
+/* CALENDAR WEEK SUMMARY — aligned with calendar rows */
+
+.calendar-layout {
+    display: grid;
+    grid-template-columns: 77% 23%;
+    gap: 12px;
+    align-items: start;
+    page-break-inside: avoid;
+}
+
+.calendar-side {
+    display: block;
+    padding-top: 34px; /* высота строки Пн–Вс + отступ */
+}
+
+.calendar-side-title {
+    font-size: 12px;
+    font-weight: 900;
+    color: #1a3f3a;
+    margin: -32px 0 8px 0;
+}
+
+.week-summary-card {
+    height: 88px;
+    box-sizing: border-box;
+    border: 1px solid #d9d9d9;
+    background: #ffffff;
+    padding: 8px 9px;
+    margin-bottom: 6px;
+    page-break-inside: avoid;
+}
+
+.week-current {
+    border-left: 4px solid #1a3f3a;
+    background: #f7f9f8;
+}
+
+.week-summary-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: flex-start;
+    margin-bottom: 6px;
+}
+
+.week-label {
+    font-size: 10px;
+    font-weight: 900;
+    color: #1a3f3a;
+}
+
+.week-sub {
+    margin-top: 1px;
+    font-size: 6.8px;
+    color: #777777;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+}
+
+.week-pct {
+    font-size: 12px;
+    font-weight: 900;
+    color: #1a3f3a;
+}
+
+.week-money {
+    font-size: 7.2px;
+    color: #666666;
+    margin-bottom: 6px;
+    white-space: nowrap;
+}
+
+.week-money strong {
+    color: #1a3f3a;
+    font-size: 8.5px;
+}
+
+.week-progress {
+    height: 7px;
+    background: #eeeeee;
+    border: 1px solid #d6d6d6;
+    overflow: hidden;
+}
+
+.week-progress-fill {
+    height: 7px;
 }
 
 .legend-box {
@@ -787,4 +878,185 @@ th,
     bottom: 14px;
     width: 78px;
     height: 78px;
+}
+
+
+
+/* FORECAST VS PLAN MINI CHART */
+
+.forecast-plan-card {
+    margin-top: 16px;
+    border: 1px solid #d9d9d9;
+    background: #ffffff;
+    padding: 14px 16px;
+    page-break-inside: avoid;
+}
+
+.forecast-plan-title {
+    font-size: 13px;
+    font-weight: 900;
+    color: #1a3f3a;
+    margin-bottom: 12px;
+}
+
+.forecast-plan-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.forecast-plan-label {
+    font-size: 7.5px;
+    color: #777777;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 3px;
+}
+
+.forecast-plan-value {
+    font-size: 14px;
+    font-weight: 900;
+    color: #1a3f3a;
+}
+
+.forecast-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.forecast-bar-row {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    gap: 10px;
+    align-items: center;
+}
+
+.forecast-bar-name {
+    font-size: 8.5px;
+    font-weight: 800;
+    color: #1a3f3a;
+}
+
+.forecast-bar-track {
+    position: relative;
+    height: 18px;
+    background: #eeeeee;
+    border: 1px solid #d6d6d6;
+    overflow: visible;
+}
+
+.forecast-bar-fill {
+    height: 18px;
+}
+
+.fact-fill {
+    background: #2f6656;
+}
+
+.forecast-fill-good {
+    background: #2e7d32;
+}
+
+.forecast-fill-risk {
+    background: #c62828;
+}
+
+.forecast-plan-marker {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    width: 2px;
+    background: #1a3f3a;
+}
+
+.forecast-plan-caption {
+    margin-top: 9px;
+    font-size: 7.5px;
+    color: #777777;
+}
+
+
+
+
+
+
+
+.cash-calendar-with-summary {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 5px;
+    table-layout: fixed;
+}
+
+.cash-calendar-with-summary th {
+    padding: 6px;
+}
+
+.cash-calendar-with-summary td {
+    height: 82px;
+}
+
+.week-summary-th {
+    width: 23%;
+}
+
+.week-summary-cell {
+    background: #ffffff;
+    border: 1px solid #d9d9d9 !important;
+    padding: 8px 9px !important;
+    vertical-align: top;
+}
+
+.week-current {
+    border-left: 4px solid #1a3f3a !important;
+    background: #f7f9f8;
+}
+
+.week-summary-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.week-label {
+    font-size: 10px;
+    font-weight: 900;
+    color: #1a3f3a;
+}
+
+.week-sub {
+    font-size: 6.8px;
+    color: #777;
+    text-transform: uppercase;
+}
+
+.week-pct {
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.week-money {
+    font-size: 7.2px;
+    color: #666;
+    margin-bottom: 6px;
+    white-space: nowrap;
+}
+
+.week-money strong {
+    color: #1a3f3a;
+    font-size: 8.5px;
+}
+
+.week-progress {
+    height: 7px;
+    background: #eeeeee;
+    border: 1px solid #d6d6d6;
+    overflow: hidden;
+}
+
+.week-progress-fill {
+    height: 7px;
 }

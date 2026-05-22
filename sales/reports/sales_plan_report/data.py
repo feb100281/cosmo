@@ -10,6 +10,7 @@ from sales.models import StoreSalesPlan
 
 from .calendar import build_cash_calendar
 from .charts import build_cash_share_chart
+from .forecast import build_forecast_vs_plan_chart
 
 
 def to_decimal(value):
@@ -234,6 +235,12 @@ def get_sales_plan_data(report_date):
         rows=rows,
         total_fact=total_fact,
     )
+    
+    forecast_vs_plan_chart = build_forecast_vs_plan_chart(
+            total_plan=total_plan,
+            total_fact=total_fact,
+            projected_month_fact=total_projected_month_fact,
+        )
 
     return {
         "report_date": report_date,
@@ -245,6 +252,7 @@ def get_sales_plan_data(report_date):
 
         "cash_calendar": cash_calendar,
         "cash_share_chart": cash_share_chart,
+        "forecast_vs_plan_chart": forecast_vs_plan_chart,
 
         "rows": rows,
 

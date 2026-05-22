@@ -347,6 +347,70 @@
     Горизонтальные бары масштабированы относительно магазина с максимальной долей, чтобы визуально лучше сравнивать структуру.
 </div>
 
+
+<div class="forecast-plan-card">
+    <div class="forecast-plan-title">Прогноз vs План месяца</div>
+
+    <div class="forecast-plan-grid">
+        <div>
+            <div class="forecast-plan-label">Факт на дату</div>
+            <div class="forecast-plan-value">
+                {{ sales_plan.forecast_vs_plan_chart.fact_fmt }}
+            </div>
+        </div>
+
+        <div>
+            <div class="forecast-plan-label">Прогноз на конец месяца</div>
+            <div class="forecast-plan-value {% if sales_plan.forecast_vs_plan_chart.is_on_track %}positive-text{% else %}negative-text{% endif %}">
+                {{ sales_plan.forecast_vs_plan_chart.forecast_fmt }}
+            </div>
+        </div>
+
+        <div>
+            <div class="forecast-plan-label">План месяца</div>
+            <div class="forecast-plan-value">
+                {{ sales_plan.forecast_vs_plan_chart.plan_fmt }}
+            </div>
+        </div>
+
+        <div>
+            <div class="forecast-plan-label">Отклонение</div>
+            <div class="forecast-plan-value {% if sales_plan.forecast_vs_plan_chart.is_on_track %}positive-text{% else %}negative-text{% endif %}">
+                {% if sales_plan.forecast_vs_plan_chart.gap >= 0 %}+{% else %}-{% endif %}
+                {{ sales_plan.forecast_vs_plan_chart.gap_fmt }}
+            </div>
+        </div>
+    </div>
+
+    <div class="forecast-bars">
+        <div class="forecast-bar-row">
+            <div class="forecast-bar-name">Факт</div>
+            <div class="forecast-bar-track">
+                <div class="forecast-bar-fill fact-fill"
+                     style="width: {{ sales_plan.forecast_vs_plan_chart.fact_width }}%;"></div>
+                <div class="forecast-plan-marker"
+                     style="left: {{ sales_plan.forecast_vs_plan_chart.plan_marker_left }}%;"></div>
+            </div>
+        </div>
+
+        <div class="forecast-bar-row">
+            <div class="forecast-bar-name">Прогноз</div>
+            <div class="forecast-bar-track">
+                <div class="forecast-bar-fill {% if sales_plan.forecast_vs_plan_chart.is_on_track %}forecast-fill-good{% else %}forecast-fill-risk{% endif %}"
+                     style="width: {{ sales_plan.forecast_vs_plan_chart.forecast_width }}%;"></div>
+                <div class="forecast-plan-marker"
+                     style="left: {{ sales_plan.forecast_vs_plan_chart.plan_marker_left }}%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="forecast-plan-caption">
+        Вертикальная линия показывает месячный план. Прогноз рассчитан исходя из текущего среднедневного cash-in.
+    </div>
+</div>
+
+
+
 <div class="page-break"></div>
 
 
@@ -362,19 +426,20 @@
     <strong>{{ sales_plan.cash_calendar.daily_plan_fmt }} ₽/день</strong>.
 </div>
 
-<table class="cash-calendar">
+<table class="cash-calendar cash-calendar-with-summary">
     <thead>
         <tr>
             {% for weekday in sales_plan.cash_calendar.weekdays %}
                 <th>{{ weekday }}</th>
             {% endfor %}
+            <th class="week-summary-th">Итоги недели</th>
         </tr>
     </thead>
 
     <tbody>
         {% for week in sales_plan.cash_calendar.weeks %}
         <tr>
-            {% for day in week %}
+            {% for day in week.days %}
             <td class="
                 calendar-day
                 {{ day.level_class }}
@@ -405,6 +470,46 @@
                 {% endif %}
             </td>
             {% endfor %}
+
+            <td class="week-summary-cell {% if week.summary.is_current_week %}week-current{% endif %}">
+                {% if week.summary %}
+                    <div class="week-summary-head">
+                        <div>
+                            <div class="week-label">{{ week.summary.week_label }}</div>
+                            <div class="week-sub">
+                                {% if week.summary.is_current_week %}
+                                    текущая неделя
+                                {% elif week.summary.is_completed_week %}
+                                    завершена
+                                {% else %}
+                                    плановая
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="week-pct {% if week.summary.week_exec_pct >= 100 %}positive-text{% elif week.summary.week_exec_pct < 80 %}negative-text{% endif %}">
+                            {{ week.summary.week_exec_pct_fmt }}
+                        </div>
+                    </div>
+
+                    <div class="week-money">
+                            <strong>{{ week.summary.week_fact_fmt }}</strong>
+
+                            {% if week.summary.is_current_week %}
+                                <span>/ план на дату {{ week.summary.week_plan_to_date_fmt }}</span>
+                            {% elif week.summary.is_completed_week %}
+                                <span>/ план недели {{ week.summary.week_plan_fmt }}</span>
+                            {% else %}
+                                <span>/ план еще не наступил</span>
+                            {% endif %}
+                        </div>
+
+                    <div class="week-progress">
+                        <div class="week-progress-fill {% if week.summary.week_exec_pct >= 100 %}progress-good{% else %}progress-bad{% endif %}"
+                             style="width: {{ week.summary.week_progress_width }}%;"></div>
+                    </div>
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </tbody>
