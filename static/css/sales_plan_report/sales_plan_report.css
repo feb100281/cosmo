@@ -1079,3 +1079,48 @@ th,
     page-break-inside: avoid;
     break-inside: avoid;
 }
+
+
+
+/* КОНТЕЙНЕР ДЛЯ КАЛЕНДАРЯ - ЗАПРЕЩАЕМ РАЗРЫВ ВНУТРИ */
+.calendar-page-container {
+    page-break-inside: avoid;
+    break-inside: avoid-page;
+    position: relative;
+}
+
+/* ПРИНУДИТЕЛЬНЫЙ РАЗРЫВ СТРАНИЦЫ */
+.page-break {
+    page-break-before: always;
+    break-before: page;
+}
+
+/* ЗАПРЕЩАЕМ РАЗРЫВ СТРОК ТАБЛИЦЫ */
+.cash-calendar-with-summary tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* ЗАПРЕЩАЕМ РАЗРЫВ ЯЧЕЕК */
+.cash-calendar-with-summary td,
+.cash-calendar-with-summary th {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* ФИКС ДЛЯ ПЕЧАТИ */
+@media print {
+    .calendar-page-container {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    
+    .page-break {
+        page-break-before: always;
+        break-before: page;
+    }
+    
+    .cash-calendar-with-summary tr {
+        break-inside: avoid;
+    }
+}

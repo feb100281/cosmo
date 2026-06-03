@@ -485,7 +485,7 @@
 
 
 <!-- ОБЩИЙ КАЛЕНДАРЬ - ЦЕЛИКОМ НА ОДНОЙ СТРАНИЦЕ -->
-<div style="page-break-before: avoid; page-break-inside: avoid;">
+<div class="calendar-page-container">
     <div class="section-header">
         <div class="section-number">V.</div>
         <div class="section-title-with-num">Сводный календарь поступлений cash-in (по всем подразделениям)</div>
@@ -497,8 +497,8 @@
         <strong>{{ sales_plan.cash_calendar.daily_plan_fmt }} ₽/день</strong>.
     </div>
 
-    <div style="overflow: hidden;">
-        <table class="cash-calendar cash-calendar-with-summary" style="page-break-inside: avoid;">
+    <div style="overflow-x: auto;">
+        <table class="cash-calendar cash-calendar-with-summary">
             <thead>
                 <tr>
                     {% for weekday in sales_plan.cash_calendar.weekdays %}
@@ -509,9 +509,9 @@
             </thead>
             <tbody>
                 {% for week in sales_plan.cash_calendar.weeks %}
-                    <tr style="page-break-inside: avoid;">
+                    <tr>
                         {% for day in week.days %}
-                        <td class="calendar-day {{ day.level_class }} {% if not day.is_current_month %}day-outside{% endif %} {% if day.is_report_date %}day-current{% endif %}" style="page-break-inside: avoid;">
+                        <td class="calendar-day {{ day.level_class }} {% if not day.is_current_month %}day-outside{% endif %} {% if day.is_report_date %}day-current{% endif %}">
                             {% if day.is_current_month %}
                                 <div class="calendar-date">{{ day.day }}</div>
                                 <div class="calendar-weekday">{{ day.weekday }}</div>
@@ -527,7 +527,7 @@
                             {% endif %}
                         </td>
                         {% endfor %}
-                        <td class="week-summary-cell {% if week.summary.is_current_week %}week-current{% endif %}" style="page-break-inside: avoid;">
+                        <td class="week-summary-cell {% if week.summary.is_current_week %}week-current{% endif %}">
                             {% if week.summary %}
                                 <div class="week-summary-head">
                                     <div>
@@ -576,10 +576,12 @@
 <!-- КАЛЕНДАРИ МАГАЗИНОВ -->
 {% if sales_plan.stores_calendars %}
     {% for store_calendar in sales_plan.stores_calendars %}
-        <!-- КАЖДЫЙ КАЛЕНДАРЬ МАГАЗИНА - НА ОТДЕЛЬНОЙ СТРАНИЦЕ -->
-        <div style="page-break-before: always; page-break-inside: avoid;">
+        {% if not forloop.first %}
+            <div class="page-break"></div>
+        {% endif %}
+        
+        <div class="calendar-page-container">
             <div class="section-header">
-          
                 <div class="section-title-with-num">Календарь поступлений: {{ store_calendar.store_name }}</div>
             </div>
             
@@ -606,8 +608,8 @@
                 <strong>{{ store_calendar.calendar.daily_plan_fmt }} ₽/день</strong>.
             </div>
             
-            <div style="overflow: hidden;">
-                <table class="cash-calendar cash-calendar-with-summary" style="page-break-inside: avoid;">
+            <div style="overflow-x: auto;">
+                <table class="cash-calendar cash-calendar-with-summary">
                     <thead>
                         <tr>
                             {% for weekday in store_calendar.calendar.weekdays %}
@@ -618,9 +620,9 @@
                     </thead>
                     <tbody>
                         {% for week in store_calendar.calendar.weeks %}
-                            <tr style="page-break-inside: avoid;">
+                            <tr>
                                 {% for day in week.days %}
-                                <td class="calendar-day {{ day.level_class }} {% if not day.is_current_month %}day-outside{% endif %} {% if day.is_report_date %}day-current{% endif %}" style="page-break-inside: avoid;">
+                                <td class="calendar-day {{ day.level_class }} {% if not day.is_current_month %}day-outside{% endif %} {% if day.is_report_date %}day-current{% endif %}">
                                     {% if day.is_current_month %}
                                         <div class="calendar-date">{{ day.day }}</div>
                                         <div class="calendar-weekday">{{ day.weekday }}</div>
@@ -636,7 +638,7 @@
                                     {% endif %}
                                 </td>
                                 {% endfor %}
-                                <td class="week-summary-cell {% if week.summary.is_current_week %}week-current{% endif %}" style="page-break-inside: avoid;">
+                                <td class="week-summary-cell {% if week.summary.is_current_week %}week-current{% endif %}">
                                     {% if week.summary %}
                                         <div class="week-summary-head">
                                             <div>
