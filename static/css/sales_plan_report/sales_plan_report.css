@@ -1060,3 +1060,22 @@ th,
 .week-progress-fill {
     height: 7px;
 }
+
+
+
+.cash-calendar {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.cash-calendar tr,
+.cash-calendar td,
+.cash-calendar th {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.week-summary-cell {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}

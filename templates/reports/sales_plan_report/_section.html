@@ -483,7 +483,9 @@
 
 
 
-<div style="page-break-inside: avoid;">
+
+<!-- ОБЩИЙ КАЛЕНДАРЬ - ЦЕЛИКОМ НА ОДНОЙ СТРАНИЦЕ -->
+<div style="page-break-before: avoid; page-break-inside: avoid;">
     <div class="section-header">
         <div class="section-number">V.</div>
         <div class="section-title-with-num">Сводный календарь поступлений cash-in (по всем подразделениям)</div>
@@ -495,218 +497,193 @@
         <strong>{{ sales_plan.cash_calendar.daily_plan_fmt }} ₽/день</strong>.
     </div>
 
-    <table class="cash-calendar cash-calendar-with-summary">
-    <thead>
-        <tr>
-            {% for weekday in sales_plan.cash_calendar.weekdays %}
-                <th>{{ weekday }}</th>
-            {% endfor %}
-            <th class="week-summary-th">Итоги недели</th>
-        </tr>
-    </thead>
-
-    <tbody>
-        {% for week in sales_plan.cash_calendar.weeks %}
-        <tr>
-            {% for day in week.days %}
-            <td class="
-                calendar-day
-                {{ day.level_class }}
-                {% if not day.is_current_month %}day-outside{% endif %}
-                {% if day.is_report_date %}day-current{% endif %}
-            ">
-                {% if day.is_current_month %}
-
-                    <div class="calendar-top">
-                        <div>
-                            <div class="calendar-date">{{ day.day }}</div>
-                            <div class="calendar-weekday">{{ day.weekday }}</div>
-                        </div>
-
-                        {% if day.day_ratio_fmt %}
-                            <div class="calendar-ratio">{{ day.day_ratio_fmt }}</div>
-                        {% endif %}
-                    </div>
-
-    <div class="calendar-amount">Поступления: {{ day.amount_fmt }}</div>
-{% if day.returns_amount > 0 %}
-    <div class="calendar-returns" style="color: #c62828; font-size: 9px; margin-top: 2px;">
-        Возвраты: -{{ day.returns_amount_fmt }}
-    </div>
-    <div class="calendar-netto" style="font-size: 9px; margin-top: 2px;">
-        Нетто: {{ day.netto_amount_fmt }}
-    </div>
-{% endif %}
-
-                {% endif %}
-            </td>
-            {% endfor %}
-
-            <td class="week-summary-cell {% if week.summary.is_current_week %}week-current{% endif %}">
-                {% if week.summary %}
-                    <div class="week-summary-head">
-                        <div>
-                            <div class="week-label">{{ week.summary.week_label }}</div>
-                            <div class="week-sub">
-                                {% if week.summary.is_current_week %}
-                                    текущая неделя
-                                {% elif week.summary.is_completed_week %}
-                                    завершена
-                                {% else %}
-                                    плановая
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <div class="week-pct {% if week.summary.week_exec_pct >= 100 %}positive-text{% elif week.summary.week_exec_pct < 80 %}negative-text{% endif %}">
-                            {{ week.summary.week_exec_pct_fmt }}
-                        </div>
-                    </div>
-
-                    <div class="week-money">
-                            <strong>{{ week.summary.week_fact_fmt }}</strong>
-
-                            {% if week.summary.is_current_week %}
-                                <span>/ план на дату {{ week.summary.week_plan_to_date_fmt }}</span>
-                            {% elif week.summary.is_completed_week %}
-                                <span>/ план недели {{ week.summary.week_plan_fmt }}</span>
-                            {% else %}
-                                <span>/ план еще не наступил</span>
-                            {% endif %}
-                        </div>
-
-                    <div class="week-progress">
-                        <div class="week-progress-fill {% if week.summary.week_exec_pct >= 100 %}progress-good{% else %}progress-bad{% endif %}"
-                             style="width: {{ week.summary.week_progress_width }}%;"></div>
-                    </div>
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
-<div class="calendar-legend">
-    <span><i class="legend-box legend-excellent"></i> выше плана дня</span>
-    <span><i class="legend-box legend-good"></i> в темпе</span>
-    <span><i class="legend-box legend-warning"></i> ниже темпа</span>
-    <span><i class="legend-box legend-bad"></i> слабый день</span>
-    <span><i class="legend-box legend-empty"></i> нет поступлений</span>
-</div>
-
-{% else %}
-<p class="muted">Нет данных по cash-планам за выбранный месяц.</p>
-{% endif %}
-
-
-
-{% if sales_plan.stores_calendars %}
-    {% for store_calendar in sales_plan.stores_calendars %}
-        <div class="page-break"></div>
-        
-        <div class="section-header">
-            <div class="section-number"></div>
-            <div class="section-title-with-num">Календарь поступлений: {{ store_calendar.store_name }}</div>
-        </div>
-        
-        <div class="kpi-grid-3" style="margin: 10px 0; display: flex; gap: 8px;">
-            <div class="kpi-card-compact" style="flex: 1;">
-                <div class="kpi-label-compact">План месяца</div>
-                <div class="kpi-value-compact">{{ store_calendar.store_plan_fmt }} ₽</div>
-            </div>
-            <div class="kpi-card-compact" style="flex: 1;">
-                <div class="kpi-label-compact">Факт на дату</div>
-                <div class="kpi-value-compact">{{ store_calendar.store_fact_fmt }} ₽</div>
-            </div>
-            <div class="kpi-card-compact" style="flex: 1;">
-                <div class="kpi-label-compact">Выполнение</div>
-                <div class="kpi-value-compact {% if store_calendar.store_exec_pct >= 100 %}positive-text{% else %}negative-text{% endif %}">
-                    {{ store_calendar.store_exec_pct_fmt }}
-                </div>
-            </div>
-        </div>
-        
-        <div class="calendar-note">
-            Суммы по дням отражают фактические поступления денежных средств за текущий месяц.
-            Цвет дня показывает выполнение относительно плановой дневной нормы месяца:
-            <strong>{{ store_calendar.calendar.daily_plan_fmt }} ₽/день</strong>.
-        </div>
-        
-        <table class="cash-calendar cash-calendar-with-summary">
+    <div style="overflow: hidden;">
+        <table class="cash-calendar cash-calendar-with-summary" style="page-break-inside: avoid;">
             <thead>
                 <tr>
-                    {% for weekday in store_calendar.calendar.weekdays %}
+                    {% for weekday in sales_plan.cash_calendar.weekdays %}
                         <th>{{ weekday }}</th>
                     {% endfor %}
                     <th class="week-summary-th">Итоги недели</th>
                 </tr>
             </thead>
             <tbody>
-                {% for week in store_calendar.calendar.weeks %}
-                <tr>
-                    {% for day in week.days %}
-                    <td class="calendar-day {{ day.level_class }} {% if not day.is_current_month %}day-outside{% endif %} {% if day.is_report_date %}day-current{% endif %}">
-                        {% if day.is_current_month %}
-                            <div class="calendar-date">{{ day.day }}</div>
-                            <div class="calendar-weekday">{{ day.weekday }}</div>
-                            <div class="calendar-amount">Поступления: {{ day.amount_fmt }}</div>
-                            {% if day.returns_amount > 0 %}
-                                <div class="calendar-returns" style="color: #c62828; font-size: 9px; margin-top: 2px;">
-                                    Возвраты: -{{ day.returns_amount_fmt }}
-                                </div>
-                                <div class="calendar-netto" style="font-size: 9px; margin-top: 2px;">
-                                    Нетто: {{ day.netto_amount_fmt }}
-                                </div>
+                {% for week in sales_plan.cash_calendar.weeks %}
+                    <tr style="page-break-inside: avoid;">
+                        {% for day in week.days %}
+                        <td class="calendar-day {{ day.level_class }} {% if not day.is_current_month %}day-outside{% endif %} {% if day.is_report_date %}day-current{% endif %}" style="page-break-inside: avoid;">
+                            {% if day.is_current_month %}
+                                <div class="calendar-date">{{ day.day }}</div>
+                                <div class="calendar-weekday">{{ day.weekday }}</div>
+                                <div class="calendar-amount">Поступления: {{ day.amount_fmt }}</div>
+                                {% if day.returns_amount > 0 %}
+                                    <div class="calendar-returns" style="color: #c62828; font-size: 9px; margin-top: 2px;">
+                                        Возвраты: -{{ day.returns_amount_fmt }}
+                                    </div>
+                                    <div class="calendar-netto" style="font-size: 9px; margin-top: 2px;">
+                                        Нетто: {{ day.netto_amount_fmt }}
+                                    </div>
+                                {% endif %}
                             {% endif %}
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                    <td class="week-summary-cell {% if week.summary.is_current_week %}week-current{% endif %}">
-                        {% if week.summary %}
-                            <div class="week-summary-head">
-                                <div>
-                                    <div class="week-label">{{ week.summary.week_label }}</div>
-                                    <div class="week-sub">
-                                        {% if week.summary.is_current_week %}
-                                            текущая неделя
-                                        {% elif week.summary.is_completed_week %}
-                                            завершена
-                                        {% else %}
-                                            плановая
-                                        {% endif %}
+                        </td>
+                        {% endfor %}
+                        <td class="week-summary-cell {% if week.summary.is_current_week %}week-current{% endif %}" style="page-break-inside: avoid;">
+                            {% if week.summary %}
+                                <div class="week-summary-head">
+                                    <div>
+                                        <div class="week-label">{{ week.summary.week_label }}</div>
+                                        <div class="week-sub">
+                                            {% if week.summary.is_current_week %}текущая неделя
+                                            {% elif week.summary.is_completed_week %}завершена
+                                            {% else %}плановая{% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="week-pct {% if week.summary.week_exec_pct >= 100 %}positive-text{% elif week.summary.week_exec_pct < 80 %}negative-text{% endif %}">
+                                        {{ week.summary.week_exec_pct_fmt }}
                                     </div>
                                 </div>
-                                <div class="week-pct {% if week.summary.week_exec_pct >= 100 %}positive-text{% elif week.summary.week_exec_pct < 80 %}negative-text{% endif %}">
-                                    {{ week.summary.week_exec_pct_fmt }}
+                                <div class="week-money">
+                                    <strong>{{ week.summary.week_fact_fmt }}</strong>
+                                    {% if week.summary.is_current_week %}
+                                        <span>/ план на дату {{ week.summary.week_plan_to_date_fmt }}</span>
+                                    {% elif week.summary.is_completed_week %}
+                                        <span>/ план недели {{ week.summary.week_plan_fmt }}</span>
+                                    {% else %}
+                                        <span>/ план еще не наступил</span>
+                                    {% endif %}
                                 </div>
-                            </div>
-                            <div class="week-money">
-                                <strong>{{ week.summary.week_fact_fmt }}</strong>
-                                {% if week.summary.is_current_week %}
-                                    <span>/ план на дату {{ week.summary.week_plan_to_date_fmt }}</span>
-                                {% elif week.summary.is_completed_week %}
-                                    <span>/ план недели {{ week.summary.week_plan_fmt }}</span>
-                                {% else %}
-                                    <span>/ план еще не наступил</span>
-                                {% endif %}
-                            </div>
-                            <div class="week-progress">
-                                <div class="week-progress-fill {% if week.summary.week_exec_pct >= 100 %}progress-good{% else %}progress-bad{% endif %}"
-                                     style="width: {{ week.summary.week_progress_width }}%;"></div>
-                            </div>
-                        {% endif %}
-                    </td>
-                </tr>
+                                <div class="week-progress">
+                                    <div class="week-progress-fill {% if week.summary.week_exec_pct >= 100 %}progress-good{% else %}progress-bad{% endif %}"
+                                         style="width: {{ week.summary.week_progress_width }}%;"></div>
+                                </div>
+                            {% endif %}
+                        </td>
+                    </tr>
                 {% endfor %}
             </tbody>
         </table>
-        
-        <div class="calendar-legend">
-            <span><i class="legend-box legend-excellent"></i> выше плана дня</span>
-            <span><i class="legend-box legend-good"></i> в темпе</span>
-            <span><i class="legend-box legend-warning"></i> ниже темпа</span>
-            <span><i class="legend-box legend-bad"></i> слабый день</span>
-            <span><i class="legend-box legend-empty"></i> нет поступлений</span>
+    </div>
+
+    <div class="calendar-legend">
+        <span><i class="legend-box legend-excellent"></i> выше плана дня</span>
+        <span><i class="legend-box legend-good"></i> в темпе</span>
+        <span><i class="legend-box legend-warning"></i> ниже темпа</span>
+        <span><i class="legend-box legend-bad"></i> слабый день</span>
+        <span><i class="legend-box legend-empty"></i> нет поступлений</span>
+    </div>
+</div>
+
+<!-- КАЛЕНДАРИ МАГАЗИНОВ -->
+{% if sales_plan.stores_calendars %}
+    {% for store_calendar in sales_plan.stores_calendars %}
+        <!-- КАЖДЫЙ КАЛЕНДАРЬ МАГАЗИНА - НА ОТДЕЛЬНОЙ СТРАНИЦЕ -->
+        <div style="page-break-before: always; page-break-inside: avoid;">
+            <div class="section-header">
+          
+                <div class="section-title-with-num">Календарь поступлений: {{ store_calendar.store_name }}</div>
+            </div>
+            
+            <div class="kpi-grid-3" style="margin: 10px 0; display: flex; gap: 8px;">
+                <div class="kpi-card-compact" style="flex: 1;">
+                    <div class="kpi-label-compact">План месяца</div>
+                    <div class="kpi-value-compact">{{ store_calendar.store_plan_fmt }} ₽</div>
+                </div>
+                <div class="kpi-card-compact" style="flex: 1;">
+                    <div class="kpi-label-compact">Факт на дату</div>
+                    <div class="kpi-value-compact">{{ store_calendar.store_fact_fmt }} ₽</div>
+                </div>
+                <div class="kpi-card-compact" style="flex: 1;">
+                    <div class="kpi-label-compact">Выполнение</div>
+                    <div class="kpi-value-compact {% if store_calendar.store_exec_pct >= 100 %}positive-text{% else %}negative-text{% endif %}">
+                        {{ store_calendar.store_exec_pct_fmt }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="calendar-note">
+                Суммы по дням отражают фактические поступления денежных средств за текущий месяц.
+                Цвет дня показывает выполнение относительно плановой дневной нормы месяца:
+                <strong>{{ store_calendar.calendar.daily_plan_fmt }} ₽/день</strong>.
+            </div>
+            
+            <div style="overflow: hidden;">
+                <table class="cash-calendar cash-calendar-with-summary" style="page-break-inside: avoid;">
+                    <thead>
+                        <tr>
+                            {% for weekday in store_calendar.calendar.weekdays %}
+                                <th>{{ weekday }}</th>
+                            {% endfor %}
+                            <th class="week-summary-th">Итоги недели</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for week in store_calendar.calendar.weeks %}
+                            <tr style="page-break-inside: avoid;">
+                                {% for day in week.days %}
+                                <td class="calendar-day {{ day.level_class }} {% if not day.is_current_month %}day-outside{% endif %} {% if day.is_report_date %}day-current{% endif %}" style="page-break-inside: avoid;">
+                                    {% if day.is_current_month %}
+                                        <div class="calendar-date">{{ day.day }}</div>
+                                        <div class="calendar-weekday">{{ day.weekday }}</div>
+                                        <div class="calendar-amount">Поступления: {{ day.amount_fmt }}</div>
+                                        {% if day.returns_amount > 0 %}
+                                            <div class="calendar-returns" style="color: #c62828; font-size: 9px; margin-top: 2px;">
+                                                Возвраты: -{{ day.returns_amount_fmt }}
+                                            </div>
+                                            <div class="calendar-netto" style="font-size: 9px; margin-top: 2px;">
+                                                Нетто: {{ day.netto_amount_fmt }}
+                                            </div>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                                <td class="week-summary-cell {% if week.summary.is_current_week %}week-current{% endif %}" style="page-break-inside: avoid;">
+                                    {% if week.summary %}
+                                        <div class="week-summary-head">
+                                            <div>
+                                                <div class="week-label">{{ week.summary.week_label }}</div>
+                                                <div class="week-sub">
+                                                    {% if week.summary.is_current_week %}текущая неделя
+                                                    {% elif week.summary.is_completed_week %}завершена
+                                                    {% else %}плановая{% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="week-pct {% if week.summary.week_exec_pct >= 100 %}positive-text{% elif week.summary.week_exec_pct < 80 %}negative-text{% endif %}">
+                                                {{ week.summary.week_exec_pct_fmt }}
+                                            </div>
+                                        </div>
+                                        <div class="week-money">
+                                            <strong>{{ week.summary.week_fact_fmt }}</strong>
+                                            {% if week.summary.is_current_week %}
+                                                <span>/ план на дату {{ week.summary.week_plan_to_date_fmt }}</span>
+                                            {% elif week.summary.is_completed_week %}
+                                                <span>/ план недели {{ week.summary.week_plan_fmt }}</span>
+                                            {% else %}
+                                                <span>/ план еще не наступил</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="week-progress">
+                                            <div class="week-progress-fill {% if week.summary.week_exec_pct >= 100 %}progress-good{% else %}progress-bad{% endif %}"
+                                                 style="width: {{ week.summary.week_progress_width }}%;"></div>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="calendar-legend">
+                <span><i class="legend-box legend-excellent"></i> выше плана дня</span>
+                <span><i class="legend-box legend-good"></i> в темпе</span>
+                <span><i class="legend-box legend-warning"></i> ниже темпа</span>
+                <span><i class="legend-box legend-bad"></i> слабый день</span>
+                <span><i class="legend-box legend-empty"></i> нет поступлений</span>
+            </div>
         </div>
     {% endfor %}
+{% endif %}
+
+{% else %}
+<p class="muted">Нет данных по cash-планам за выбранный месяц.</p>
 {% endif %}
