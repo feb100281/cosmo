@@ -11,4 +11,5 @@ def build_sales_plan_report_context(report_date, request=None):
         "subtitle": "План / факт поступлений денежных средств по торговым точкам",
         "period_label": f"Данные на {report_date.strftime('%d.%m.%Y')}",
         "sales_plan": sales_plan,
+         
     }
