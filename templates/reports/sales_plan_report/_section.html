@@ -479,22 +479,23 @@
 
 
 
-<div class="page-break"></div>
 
 
 
-<div class="section-header">
-    <div class="section-number">V.</div>
-    <div class="section-title-with-num">Календарь поступлений cash-in</div>
-</div>
 
-<div class="calendar-note">
-    Суммы по дням отражают фактические поступления денежных средств за текущий месяц.
-    Цвет дня показывает выполнение относительно плановой дневной нормы месяца:
-    <strong>{{ sales_plan.cash_calendar.daily_plan_fmt }} ₽/день</strong>.
-</div>
+<div style="page-break-inside: avoid;">
+    <div class="section-header">
+        <div class="section-number">V.</div>
+        <div class="section-title-with-num">Сводный календарь поступлений cash-in (по всем подразделениям)</div>
+    </div>
 
-<table class="cash-calendar cash-calendar-with-summary">
+    <div class="calendar-note">
+        Суммы по дням отражают фактические поступления денежных средств за текущий месяц.
+        Цвет дня показывает выполнение относительно плановой дневной нормы месяца:
+        <strong>{{ sales_plan.cash_calendar.daily_plan_fmt }} ₽/день</strong>.
+    </div>
+
+    <table class="cash-calendar cash-calendar-with-summary">
     <thead>
         <tr>
             {% for weekday in sales_plan.cash_calendar.weekdays %}
@@ -604,7 +605,7 @@
         <div class="page-break"></div>
         
         <div class="section-header">
-            <div class="section-number">📊</div>
+            <div class="section-number"></div>
             <div class="section-title-with-num">Календарь поступлений: {{ store_calendar.store_name }}</div>
         </div>
         
