@@ -1124,3 +1124,21 @@ th,
         break-inside: avoid;
     }
 }
+
+
+/* В ваш CSS файл */
+.kpi-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+/* Альтернативный вариант если не работает grid */
+.kpi-grid-2 {
+    display: flex;
+    gap: 16px;
+}
+.kpi-grid-2 > * {
+    flex: 1;
+}

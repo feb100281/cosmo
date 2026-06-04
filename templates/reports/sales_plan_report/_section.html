@@ -175,27 +175,61 @@
 
 
 
-{% if sales_plan.returns_analytics.has_returns %}
+
+{% if sales_plan.returns_analytics.has_returns or sales_plan.returns_analytics.has_designer %}
 
 <div class="page-break"></div>
 
 <div class="section-header">
     <div class="section-number">III.</div>
-    <div class="section-title-with-num">Аналитика возвратов</div>
+    <div class="section-title-with-num">Аналитика возвратов и дизайнерского вознаграждения</div>
 </div>
 
-<div class="kpi-grid-4">
+<!-- Первый ряд: 4 карточки -->
+<div class="kpi-grid-4" style="margin-bottom: 20px;">
     <div class="kpi-card-compact">
         <div class="kpi-label-compact">Всего возвратов</div>
-        <div class="kpi-value-compact negative-text">{{ sales_plan.returns_analytics.total_returns_fmt }} ₽</div>
+        <div class="kpi-value-compact {% if sales_plan.returns_analytics.total_returns < 0 %}negative-text{% else %}positive-text{% endif %}">
+            {{ sales_plan.returns_analytics.total_returns_fmt }} ₽
+        </div>
     </div>
+
     <div class="kpi-card-compact">
-        <div class="kpi-label-compact">Доля от поступлений</div>
-        <div class="kpi-value-compact negative-text">{{ sales_plan.returns_analytics.total_return_pct_fmt }}</div>
+        <div class="kpi-label-compact">Доля возвратов</div>
+        <div class="kpi-value-compact {% if sales_plan.returns_analytics.total_return_pct < 0 %}negative-text{% else %}positive-text{% endif %}">
+            {{ sales_plan.returns_analytics.total_return_pct_fmt }}
+        </div>
     </div>
+
     <div class="kpi-card-compact">
-        <div class="kpi-label-compact">Всего поступлений (брутто)</div>
-        <div class="kpi-value-compact">{{ sales_plan.returns_analytics.total_income_fmt }} ₽</div>
+        <div class="kpi-label-compact">Дизайнерское вознаграждение</div>
+        <div class="kpi-value-compact {% if sales_plan.returns_analytics.total_designer < 0 %}negative-text{% else %}positive-text{% endif %}">
+            {{ sales_plan.returns_analytics.total_designer_fmt }} ₽
+        </div>
+    </div>
+
+    <div class="kpi-card-compact">
+        <div class="kpi-label-compact">Доля дизайнеров</div>
+        <div class="kpi-value-compact {% if sales_plan.returns_analytics.total_designer_pct < 0 %}negative-text{% else %}positive-text{% endif %}">
+            {{ sales_plan.returns_analytics.total_designer_pct_fmt }}
+        </div>
+    </div>
+</div>
+
+<!-- Второй ряд: 2 карточки -->
+<div class="kpi-grid-2" style="margin-bottom: 20px; display: flex; gap: 16px;">
+    <div class="kpi-card-compact" style="flex: 1; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-left: 4px solid #2e7d32;">
+        <div class="kpi-label-compact" style="color: #1b5e20;">Всего поступлений (брутто)</div>
+        <div class="kpi-value-compact" style="color: #1b5e20;">
+            {{ sales_plan.returns_analytics.total_income_fmt }} ₽
+        </div>
+    </div>
+
+    <div class="kpi-card-compact" style="flex: 1; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-left: 4px solid #2e7d32;">
+        <div class="kpi-label-compact" style="color: #1b5e20;">Чистый доход</div>
+        <div class="kpi-value-compact" style="color: {% if sales_plan.returns_analytics.net_after_all >= 0 %}#1b5e20{% else %}#c62828{% endif %};">
+            {{ sales_plan.returns_analytics.net_after_all_fmt }} ₽
+        </div>
     </div>
 </div>
 
@@ -205,35 +239,61 @@
             <th class="col-store">Магазин</th>
             <th>Поступления, ₽</th>
             <th>Возвраты, ₽</th>
-            <th>Кол-во возвратов</th>
-            <th>Доля возвратов</th>
+            <th>Доля возвр.</th>
+            <th>Дизайнеры, ₽</th>
+            <th>Доля дизайн.</th>
+            <th>Итого корректировки, ₽</th>
             <th>Нетто, ₽</th>
         </tr>
     </thead>
+
     <tbody>
         {% for row in sales_plan.returns_analytics.rows %}
         <tr>
-            <td class="left"><strong>{{ row.store_name }}</strong></td>
-            <td class="right">{{ row.income_fmt }}</td>
-            <td class="right negative-text">{{ row.returns_amount_fmt }}</td>
-            <td class="center">{{ row.returns_count }}</td>
-            <td class="right {% if row.return_pct_of_income > 10 %}negative-text{% endif %}">
+            <td class="left">
+                <strong>{{ row.store_name }}</strong>
+            </td>
+
+            <td class="right">
+                {{ row.income_fmt }}
+            </td>
+
+            <td class="right {% if row.returns_amount < 0 %}negative-text{% else %}positive-text{% endif %}">
+                {{ row.returns_amount_fmt }}
+            </td>
+
+            <td class="right {% if row.return_pct_of_income < -10 %}negative-text{% endif %}">
                 {{ row.return_pct_fmt }}
             </td>
-            <td class="right">{{ row.net_income_fmt }}</td>
+
+            <td class="right {% if row.designer_amount < 0 %}negative-text{% else %}positive-text{% endif %}">
+                {{ row.designer_amount_fmt }}
+            </td>
+
+            <td class="right {% if row.designer_pct_of_income < -5 %}negative-text{% endif %}">
+                {{ row.designer_pct_fmt }}
+            </td>
+
+            <td class="right {% if row.total_costs < 0 %}negative-text{% else %}positive-text{% endif %}">
+                {{ row.total_costs_fmt }}
+            </td>
+
+            <td class="right {% if row.net_after_all < 0 %}negative-text{% else %}positive-text{% endif %}">
+                {{ row.net_after_all_fmt }}
+            </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 
 <div class="small-note">
-    * Возвраты учитываются отдельно и не влияют на выполнение cash-плана.
-    План выполняется по факту поступлений без вычета возвратов.
+    * Возвраты: операции типа "Возврат оплаты клиенту" и "Отчет о розничных возвратах".<br>
+    ** Дизайнерское вознаграждение: "Дизайнерское вознаграждение из УТ10" и "Дизайнерское вознаграждение".<br>
+    *** Все суммы возвратов и дизайнерского вознаграждения отображаются со знаком из базы.<br>
+    **** Нетто = поступления + возвраты + дизайнерское вознаграждение.
 </div>
+
 {% endif %}
-
-
-
 
 
 
@@ -515,15 +575,29 @@
                             {% if day.is_current_month %}
                                 <div class="calendar-date">{{ day.day }}</div>
                                 <div class="calendar-weekday">{{ day.weekday }}</div>
-                                <div class="calendar-amount">Поступления: {{ day.amount_fmt }}</div>
-                                {% if day.returns_amount > 0 %}
-                                    <div class="calendar-returns" style="color: #c62828; font-size: 9px; margin-top: 2px;">
-                                        Возвраты: -{{ day.returns_amount_fmt }}
-                                    </div>
-                                    <div class="calendar-netto" style="font-size: 9px; margin-top: 2px;">
-                                        Нетто: {{ day.netto_amount_fmt }}
-                                    </div>
-                                {% endif %}
+                                
+                                <!-- Приход -->
+                                <div class="calendar-income" style="font-size: 9px; margin-top: 4px;">
+                                    <span style="color: #2e7d32;">↑ Приход:</span> {{ day.amount_fmt }}
+                                </div>
+                                
+                                <!-- Возвраты и дизайнеры -->
+                                <div class="calendar-costs" style="font-size: 8px; margin-top: 2px; line-height: 1.4;">
+                                    {% if day.returns_amount != 0 %}
+                                        <div><span style="color: #c62828;">↺ Возврат:</span> <span style="color: #c62828;">{{ day.returns_amount_fmt }}</span></div>
+                                    {% endif %}
+                                    
+                                    {% if day.designer_amount < 0 %}
+                                        <div><span style="color: #ef6c00;">✏ Дизайн:</span> <span style="color: #ef6c00;">{{ day.designer_amount_fmt }}</span></div>
+                                    {% elif day.designer_amount > 0 %}
+                                        <div><span style="color: #2e7d32;">↻ Возврат дизайна:</span> <span style="color: #2e7d32;">{{ day.designer_amount_fmt }}</span></div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Нетто (итог) -->
+                                <div class="calendar-netto" style="font-size: 9px; margin-top: 3px; font-weight: 600; border-top: 0.5px solid rgba(0,0,0,0.1); padding-top: 2px;">
+                                    <span style="color: #1565c0;">= Итого:</span> {{ day.netto_amount_fmt }}
+                                </div>
                             {% endif %}
                         </td>
                         {% endfor %}
@@ -626,15 +700,29 @@
                                     {% if day.is_current_month %}
                                         <div class="calendar-date">{{ day.day }}</div>
                                         <div class="calendar-weekday">{{ day.weekday }}</div>
-                                        <div class="calendar-amount">Поступления: {{ day.amount_fmt }}</div>
-                                        {% if day.returns_amount > 0 %}
-                                            <div class="calendar-returns" style="color: #c62828; font-size: 9px; margin-top: 2px;">
-                                                Возвраты: -{{ day.returns_amount_fmt }}
-                                            </div>
-                                            <div class="calendar-netto" style="font-size: 9px; margin-top: 2px;">
-                                                Нетто: {{ day.netto_amount_fmt }}
-                                            </div>
-                                        {% endif %}
+                                        
+                                        <!-- Приход -->
+                                        <div class="calendar-income" style="font-size: 9px; margin-top: 4px;">
+                                            <span style="color: #2e7d32;">↑ Приход:</span> {{ day.amount_fmt }}
+                                        </div>
+                                        
+                                        <!-- Возвраты и дизайнеры -->
+                                        <div class="calendar-costs" style="font-size: 8px; margin-top: 2px; line-height: 1.4;">
+                                            {% if day.returns_amount != 0 %}
+                                                <div><span style="color: #c62828;">↺ Возврат:</span> <span style="color: #c62828;">{{ day.returns_amount_fmt }}</span></div>
+                                            {% endif %}
+                                            
+                                            {% if day.designer_amount < 0 %}
+                                                <div><span style="color: #ef6c00;">✏ Дизайн:</span> <span style="color: #ef6c00;">{{ day.designer_amount_fmt }}</span></div>
+                                            {% elif day.designer_amount > 0 %}
+                                                <div><span style="color: #2e7d32;">↻ Возврат дизайна:</span> <span style="color: #2e7d32;">{{ day.designer_amount_fmt }}</span></div>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <!-- Нетто (итог) -->
+                                        <div class="calendar-netto" style="font-size: 9px; margin-top: 3px; font-weight: 600; border-top: 0.5px solid rgba(0,0,0,0.1); padding-top: 2px;">
+                                            <span style="color: #1565c0;">= Итого:</span> {{ day.netto_amount_fmt }}
+                                        </div>
                                     {% endif %}
                                 </td>
                                 {% endfor %}
@@ -668,7 +756,7 @@
                                                  style="width: {{ week.summary.week_progress_width }}%;"></div>
                                         </div>
                                     {% endif %}
-                                </td>
+                            
                             </tr>
                         {% endfor %}
                     </tbody>
