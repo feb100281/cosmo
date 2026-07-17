@@ -1,5 +1,6 @@
+# sales/admin.py
 from django.contrib import admin
-from .models import SalesData,MV_Daily_Sales,MVSalesOrder
+from .models import SalesData,MV_Daily_Sales,MVSalesOrder, StoreSalesPlan
 from django.urls import path, reverse, NoReverseMatch
 
 from django.db.models import CharField
@@ -15,6 +16,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import Http404
 from datetime import date
 from sales.dash_apps.dailysales.data import get_month_data, get_ytd_data
+from sales.reports.sales_plan_report.exporter import build_sales_plan_pdf_response
 
 
 from django.utils.html import format_html
@@ -32,6 +34,18 @@ from .print_utils import (
 from sales.reports.sales_report.builder import build_daily_sales_report_context
 
 
+
+
+@admin.register(StoreSalesPlan)
+class StoreSalesPlanAdmin(admin.ModelAdmin):
+    list_display = ("plan_month", "store", "amount")
+    list_filter = ("plan_month", "store")
+    search_fields = ("store__name",)
+    date_hierarchy = "plan_month"
+    list_per_page = 50
+
+    class Media:
+            css = {"all": ("css/admin_overrides.css",)}
 
 
 
@@ -84,6 +98,7 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
         "cr",
         "rtr_ratio", 
         "print_link",
+        "plan_report_link",
     )
     search_fields = ("date",)
     # list_filter = ("date", )
@@ -107,6 +122,23 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
         'style="text-decoration:none;font-size:14px;">🖨</a>',
         url,
     )
+        
+        
+        
+    @admin.display(description="План")
+    def plan_report_link(self, obj):
+        url = reverse(
+            f"admin:{MV_Daily_Sales._meta.app_label}_{MV_Daily_Sales._meta.model_name}_plan_report",
+            args=[obj.pk.isoformat()],
+        )
+        return format_html(
+            '<a href="{}" target="_blank" title="Отчёт выполнения плана" '
+            'style="text-decoration:none;font-size:14px;">📊</a>',
+            url,
+        )
+        
+    
+    
 
     # --- Добавляем кастомный url /print/ ---
     def get_urls(self):
@@ -116,6 +148,12 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
                 "<slug:pk>/print/",
                 self.admin_site.admin_view(self.print_daily_sales),
                 name=f"{MV_Daily_Sales._meta.app_label}_{MV_Daily_Sales._meta.model_name}_print",
+            ),
+            
+            path(
+                "<slug:pk>/plan-report/",
+                self.admin_site.admin_view(self.print_plan_report),
+                name=f"{MV_Daily_Sales._meta.app_label}_{MV_Daily_Sales._meta.model_name}_plan_report",
             ),
         ]
         return my_urls + urls
@@ -143,6 +181,24 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
 
         context = build_daily_sales_report_context(d, request=request)
         return render(request, "reports/sales_report/full_report.html", context)
+    
+    
+    
+    def print_plan_report(self, request, pk: str):
+        try:
+            d = date.fromisoformat(pk)
+        except ValueError:
+            raise Http404("Invalid date format. Expected YYYY-MM-DD")
+
+        return build_sales_plan_pdf_response(d, request=request)
+        
+    
+    
+    
+
+
+
+
 
     
     

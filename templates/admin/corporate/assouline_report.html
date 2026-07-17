@@ -1,0 +1,404 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div style="padding: 20px;">
+    <h1>📊 Анализ каталога ASSOULINE</h1>
+    <p>Сформирован: {{ generated_at|date:"d.m.Y H:i" }}</p>
+    
+    <!-- Сводка -->
+    <div style="display: flex; gap: 20px; margin: 20px 0; flex-wrap: wrap;">
+        <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; flex: 1;">
+            <h3>📚 Всего книг</h3>
+            <div style="font-size: 32px; font-weight: bold;">{{ total_books }}</div>
+        </div>
+        <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; flex: 1;">
+            <h3>✅ Доступно сейчас</h3>
+            <div style="font-size: 32px; font-weight: bold;">{{ available_now }}</div>
+        </div>
+        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; flex: 1;">
+            <h3>📅 Предзаказы</h3>
+            <div style="font-size: 32px; font-weight: bold;">{{ preorders_count }}</div>
+        </div>
+        <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; flex: 1;">
+            <h3>💰 Бюджет заказа</h3>
+            <div style="font-size: 32px; font-weight: bold;">{{ total_budget|floatformat:0 }} ₽</div>
+            <div style="font-size: 14px; color: #666;">(~{{ total_budget_usd|floatformat:0 }} $)</div>
+        </div>
+    </div>
+
+    <!-- НОВАЯ КНОПКА И ФОРМА БЮДЖЕТА -->
+    <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0; display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+        <div>
+            <label style="display: block; font-weight: bold; margin-bottom: 5px;">💰 Ограничить бюджет:</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="number" 
+                       id="budget_usd" 
+                       placeholder="Сумма в $" 
+                       style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; width: 150px;">
+                <button id="applyBudgetBtn" 
+                        style="background: #2196f3; color: white; padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer;">
+                    🎯 Применить бюджет
+                </button>
+                <button id="resetBudgetBtn" 
+                        style="background: #9e9e9e; color: white; padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer;">
+                    🔄 Сбросить
+                </button>
+            </div>
+            <small style="color: #666;">Введите сумму в $, заказы будут автоматически сокращены под бюджет</small>
+        </div>
+        <div id="budgetStatus" style="margin-left: auto; padding: 8px 15px; background: #fff3e0; border-radius: 4px;">
+            💡 Текущий бюджет: {{ total_budget_usd|floatformat:0 }} $
+        </div>
+    </div>
+
+    <!-- Прогресс-бар бюджета -->
+    <div style="margin: 15px 0;">
+        <div style="background: #e0e0e0; border-radius: 10px; height: 20px; overflow: hidden;">
+            <div id="budgetProgress" 
+                 style="width: 100%; background: #4caf50; height: 100%; transition: width 0.3s;">
+            </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+            <span>Использовано: <span id="usedBudget">0</span> $</span>
+            <span>Осталось: <span id="remainingBudget">0</span> $</span>
+        </div>
+    </div>
+    
+    <h2>🎯 Рекомендации по заказу (приоритет: 🔥 высокий → ⭐ средний → 📘 тест)</h2>
+    
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <thead>
+            <tr>
+                <th>Приор.</th>
+                <th>ISBN</th>
+                <th>Название</th>
+                <th>Коллекция</th>
+                <th>Цена ($)</th>
+                <th>Продано</th>
+                <th>Остаток EU</th>
+                <th>Статус</th>
+                <th>Рек. заказ</th>
+                <th>Сумма ($)</th>
+                <th style="width: 80px;">✏️</th>
+            </tr>
+        </thead>
+        <tbody id="recommendationsTable">
+            {% for rec in top_recommendations %}
+            <tr style="border-bottom: 1px solid #ddd; 
+                       {% if rec.priority >= 4 %}background: #f0fff0;{% endif %}
+                       {% if rec.priority == 3 %}background: #fff8e8;{% endif %}"
+                data-isbn="{{ rec.isbn }}"
+                data-price="{{ rec.price_usd }}"
+                data-original-qty="{{ rec.recommended_qty }}"
+                data-priority="{{ rec.priority }}">
+                <td>
+                    {% if rec.priority >= 4 %}🔥
+                    {% elif rec.priority == 3 %}⭐
+                    {% else %}📘{% endif %}
+                </td>
+                <td>{{ rec.isbn }}</td>
+                <td>{{ rec.title|truncatechars:50 }}</td>
+                <td>{{ rec.collection|truncatechars:30 }}</td>
+                <td>${{ rec.price_usd|floatformat:0 }}</td>
+                <td>{{ rec.qty_sold }}</td>
+                <td>{{ rec.eu_stock }}</td>
+                <td>
+                    {% if rec.status == 'IN_STOCK' %}
+                        <span style="color: green;">✅ В наличии</span>
+                    {% elif rec.status == 'PREORDER' %}
+                        <span style="color: orange;">📅 Предзаказ</span>
+                    {% elif rec.status == 'FROM_US' %}
+                        <span style="color: blue;">🇺🇸 США</span>
+                    {% else %}
+                        <span style="color: red;">❌ Нет</span>
+                    {% endif %}
+                  </td>
+                <td class="qty-cell">
+                    <input type="number" 
+                           class="qty-input" 
+                           value="{{ rec.recommended_qty }}" 
+                           min="0" 
+                           max="{{ rec.eu_stock|default:99 }}"
+                           style="width: 60px; text-align: center;"
+                           data-isbn="{{ rec.isbn }}">
+                </td>
+                <td class="sum-cell">${{ rec.estimated_cost_usd|floatformat:0 }}</td>
+                <td>
+                    <button class="save-row-btn" 
+                            style="background: #4caf50; color: white; border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer;"
+                            data-isbn="{{ rec.isbn }}">💾</button>
+                </td>
+              </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot style="background: #f5f5f5; font-weight: bold;">
+            <tr>
+                <td colspan="8" style="text-align: right;">ИТОГО:</td>
+                <td id="totalQty">0</td>
+                <td id="totalSum">$0</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+    
+    {% if collections %}
+    <h2>📖 Анализ по коллекциям</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr>
+                <th>Коллекция</th>
+                <th>Всего книг</th>
+                <th>Доступно</th>
+                <th>Предзаказы</th>
+                <th>Продано (шт)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in collections.items %}
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td>{{ name }}</td>
+                <td>{{ data.total_books }}</td>
+                <td>{{ data.available_books }}</td>
+                <td>{{ data.preorder_books }}</td>
+                <td>{{ data.total_sold }}</td>
+              </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    
+    <div style="margin: 30px 0; display: flex; gap: 15px; flex-wrap: wrap;">
+        <form method="post" action="{% url 'assouline:export_excel' %}">
+            {% csrf_token %}
+            <input type="hidden" name="region" value="{{ region }}">
+            <button type="submit" style="background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                📥 Скачать Excel (форма заказа)
+            </button>
+        </form>
+        <button id="saveAllBtn" 
+                style="background: #ff9800; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+            💾 Сохранить все изменения
+        </button>
+    </div>
+    
+    <a href="{% url 'admin:corporate_itemmanufacturer_changelist' %}" style="color: #666;">← Назад к производителям</a>
+</div>
+
+<script>
+// Функция получения CSRF токена
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Пересчет итогов
+function recalcTotals() {
+    let totalQty = 0;
+    let totalSum = 0;
+    
+    document.querySelectorAll('#recommendationsTable tr').forEach(row => {
+        const qtyInput = row.querySelector('.qty-input');
+        const sumCell = row.querySelector('.sum-cell');
+        const price = parseFloat(row.dataset.price) || 0;
+        
+        if (qtyInput && sumCell) {
+            const qty = parseInt(qtyInput.value) || 0;
+            const sum = price * qty;
+            totalQty += qty;
+            totalSum += sum;
+            sumCell.textContent = '$' + sum.toFixed(0);
+        }
+    });
+    
+    document.getElementById('totalQty').textContent = totalQty;
+    document.getElementById('totalSum').textContent = '$' + totalSum.toFixed(0);
+    
+    // Обновляем прогресс-бар
+    const currentBudget = parseFloat(document.getElementById('budget_usd').value) || totalSum;
+    const percent = totalSum > 0 ? (totalSum / currentBudget) * 100 : 0;
+    document.getElementById('budgetProgress').style.width = Math.min(percent, 100) + '%';
+    document.getElementById('usedBudget').textContent = totalSum.toFixed(0);
+    document.getElementById('remainingBudget').textContent = Math.max(0, currentBudget - totalSum).toFixed(0);
+    
+    // Меняем цвет прогресс-бара
+    const progressBar = document.getElementById('budgetProgress');
+    if (percent > 100) {
+        progressBar.style.background = '#f44336';
+    } else if (percent > 85) {
+        progressBar.style.background = '#ff9800';
+    } else {
+        progressBar.style.background = '#4caf50';
+    }
+}
+
+// Применение бюджета (автоматическое сокращение заказа)
+function applyBudget() {
+    const budgetUSD = parseFloat(document.getElementById('budget_usd').value);
+    if (isNaN(budgetUSD) || budgetUSD <= 0) {
+        alert('Пожалуйста, введите корректную сумму бюджета в $');
+        return;
+    }
+    
+    document.querySelectorAll('.qty-input').forEach(input => input.disabled = true);
+    document.getElementById('applyBudgetBtn').disabled = true;
+    
+    fetch('/admin/assouline/optimize-by-budget/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ budget_usd: budgetUSD })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            data.recommendations.forEach(rec => {
+                const row = document.querySelector(`#recommendationsTable tr[data-isbn="${rec.isbn}"]`);
+                if (row) {
+                    const qtyInput = row.querySelector('.qty-input');
+                    if (qtyInput) {
+                        qtyInput.value = rec.recommended_qty;
+                    }
+                }
+            });
+            recalcTotals();
+            document.getElementById('budgetStatus').innerHTML = `✅ Применен бюджет: ${budgetUSD.toFixed(0)} $ (сокращено до ${data.total_cost.toFixed(0)} $)`;
+        } else {
+            alert('❌ Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Ошибка при применении бюджета');
+    })
+    .finally(() => {
+        document.querySelectorAll('.qty-input').forEach(input => input.disabled = false);
+        document.getElementById('applyBudgetBtn').disabled = false;
+    });
+}
+
+// Сброс к оригинальным значениям
+function resetToOriginal() {
+    if (confirm('Сбросить все изменения к исходным рекомендациям?')) {
+        document.querySelectorAll('#recommendationsTable tr').forEach(row => {
+            const originalQty = parseInt(row.dataset.originalQty) || 0;
+            const qtyInput = row.querySelector('.qty-input');
+            if (qtyInput) {
+                qtyInput.value = originalQty;
+            }
+        });
+        recalcTotals();
+        document.getElementById('budget_usd').value = '';
+        document.getElementById('budgetStatus').innerHTML = '💡 Бюджет сброшен';
+        alert('✅ Все изменения сброшены');
+    }
+}
+
+// Сохранение всех изменений
+function saveAllChanges() {
+    const updates = [];
+    document.querySelectorAll('#recommendationsTable tr').forEach(row => {
+        const isbn = row.dataset.isbn;
+        const qtyInput = row.querySelector('.qty-input');
+        if (isbn && qtyInput) {
+            updates.push({
+                isbn: isbn,
+                qty: parseInt(qtyInput.value) || 0
+            });
+        }
+    });
+    
+    fetch('/admin/assouline/update-order/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ updates: updates })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            alert('✅ Все изменения сохранены!');
+            document.querySelectorAll('#recommendationsTable tr').forEach(row => {
+                const qtyInput = row.querySelector('.qty-input');
+                if (qtyInput) {
+                    row.dataset.originalQty = qtyInput.value;
+                }
+            });
+        } else {
+            alert('❌ Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Ошибка при сохранении');
+    });
+}
+
+// Сохранение одной строки
+function saveRow(isbn, qty) {
+    fetch('/admin/assouline/update-order/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ updates: [{ isbn: isbn, qty: qty }] })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            const row = document.querySelector(`#recommendationsTable tr[data-isbn="${isbn}"]`);
+            if (row) {
+                row.style.backgroundColor = '#e8f5e9';
+                row.dataset.originalQty = qty;
+                setTimeout(() => {
+                    row.style.backgroundColor = '';
+                }, 500);
+            }
+            alert('✅ Сохранено');
+        } else {
+            alert('❌ Ошибка: ' + data.error);
+        }
+    });
+}
+
+// Обработчики событий
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('applyBudgetBtn').addEventListener('click', applyBudget);
+    document.getElementById('resetBudgetBtn').addEventListener('click', resetToOriginal);
+    document.getElementById('saveAllBtn').addEventListener('click', saveAllChanges);
+    
+    document.querySelectorAll('.save-row-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const isbn = this.dataset.isbn;
+            const row = this.closest('tr');
+            const qtyInput = row.querySelector('.qty-input');
+            if (isbn && qtyInput) {
+                saveRow(isbn, parseInt(qtyInput.value) || 0);
+            }
+        });
+    });
+    
+    document.querySelectorAll('.qty-input').forEach(input => {
+        input.addEventListener('change', function() {
+            recalcTotals();
+        });
+    });
+    
+    recalcTotals();
+});
+</script>
+{% endblock %}

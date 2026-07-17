@@ -1,7 +1,9 @@
+# fr/urls.py
 from django.contrib import admin
 from django.urls import path, re_path, include
 from django.conf import settings
 from django.conf.urls.static import static
+
 
 from . import views
 from dashboard.views import DashProxyView
@@ -12,10 +14,13 @@ urlpatterns = [
     path('', views.landing_page, name='landing'),
     path('go-to-admin/', views.redirect_to_admin, name='go_to_admin'),
     path('admin/alerts-counts/', admin.site.admin_view(admin_alert_counts), name='admin_alert_counts'),
+    path('admin/assouline/', include('corporate.reports.assouline.urls')),
     path('admin/', admin.site.urls),
     path('apps/', include('django_plotly_dash.urls')),
     path('orders/', include('orders.urls')),
     path('dashboard/', include('dashboard.urls')),
+   
+
 
     # Проксируем корневые урлы, которые генерирует Dash
     re_path(r'^_dash-(?P<path>.*)$', DashProxyView.as_view()),

@@ -52,11 +52,15 @@ class PaymentsAnalysisQueries:
         НИКАКОЙ фильтрации по знаку amount здесь нет.
         """
         return OrdersCF.objects.filter(
-            Q(oper_type='Поступление оплаты от клиента') |
-            Q(oper_type='Возврат или иная оплата клиенту') |
+            Q(oper_type='Поступление оплаты от клиента (продажа товаров, работ, услуг)') |
+            Q(oper_type='Возврат оплаты клиенту (продажа товаров, работ, услуг)') |
             Q(register__startswith='Отчет о розничных продажах') |
             Q(register__startswith='Отчет о розничных возвратах')
         )
+    
+    
+    
+
 
     def _filter_by_date_range(self, queryset, start_date, end_date):
         return queryset.filter(date__gte=start_date, date__lte=end_date)
@@ -79,11 +83,11 @@ class PaymentsAnalysisQueries:
                     then=Value('store_revenue')
                 ),
                 When(
-                    oper_type='Поступление оплаты от клиента',
+                    oper_type='Поступление оплаты от клиента (продажа товаров, работ, услуг)',
                     then=Value('incoming')
                 ),
                 When(
-                    oper_type='Возврат или иная оплата клиенту',
+                    oper_type='Возврат оплаты клиенту (продажа товаров, работ, услуг)',
                     then=Value('outgoing')
                 ),
                 default=Value('other'),

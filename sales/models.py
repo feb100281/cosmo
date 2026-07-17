@@ -312,3 +312,32 @@ class MVSalesOrder(models.Model):
 
     def __str__(self):
         return f"{self.client_order}"
+    
+    
+    
+
+class StoreSalesPlan(models.Model):
+    plan_month = models.DateField(verbose_name="Месяц")
+    store = models.ForeignKey(
+        Stores,
+        on_delete=models.CASCADE,
+        verbose_name="Магазин",
+    )
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        verbose_name="План продаж",
+    )
+
+    class Meta:
+        verbose_name = "План продаж магазина"
+        verbose_name_plural = "Планы продаж магазинов"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["plan_month", "store"],
+                name="uniq_store_sales_plan_month",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.plan_month} | {self.store} | {self.amount}"
