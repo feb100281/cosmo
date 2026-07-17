@@ -43,3 +43,12 @@ for col in df.columns:
     if col.startswith("Unnamed"):
         df  = df.drop(columns=col)
 df.to_csv('/Users/pavelustenko/Downloads/norlal_orders.csv')
+
+
+
+ЗАЛИВКА ОСТАТКОВ !!!!!
+
+python manage.py import_stocks /Users/pavelustenko/Downloads/test.xlsx
+
+
+!!! ДВА РАЗА ЗАПУСКАТЬ
