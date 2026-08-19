@@ -145,7 +145,7 @@
         </td>
         <td class="bar-col">
           <div class="bar-track">
-            <div class="bar-fill bar-{{ row.is_done|yesno:'positive,negative' }}" style="width: {{ row.progress_width }}%;"></div>
+            <div class="bar-fill bar-{% if row.status_tier != "bad" %}positive{% else %}negative{% endif %}" style="width: {{ row.progress_width }}%;"></div>
             <span class="bar-label">{{ row.exec_pct_fmt }}</span>
           </div>
         </td>
@@ -153,7 +153,7 @@
         <td class="num">{{ row.required_daily_fmt_short }}</td>
         <td class="num">{{ row.projected_month_fact_fmt_short }}</td>
         <td>
-          {% if row.is_on_track %}<span class="badge badge-positive">В темпе</span>
+          {% if row.status_tier != "bad" %}<span class="badge badge-positive">В темпе</span>
           {% else %}<span class="badge badge-negative">Риск</span>{% endif %}
         </td>
         {% else %}

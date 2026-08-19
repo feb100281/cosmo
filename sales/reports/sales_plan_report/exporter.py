@@ -38,4 +38,9 @@ def build_sales_plan_pdf_response(report_date, request=None):
     response["Content-Disposition"] = (
         f'attachment; filename="cash_in_performance_report_{report_date.strftime("%Y%m%d")}.pdf"'
     )
+    # Без этого браузер может отдать старый закешированный PDF по тому же URL
+    # (та же дата в адресе — тот же адрес) вместо того, чтобы дёрнуть сервер
+    # заново и получить свежую версию после правок в коде отчёта.
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
     return response

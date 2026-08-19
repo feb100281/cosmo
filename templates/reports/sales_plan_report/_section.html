@@ -13,7 +13,7 @@
         </div>
 
         <div class="plan-progress">
-            <div class="plan-progress-fill {% if sales_plan.totals.is_on_track %}progress-good{% else %}progress-bad{% endif %}"
+            <div class="plan-progress-fill {% if sales_plan.totals.status_tier != "bad" %}progress-good{% else %}progress-bad{% endif %}"
                  style="width: {{ sales_plan.totals.progress_width }}%;"></div>
         </div>
 
@@ -138,7 +138,7 @@
 
             <td class="progress-cell">
                 <div class="mini-progress">
-                    <div class="mini-progress-fill {% if row.is_on_track %}progress-good{% else %}progress-bad{% endif %}"
+                    <div class="mini-progress-fill {% if row.status_tier != "bad" %}progress-good{% else %}progress-bad{% endif %}"
                          style="width: {{ row.progress_width }}%;"></div>
                     <div class="mini-progress-text">{{ row.exec_pct_fmt }}</div>
                 </div>
@@ -147,14 +147,14 @@
             <td class="right negative-text">{{ row.remaining_fmt }}</td>
             <td class="right">{{ row.required_daily_fmt }}</td>
 
-            <td class="right {% if row.is_on_track %}positive-text{% else %}negative-text{% endif %}">
+            <td class="right {% if row.status_tier != "bad" %}positive-text{% else %}negative-text{% endif %}">
                 {{ row.projected_month_fact_fmt }}
             </td>
 
             <td class="center">
-                {% if row.is_done %}
+                {% if row.status_tier == "good" %}
                     <span class="status-badge status-good">Выполнен</span>
-                {% elif row.is_on_track %}
+                {% elif row.status_tier == "watch" %}
                     <span class="status-badge status-watch">В темпе</span>
                 {% else %}
                     <span class="status-badge status-bad">Риск</span>

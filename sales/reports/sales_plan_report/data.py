@@ -223,6 +223,13 @@ def get_sales_plan_data(report_date):
 
             "is_done": is_done,
             "is_on_track": is_on_track if plan_amount > 0 else False,
+            # Единый показатель для покраски и бейджа, и прогресс-бара —
+            # чтобы они никогда не расходились по цвету на одной строке.
+            "status_tier": (
+                "good" if is_done
+                else "watch" if (plan_amount > 0 and is_on_track)
+                else "bad"
+            ),
         })
 
         if plan_amount > 0:
@@ -322,6 +329,11 @@ def get_sales_plan_data(report_date):
 
             "is_done": total_exec_pct >= 100,
             "is_on_track": total_projected_month_fact >= total_plan,
+            "status_tier": (
+                "good" if total_exec_pct >= 100
+                else "watch" if total_projected_month_fact >= total_plan
+                else "bad"
+            ),
             "stores_count": len(rows),
             "stores_with_plan_count": len([r for r in rows if r["has_plan"]]),
         },

@@ -48,7 +48,7 @@ df.to_csv('/Users/pavelustenko/Downloads/norlal_orders.csv')
 
 ЗАЛИВКА ОСТАТКОВ !!!!!
 
-python manage.py import_stocks '/Users/daria/Desktop/2026-08-17/Stocks_2026-08-17.xlsx'
+python manage.py import_stocks '/Users/daria/Desktop/2026-08-18/Stocks_2026-08-18.xlsx'
 
 
 
