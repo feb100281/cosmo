@@ -1,5 +1,5 @@
 # sales/admin.py
-from django.contrib import admin
+from django.contrib import admin, messages
 from .models import SalesData,MV_Daily_Sales,MVSalesOrder, StoreSalesPlan
 from django.urls import path, reverse, NoReverseMatch
 
@@ -28,6 +28,7 @@ from django.templatetags.static import static
 
 from sales.reports.sales_plan_report.exporter import build_sales_plan_pdf_response
 from sales.reports.newspaper.render.pdf import build_newspaper_pdf_response
+from sales.reports.store_plan.render.pdf import build_store_plan_pdf_response
 
 from .print_utils import (
     build_mtd_table,     
@@ -41,14 +42,66 @@ from sales.reports.sales_report.builder import build_daily_sales_report_context
 
 @admin.register(StoreSalesPlan)
 class StoreSalesPlanAdmin(admin.ModelAdmin):
-    list_display = ("plan_month", "store", "amount")
+    list_display = ("plan_month", "store", "amount", "print_link")
     list_filter = ("plan_month", "store")
     search_fields = ("store__name",)
     date_hierarchy = "plan_month"
     list_per_page = 50
+    actions = ["print_selected_plans"]
 
     class Media:
             css = {"all": ("css/admin_overrides.css",)}
+
+    # --- Кнопка печати одного магазина в списке ---
+    @admin.display(description="Печать")
+    def print_link(self, obj):
+        url = reverse(
+            f"admin:{StoreSalesPlan._meta.app_label}_{StoreSalesPlan._meta.model_name}_print",
+            args=[obj.pk],
+        )
+        return format_html(
+            '<a href="{}" target="_blank" title="Печать плана по магазину" '
+            'style="text-decoration:none;font-size:14px;">🖨</a>',
+            url,
+        )
+
+    # --- Кастомный url /<pk>/print/ для печати плана одного магазина ---
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path(
+                "<int:pk>/print/",
+                self.admin_site.admin_view(self.print_single_plan),
+                name=f"{StoreSalesPlan._meta.app_label}_{StoreSalesPlan._meta.model_name}_print",
+            ),
+        ]
+        return my_urls + urls
+
+    def print_single_plan(self, request, pk: int):
+        plan = get_object_or_404(StoreSalesPlan, pk=pk)
+        return build_store_plan_pdf_response(
+            plan.plan_month, store_ids=[plan.store_id], request=request,
+        )
+
+    # --- Действие "Печать плана (PDF)" — печатает выбранные строки списком.
+    # Выбрать все строки за месяц = печать плана по всем магазинам,
+    # выбрать одну строку = печать плана по одному магазину. ---
+    @admin.action(description="Печать плана (PDF) по выбранным")
+    def print_selected_plans(self, request, queryset):
+        months = set(queryset.values_list("plan_month", flat=True))
+        if not months:
+            return None
+        if len(months) > 1:
+            self.message_user(
+                request,
+                "Выберите записи только за один месяц — печать сразу нескольких "
+                "месяцев в одном документе не поддерживается.",
+                level=messages.ERROR,
+            )
+            return None
+        plan_month = months.pop()
+        store_ids = list(queryset.values_list("store_id", flat=True))
+        return build_store_plan_pdf_response(plan_month, store_ids=store_ids, request=request)
 
 
 

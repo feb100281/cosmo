@@ -1,0 +1,18 @@
+      <table class="mini-table plan-table">
+        <thead>
+          <tr>
+            <th>Магазин</th>
+            <th class="num">План, ₽</th>
+            <th class="num">Доля от плана сети</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in payload.rows %}
+          <tr>
+            <td>{{ row.store_name }}</td>
+            <td class="num">{{ row.amount_fmt }}</td>
+            <td class="num">{{ row.share_pct_fmt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>

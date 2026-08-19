@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>{{ payload.meta.title }} — {{ payload.month_year_fmt }}</title>
+</head>
+<body>
+
+<header class="masthead-band">
+  <div class="masthead">
+    <div class="masthead-row">
+      <div class="masthead-brand">
+        <div class="brand-name">{{ payload.company.brand_name }}</div>
+        <div class="brand-sub">{{ payload.meta.title }}</div>
+      </div>
+      <div class="masthead-meta">
+        <div class="masthead-date">{{ payload.month_year_fmt }}</div>
+        <div class="masthead-site">{{ payload.company.website }}</div>
+      </div>
+    </div>
+    <div class="masthead-subtitle">Сформировано {{ payload.meta.generated_at_fmt }}</div>
+  </div>
+</header>
+
+<section class="section plan-section">
+  <div class="section-head">
+    <div class="section-kicker">План продаж</div>
+    <h2 class="section-title">План продаж на месяц — {{ payload.month_year_fmt }}</h2>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Период</div>
+      <div class="kpi-value">{{ payload.month_year_fmt }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Магазинов в плане</div>
+      <div class="kpi-value">{{ payload.stores_count }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Итого план по сети</div>
+      <div class="kpi-value">{{ payload.total_fmt }} ₽</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Средний дневной план</div>
+      <div class="kpi-value">{{ payload.average_daily_fmt }} ₽</div>
+    </div>
+  </div>
+
+  <p class="lead-text">
+    {% if payload.stores_count == 1 %}
+      На {{ payload.month_year_fmt }} для магазина «{{ payload.rows.0.store_name }}» утверждён план продаж
+      в размере {{ payload.total_fmt }} ₽.
+    {% else %}
+      На {{ payload.month_year_fmt }} утверждён план продаж по {{ payload.stores_count }} магазинам на общую
+      сумму {{ payload.total_fmt }} ₽.
+    {% endif %}
+  </p>
+
+  {% if payload.chart %}
+  {# Газетная двухколоночная вёрстка: график — левая колонка, таблица — правая #}
+  <div class="plan-columns">
+    <div class="chart-block">
+      {{ payload.chart|safe }}
+      <div class="chart-caption">
+        {% if payload.chart_truncated %}Топ-20 магазинов по плану, ₽ — полный список в таблице справа{% else %}План продаж по магазинам, ₽{% endif %}
+      </div>
+    </div>
+    {% include "reports/store_plan/_plan_table.html" %}
+  </div>
+  {% else %}
+  {# Один магазин — график не строится, просто таблица из одной строки #}
+  {% include "reports/store_plan/_plan_table.html" %}
+  {% endif %}
+</section>
+
+<footer class="report-footer">
+  {{ payload.company.legal_name }} · {{ payload.meta.title }} · сформировано {{ payload.meta.generated_at_fmt }}
+</footer>
+
+</body>
+</html>

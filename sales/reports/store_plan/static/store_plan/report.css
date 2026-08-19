@@ -1,0 +1,272 @@
+/* sales/reports/store_plan/static/store_plan/report.css
+ *
+ * Печатный стиль для документа "План продаж на месяц" (StoreSalesPlan).
+ * Это тот же визуальный язык, что и у COSMORELAX Daily Brief (Newspaper) —
+ * классы и палитра здесь дословно синхронизированы с
+ * newspaper/static/newspaper/report.css (CSS не умеет импортировать
+ * значения из Python/другого CSS-файла между приложениями, поэтому набор
+ * правил продублирован, но должен меняться в паре с ним).
+ *
+ * Рендерится только через WeasyPrint — без браузерной печати.
+ */
+
+@page {
+  size: A4 landscape;
+  margin: 10mm 12mm 14mm 12mm;
+  background: #f7f8f3;
+
+  @bottom-left {
+    content: "COSMORELAX — План продаж";
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 7.2pt;
+    color: #8c9188;
+  }
+
+  @bottom-right {
+    content: "Стр. " counter(page) " из " counter(pages);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 7.2pt;
+    color: #8c9188;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #f7f8f3;
+  color: #1c2321;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 9.2pt;
+  line-height: 1.4;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Masthead — full-bleed цветная плашка (уходит за поля страницы)         */
+/* ---------------------------------------------------------------------- */
+
+.masthead-band {
+  background: #1e3d32;
+  margin: -10mm -12mm 3mm -12mm;
+  padding: 5mm 18mm 4mm 18mm;
+}
+
+.masthead-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.brand-name {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  font-size: 25pt;
+  letter-spacing: 0.5pt;
+  color: #f7f8f3;
+}
+
+.brand-sub {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 11pt;
+  color: #e3b48f;
+  margin-top: 1mm;
+}
+
+.masthead-meta {
+  text-align: right;
+}
+
+.masthead-date {
+  font-size: 10pt;
+  font-weight: 600;
+  color: #f7f8f3;
+}
+
+.masthead-site {
+  font-size: 8pt;
+  color: #cfd8d1;
+  margin-top: 1mm;
+}
+
+.masthead-subtitle {
+  font-size: 8.6pt;
+  color: #cfd8d1;
+  text-transform: uppercase;
+  letter-spacing: 0.6pt;
+  margin-top: 3mm;
+  border-top: 0.6pt solid rgba(247, 248, 243, 0.35);
+  padding-top: 2mm;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Sections                                                                */
+/* ---------------------------------------------------------------------- */
+
+.section {
+  margin-bottom: 5mm;
+}
+
+.section-head {
+  border-bottom: 0.6pt solid #d7ddd3;
+  padding-bottom: 1.5mm;
+  margin-bottom: 2.5mm;
+}
+
+.section-kicker {
+  font-size: 10.5pt;
+  text-transform: uppercase;
+  letter-spacing: 1.2pt;
+  color: #c1663a;
+  font-weight: 700;
+  margin-bottom: 1.2mm;
+}
+
+.section-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 13.5pt;
+  font-weight: 700;
+  margin: 0.5mm 0 0 0;
+}
+
+.lead-text {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 10pt;
+  line-height: 1.5;
+  color: #1c2321;
+  margin: 0 0 3mm 0;
+  text-align: justify;
+  hyphens: auto;
+  max-width: 190mm;
+}
+
+.lead-text::first-letter {
+  font-size: 16pt;
+  font-weight: 700;
+  color: #c1663a;
+}
+
+/* ---------------------------------------------------------------------- */
+/* KPI row                                                                 */
+/* ---------------------------------------------------------------------- */
+
+.kpi-row {
+  display: flex;
+  gap: 8mm;
+  margin-bottom: 2.5mm;
+}
+
+.kpi {
+  flex: 1;
+  max-width: 55mm;
+  border-top: 1.2pt solid #1c2321;
+  padding-top: 1.5mm;
+}
+
+.kpi-label {
+  font-size: 7.4pt;
+  text-transform: uppercase;
+  letter-spacing: 0.4pt;
+  color: #5b6b63;
+}
+
+.kpi-value {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15pt;
+  font-weight: 700;
+  margin-top: 0.6mm;
+}
+
+.chart-block {
+  break-inside: avoid;
+  margin-bottom: 4mm;
+}
+
+.chart-block svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-caption, .table-caption {
+  font-size: 7.4pt;
+  color: #8c9188;
+  text-align: center;
+  margin-top: 1mm;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Двухколоночная страница — газетная вёрстка: график занимает левую      */
+/* колонку, следом (col-span) идёт таблица — она стартует в правой        */
+/* колонке (break-after: column на графике принудительно её туда          */
+/* переносит) и, если не помещается, естественным образом продолжается   */
+/* колонками дальше — в т.ч. на следующей странице, без пустых страниц.  */
+/* ---------------------------------------------------------------------- */
+
+.plan-columns {
+  column-count: 2;
+  column-gap: 10mm;
+  column-fill: auto;
+}
+
+.plan-columns .chart-block {
+  break-after: column;
+  break-inside: avoid;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Tables                                                                  */
+/* ---------------------------------------------------------------------- */
+
+.mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.4pt;
+}
+
+.mini-table th {
+  text-align: left;
+  font-size: 7.2pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  color: #5b6b63;
+  border-bottom: 0.8pt solid #1c2321;
+  padding: 1mm 1.5mm;
+}
+
+.mini-table td {
+  padding: 1mm 1.5mm;
+  border-bottom: 0.4pt solid #e5e0d6;
+}
+
+.mini-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-table {
+  margin-top: 1mm;
+  /* Таблица режется по строкам как обычный текст в колонке — если не
+     помещается, продолжается в следующей колонке/странице. Шапка (thead)
+     при этом повторяется на каждом продолжении. */
+  break-inside: auto;
+}
+
+.plan-table thead {
+  display: table-header-group;
+}
+
+.plan-table tr:nth-child(even) td {
+  background: #f2efe7;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Footer                                                                  */
+/* ---------------------------------------------------------------------- */
+
+.report-footer {
+  display: none; /* содержимое футера выводится через @page (@bottom-*) */
+}
