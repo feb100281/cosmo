@@ -95,14 +95,7 @@ def _stocks_insights(stocks_data: dict, stocks_analytics: dict) -> list:
         top3_names = ", ".join(
             c["cat_name"] for c in stocks_analytics["top3_categories"]
         )
-        insights.append({
-            "level": "neutral",
-            "text": (
-                f"Высокая концентрация остатков: топ-3 категории "
-                f"({top3_names}) формируют "
-                f"{stocks_analytics['top3_share_pct_fmt']} остатков по количеству."
-            ),
-        })
+       
 
     return insights
 

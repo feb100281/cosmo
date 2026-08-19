@@ -16,7 +16,7 @@ from __future__ import annotations
 
 COMPANY_LEGAL_NAME = 'ООО "КОСМО"'
 COMPANY_BRAND_NAME = "COSMORELAX"
-COMPANY_WEBSITE = "www.cosmorelax.ru"
+COMPANY_WEBSITE = ""
 REPORT_TITLE = "COSMORELAX Daily Brief"
 REPORT_SUBTITLE = "Управленческая сводка: кэш и остатки"
 
