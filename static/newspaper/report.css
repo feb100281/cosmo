@@ -1,0 +1,674 @@
+/* sales/reports/newspaper/static/newspaper/report.css
+ *
+ * Editorial / financial-newspaper print stylesheet for COSMORELAX Daily
+ * Brief. Rendered by WeasyPrint only — no browser print stylesheet
+ * assumptions (no @media print, no reliance on browser page setup).
+ *
+ * Ориентация: альбомная A4 (297 × 210 мм) — так таблица по магазинам и
+ * недельный календарь помещаются по ширине без переноса и без уменьшения
+ * шрифта до нечитаемого размера.
+ *
+ * Палитра мирроит newspaper/config.py (синхронизируется вручную — CSS не
+ * умеет импортировать константы из Python).
+ */
+
+@page {
+  size: A4 landscape;
+  margin: 10mm 12mm 14mm 12mm;
+  /* Красим ВСЮ физическую страницу (включая поля вокруг content-box), а не
+     только содержимое внутри полей — иначе по краям страницы остаётся
+     белая рамка шириной с margin, даже если сам body кремовый. WeasyPrint
+     поддерживает background на @page (CSS Paged Media), поэтому белых
+     полей не должно быть вообще ни на одной странице отчёта. */
+  background: #f7f8f3;
+
+  @bottom-left {
+    content: "COSMORELAX Daily Brief";
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 7.2pt;
+    color: #8c9188;
+  }
+
+  @bottom-right {
+    content: "Стр. " counter(page) " из " counter(pages);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 7.2pt;
+    color: #8c9188;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #f7f8f3;
+  color: #1c2321;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 9.2pt;
+  line-height: 1.4;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Masthead — full-bleed цветная плашка (уходит за поля страницы)         */
+/* ---------------------------------------------------------------------- */
+
+.masthead-band {
+  background: #1e3d32;
+  margin: -10mm -12mm 3mm -12mm;
+  padding: 5mm 18mm 4mm 18mm;
+}
+
+.masthead-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.brand-name {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  font-size: 25pt;
+  letter-spacing: 0.5pt;
+  color: #f7f8f3;
+}
+
+.brand-sub {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 11pt;
+  color: #e3b48f;
+  margin-top: 1mm;
+}
+
+.masthead-meta {
+  text-align: right;
+}
+
+.masthead-date {
+  font-size: 10pt;
+  font-weight: 600;
+  color: #f7f8f3;
+}
+
+.masthead-site {
+  font-size: 8pt;
+  color: #cfd8d1;
+  margin-top: 1mm;
+}
+
+.masthead-subtitle {
+  font-size: 8.6pt;
+  color: #cfd8d1;
+  text-transform: uppercase;
+  letter-spacing: 0.6pt;
+  margin-top: 3mm;
+  border-top: 0.6pt solid rgba(247, 248, 243, 0.35);
+  padding-top: 2mm;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Cover insights                                                         */
+/* ---------------------------------------------------------------------- */
+
+.cover-insights {
+  margin: 0 0 3mm 0;
+  padding: 2.4mm 4mm;
+  border-left: 2.4pt solid #c1663a;
+  background: #f2ede3;
+  break-inside: avoid;
+}
+
+.section-kicker {
+  font-size: 10.5pt;
+  text-transform: uppercase;
+  letter-spacing: 1.2pt;
+  color: #c1663a;
+  font-weight: 700;
+  margin-bottom: 1.2mm;
+}
+
+.insight-list {
+  margin: 0;
+  padding-left: 4mm;
+}
+
+.insight-item {
+  margin: 1.2mm 0;
+  font-size: 9pt;
+}
+
+.insight-negative { color: #b8492f; }
+.insight-positive { color: #1e6b4f; }
+.insight-neutral { color: #1c2321; }
+
+/* ---------------------------------------------------------------------- */
+/* Sections                                                                */
+/* ---------------------------------------------------------------------- */
+
+.section {
+  margin-bottom: 5mm;
+}
+
+.cover-insights {
+  break-inside: avoid;
+}
+
+.stocks-section {
+  break-before: page;
+}
+
+.calendar-section {
+  break-before: page;
+}
+
+.returns-section {
+  break-before: page;
+}
+
+.section-head {
+  border-bottom: 0.6pt solid #d7ddd3;
+  padding-bottom: 1.5mm;
+  margin-bottom: 2.5mm;
+}
+
+.section-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 13.5pt;
+  font-weight: 700;
+  margin: 0.5mm 0 0 0;
+}
+
+.lead-text {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 10pt;
+  line-height: 1.5;
+  color: #1c2321;
+  margin: 0 0 2.5mm 0;
+  text-align: justify;
+  hyphens: auto;
+  max-width: 190mm;
+}
+
+.lead-text::first-letter {
+  font-size: 16pt;
+  font-weight: 700;
+  color: #c1663a;
+}
+
+/* ---------------------------------------------------------------------- */
+/* KPI row                                                                 */
+/* ---------------------------------------------------------------------- */
+
+.kpi-row {
+  display: flex;
+  gap: 8mm;
+  margin-bottom: 2.5mm;
+}
+
+.kpi {
+  flex: 1;
+  max-width: 55mm;
+  border-top: 1.2pt solid #1c2321;
+  padding-top: 1.5mm;
+}
+
+.kpi-label {
+  font-size: 7.4pt;
+  text-transform: uppercase;
+  letter-spacing: 0.4pt;
+  color: #5b6b63;
+}
+
+.kpi-value {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15pt;
+  font-weight: 700;
+  margin-top: 0.6mm;
+}
+
+.kpi-positive { color: #1e6b4f; }
+.kpi-negative { color: #b8492f; }
+.kpi-neutral { color: #1c2321; }
+
+.pace-note {
+  font-size: 7.8pt;
+  color: #5b6b63;
+  margin-top: 1.5mm;
+}
+
+.chart-block {
+  break-inside: avoid;
+}
+
+.chart-block svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-caption, .table-caption {
+  font-size: 7.4pt;
+  color: #8c9188;
+  text-align: center;
+  margin-top: 1mm;
+}
+
+.chart-caption-left, .table-caption-left {
+  text-align: left;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Два графика в ряд на 1 странице: сетевой темп + выполнение по магазинам */
+/* (донат-чарт кэша по магазинам переехал на страницу с таблицей)         */
+/* ---------------------------------------------------------------------- */
+
+.cash-charts-row {
+  display: flex;
+  gap: 8mm;
+  align-items: flex-start;
+  margin-bottom: 3mm;
+  break-inside: avoid;
+}
+
+.cash-charts-pace {
+  flex: 1.3;
+  min-width: 0;
+}
+
+.cash-charts-pace svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.cash-charts-pace .pace-note {
+  margin-top: 2mm;
+}
+
+.cash-charts-stores {
+  flex: 1;
+  min-width: 0;
+  max-width: 90mm;
+}
+
+.cash-charts-stores svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Карточки-хайлайты (лидер / аутсайдер / прогноз) --------------------- */
+
+.highlight-row {
+  display: flex;
+  gap: 6mm;
+  margin-bottom: 4mm;
+  break-inside: avoid;
+}
+
+.highlight-card {
+  flex: 1;
+  max-width: 78mm;
+  background: #f2ede3;
+  border-top: 1.2pt solid #1c2321;
+  padding: 2.4mm 4mm 3mm 4mm;
+}
+
+.highlight-label {
+  font-size: 7.2pt;
+  text-transform: uppercase;
+  letter-spacing: 0.4pt;
+  color: #5b6b63;
+}
+
+.highlight-value {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 12.5pt;
+  font-weight: 700;
+  margin-top: 0.8mm;
+  color: #1c2321;
+}
+
+.highlight-sub {
+  font-size: 7.8pt;
+  color: #5b6b63;
+  margin-top: 0.6mm;
+}
+
+.highlight-positive { border-top-color: #1e6b4f; }
+.highlight-negative { border-top-color: #b8492f; }
+.highlight-neutral { border-top-color: #c1663a; }
+
+/* Донат-чарт структуры кэша — во всю ширину, на странице с таблицей ---- */
+
+.cash-share-row-full {
+  margin-top: 5mm;
+  text-align: center;
+  break-inside: avoid;
+}
+
+.cash-share-row-full svg {
+  width: auto;
+  height: 62mm;
+  display: block;
+  margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Two-column layout (stocks section)                                     */
+/* ---------------------------------------------------------------------- */
+
+.two-col {
+  display: flex;
+  gap: 10mm;
+  margin-bottom: 4mm;
+}
+
+.two-col .col {
+  flex: 1;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Tables                                                                  */
+/* ---------------------------------------------------------------------- */
+
+.mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.4pt;
+}
+
+.mini-table th {
+  text-align: left;
+  font-size: 7.2pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  color: #5b6b63;
+  border-bottom: 0.8pt solid #1c2321;
+  padding: 1mm 1.5mm;
+}
+
+.mini-table td {
+  padding: 1mm 1.5mm;
+  border-bottom: 0.4pt solid #e5e0d6;
+}
+
+.mini-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted { color: #8c9188; font-style: italic; }
+
+/* Big cash-by-store table -------------------------------------------- */
+
+.cash-store-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 8.4pt;
+  margin-bottom: 1.5mm;
+  break-inside: avoid;
+}
+
+.returns-table col.rcol-store        { width: 22%; }
+.returns-table col.rcol-income       { width: 13%; }
+.returns-table col.rcol-returns      { width: 14%; }
+.returns-table col.rcol-returns-pct  { width: 11%; }
+.returns-table col.rcol-designer     { width: 15%; }
+.returns-table col.rcol-designer-pct { width: 11%; }
+.returns-table col.rcol-net          { width: 14%; }
+
+.cash-store-table col.col-store        { width: 16%; }
+.cash-store-table col.col-plan         { width: 9.5%; }
+.cash-store-table col.col-fact         { width: 9.5%; }
+.cash-store-table col.col-mom          { width: 8%; }
+.cash-store-table col.col-yoy          { width: 8%; }
+.cash-store-table col.col-bar          { width: 15%; }
+.cash-store-table col.col-remaining    { width: 9.5%; }
+.cash-store-table col.col-required     { width: 8.5%; }
+.cash-store-table col.col-forecast     { width: 9.5%; }
+.cash-store-table col.col-status       { width: 6.5%; }
+
+.cash-store-table th {
+  text-align: right;
+  font-size: 6.9pt;
+  text-transform: uppercase;
+  letter-spacing: 0.2pt;
+  color: #f7f8f3;
+  background: #1e3d32;
+  padding: 1.8mm 1.6mm;
+  overflow: hidden;
+}
+
+.cash-store-table th:first-child { text-align: left; }
+
+.cash-store-table td {
+  padding: 1.6mm 1.6mm;
+  border-bottom: 0.4pt solid #e5e0d6;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cash-store-table tr:nth-child(even) td {
+  background: #f2efe7;
+}
+
+.cash-store-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cash-store-table .store-cell {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Progress bar (used in table + calendar week summaries) ------------- */
+
+.bar-track {
+  position: relative;
+  width: 100%;
+  height: 3.8mm;
+  background: #e5ded0;
+  overflow: hidden;
+}
+
+.bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+}
+
+.bar-fill.bar-positive { background: #1e6b4f; }
+.bar-fill.bar-negative { background: #b8492f; }
+
+.bar-label {
+  position: relative;
+  z-index: 2;
+  display: block;
+  text-align: center;
+  font-size: 7.4pt;
+  font-weight: 700;
+  line-height: 3.8mm;
+  color: #1c2321;
+  mix-blend-mode: difference;
+}
+
+/* Badges --------------------------------------------------------------- */
+
+.badge {
+  display: inline-block;
+  font-size: 6.6pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  font-weight: 700;
+  padding: 0.6mm 1.6mm;
+  border-radius: 1.5pt;
+  white-space: nowrap;
+}
+
+.badge-positive { background: #e2efe6; color: #1e6b4f; }
+.badge-negative { background: #f6e6e0; color: #b8492f; }
+.badge-neutral { background: #ece7da; color: #5b6b63; }
+.badge-muted { background: #ece7da; color: #8c9188; }
+
+.dev-positive { color: #1e6b4f; font-weight: 700; }
+.dev-negative { color: #b8492f; font-weight: 700; }
+
+/* ---------------------------------------------------------------------- */
+/* Weekly cash calendar                                                    */
+/* ---------------------------------------------------------------------- */
+
+.cash-calendar {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 7pt;
+  margin-bottom: 3mm;
+}
+
+.cash-calendar th {
+  background: #1e3d32;
+  color: #f7f8f3;
+  font-size: 7.4pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  padding: 1.6mm 1mm;
+  text-align: center;
+}
+
+.cash-calendar .cal-summary-head {
+  width: 16%;
+}
+
+.cash-calendar td {
+  border: 0.4pt solid #e5e0d6;
+  vertical-align: top;
+  padding: 1.4mm 1.6mm;
+  height: 24mm;
+}
+
+.cal-day-num {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  font-size: 11pt;
+  line-height: 1.1;
+}
+
+.cal-day-weekday {
+  font-size: 6.4pt;
+  text-transform: uppercase;
+  color: #5b6b63;
+  margin-bottom: 1mm;
+}
+
+.cal-day-line {
+  font-size: 6.8pt;
+  line-height: 1.4;
+  color: #1c2321;
+}
+
+.cal-day-line.cal-neg { color: #b8492f; }
+.cal-day-line.cal-total { font-weight: 700; }
+
+.day-excellent { background: #cfe7c4; }
+.day-good { background: #e2efe6; }
+.day-warning { background: #f6e3ae; }
+.day-bad { background: #f3d3cb; }
+.day-empty, .day-future { background: #eef0ea; }
+.cal-day.day-outside { background: transparent; border-color: transparent; }
+
+.cal-today { outline: 1.6pt solid #1c2321; outline-offset: -1.6pt; }
+
+.cal-summary {
+  background: #f2ede3;
+  vertical-align: top;
+}
+
+.cal-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.8mm;
+}
+
+.cal-summary-label {
+  font-weight: 700;
+  font-size: 7.8pt;
+}
+
+.cal-summary-pct {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 10.5pt;
+  font-weight: 700;
+}
+
+.cal-summary-status {
+  font-size: 6.2pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  color: #8c9188;
+  margin-bottom: 1.2mm;
+}
+
+.cal-bar-track {
+  height: 2.8mm;
+  margin-bottom: 1.2mm;
+}
+
+.cal-summary-figures {
+  font-size: 6.8pt;
+  color: #5b6b63;
+}
+
+.cal-legend {
+  display: flex;
+  gap: 5mm;
+  flex-wrap: wrap;
+  font-size: 7.4pt;
+  color: #5b6b63;
+}
+
+.cal-legend-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.cal-swatch {
+  display: inline-block;
+  width: 3.2mm;
+  height: 3.2mm;
+  margin-right: 1.4mm;
+  border: 0.4pt solid #d7ddd3;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Stock-by-store table                                                    */
+/* ---------------------------------------------------------------------- */
+
+.stock-store-table {
+  margin-top: 1mm;
+}
+
+.stock-store-warehouse td {
+  font-style: italic;
+  color: #5b6b63;
+  border-top: 0.8pt solid #1c2321;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Footer                                                                  */
+/* ---------------------------------------------------------------------- */
+
+.report-footer {
+  display: none; /* содержимое футера выводится через @page (@bottom-*) */
+}

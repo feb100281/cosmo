@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>{{ payload.meta.title }} — {{ payload.meta.report_date_fmt }}</title>
+</head>
+<body>
+
+<header class="masthead-band">
+  <div class="masthead">
+    <div class="masthead-row">
+      <div class="masthead-brand">
+        <div class="brand-name">{{ payload.company.brand_name }}</div>
+        <div class="brand-sub">{{ payload.meta.title }}</div>
+      </div>
+      <div class="masthead-meta">
+        <div class="masthead-date">{{ payload.meta.weekday_ru }}, {{ payload.meta.report_date_fmt }}</div>
+        <div class="masthead-site">{{ payload.company.website }}</div>
+      </div>
+    </div>
+    <div class="masthead-subtitle">{{ payload.meta.subtitle }}</div>
+  </div>
+</header>
+
+{% if payload.insights_cover %}
+<section class="cover-insights">
+  <div class="section-kicker">Главное</div>
+  <ul class="insight-list">
+    {% for item in payload.insights_cover %}
+    <li class="insight-item insight-{{ item.level }}">{{ item.text }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="section cash-section">
+  <div class="section-head">
+    <div class="section-kicker">I — Кэш</div>
+    <h2 class="section-title">План и факт поступлений денежных средств</h2>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">План на месяц</div>
+      <div class="kpi-value">{{ payload.cash.plan_fmt }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Факт на {{ payload.meta.report_date_fmt }}</div>
+      <div class="kpi-value">{{ payload.cash.fact_fmt }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Отклонение</div>
+      <div class="kpi-value kpi-{{ payload.cash.totals.is_done|yesno:'positive,negative' }}">{% if payload.cash.totals.diff < 0 %}−{% else %}+{% endif %}{{ payload.cash.totals.diff_fmt }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Выполнение плана</div>
+      <div class="kpi-value kpi-{{ payload.cash.totals.is_done|yesno:'positive,negative' }}">{{ payload.cash.exec_pct_fmt }}</div>
+    </div>
+  </div>
+
+  <p class="lead-text">{{ payload.cash.lead }}</p>
+
+  <div class="cash-charts-row">
+    <div class="cash-charts-pace chart-block">
+      <div class="chart-caption chart-caption-left">Темп сбора кэша против плана и прогноза</div>
+      {{ payload.charts.cash_pace|safe }}
+      <div class="pace-note">
+        Пройдено {{ payload.cash.days_passed }} из {{ payload.cash.days_in_month }} дней месяца
+        (ожидаемый темп {{ payload.cash.analytics.expected_pace_pct_fmt }}).
+        Магазинов с планом: {{ payload.cash.totals.stores_with_plan_count }} из {{ payload.cash.totals.stores_count }}.
+      </div>
+    </div>
+    {% if payload.charts.store_pace %}
+    <div class="cash-charts-stores chart-block">
+      <div class="chart-caption chart-caption-left">Выполнение плана по магазинам</div>
+      {{ payload.charts.store_pace|safe }}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="highlight-row">
+    {% if payload.cash.analytics.best_store %}
+    <div class="highlight-card highlight-positive">
+      <div class="highlight-label">Лидер сети</div>
+      <div class="highlight-value">{{ payload.cash.analytics.best_store.store_name }}</div>
+      <div class="highlight-sub">{{ payload.cash.analytics.best_store.exec_pct_fmt }} выполнения плана</div>
+    </div>
+    {% endif %}
+    {% if payload.cash.analytics.worst_store %}
+    <div class="highlight-card highlight-negative">
+      <div class="highlight-label">Требует внимания</div>
+      <div class="highlight-value">{{ payload.cash.analytics.worst_store.store_name }}</div>
+      <div class="highlight-sub">{{ payload.cash.analytics.worst_store.exec_pct_fmt }} выполнения плана</div>
+    </div>
+    {% endif %}
+    <div class="highlight-card highlight-neutral">
+      <div class="highlight-label">Прогноз на конец месяца</div>
+      <div class="highlight-value">{{ payload.cash.forecast_fmt }}</div>
+      <div class="highlight-sub">
+        {% if payload.cash.totals.projected_diff < 0 %}ниже плана на {{ payload.cash.totals.projected_diff_fmt }} ₽
+        {% else %}выше плана на {{ payload.cash.totals.projected_diff_fmt }} ₽{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <table class="cash-store-table">
+    <colgroup>
+      <col class="col-store">
+      <col class="col-plan">
+      <col class="col-fact">
+      <col class="col-mom">
+      <col class="col-yoy">
+      <col class="col-bar">
+      <col class="col-remaining">
+      <col class="col-required">
+      <col class="col-forecast">
+      <col class="col-status">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Магазин</th>
+        <th class="num">План, ₽</th>
+        <th class="num">Факт, ₽</th>
+        <th class="num">К пред. мес.</th>
+        <th class="num">К пред. году</th>
+        <th class="bar-col">Выполнение</th>
+        <th class="num">Осталось, ₽</th>
+        <th class="num">Нужно/день</th>
+        <th class="num">Прогноз, ₽</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in payload.cash.rows %}
+      <tr>
+        <td class="store-cell">{{ row.store_name }}</td>
+        {% if row.has_plan %}
+        <td class="num">{{ row.plan_fmt }}</td>
+        <td class="num">{{ row.fact_fmt }}</td>
+        <td class="num dev-{% if row.mom_diff < 0 %}negative{% else %}positive{% endif %}">
+          {% if row.prev_month_fact > 0 %}{% if row.mom_diff < 0 %}−{% else %}+{% endif %}{{ row.mom_pct_fmt }}{% else %}—{% endif %}
+        </td>
+        <td class="num dev-{% if row.yoy_diff < 0 %}negative{% else %}positive{% endif %}">
+          {% if row.prev_year_fact > 0 %}{% if row.yoy_diff < 0 %}−{% else %}+{% endif %}{{ row.yoy_pct_fmt }}{% else %}—{% endif %}
+        </td>
+        <td class="bar-col">
+          <div class="bar-track">
+            <div class="bar-fill bar-{{ row.is_done|yesno:'positive,negative' }}" style="width: {{ row.progress_width }}%;"></div>
+            <span class="bar-label">{{ row.exec_pct_fmt }}</span>
+          </div>
+        </td>
+        <td class="num">{{ row.remaining_fmt_short }}</td>
+        <td class="num">{{ row.required_daily_fmt_short }}</td>
+        <td class="num">{{ row.projected_month_fact_fmt_short }}</td>
+        <td>
+          {% if row.is_on_track %}<span class="badge badge-positive">В темпе</span>
+          {% else %}<span class="badge badge-negative">Риск</span>{% endif %}
+        </td>
+        {% else %}
+        <td class="num" colspan="8"><span class="muted">План не установлен · факт {{ row.fact_fmt }} ₽</span></td>
+        <td><span class="badge badge-muted">Без плана</span></td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="table-caption table-caption-left">
+    Выполнение считается по поступлениям без учёта возвратов. Прогноз — по текущему средненедельному поступлению до конца месяца.
+  </div>
+
+  <div class="cash-share-row-full">
+    {{ payload.charts.cash_share|safe }}
+    <div class="chart-caption">Структура факта поступлений по магазинам, {{ payload.meta.month_year_fmt }}</div>
+  </div>
+</section>
+
+<section class="section calendar-section">
+  <div class="section-head">
+    <div class="section-kicker">I — Кэш · Календарь</div>
+    <h2 class="section-title">Поступления по дням, {{ payload.meta.month_year_fmt }}</h2>
+    <div class="cal-explainer">
+      Цвет дня показывает выполнение относительно плановой дневной нормы месяца:
+      {{ payload.cash.calendar.daily_plan_fmt }} ₽/день (план на месяц ÷ дней в месяце).
+    </div>
+  </div>
+
+  <table class="cash-calendar">
+    <thead>
+      <tr>
+        {% for wd in payload.cash.calendar.weekdays %}<th>{{ wd }}</th>{% endfor %}
+        <th class="cal-summary-head">Итоги недели</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for week in payload.cash.calendar.weeks %}
+      <tr>
+        {% for day in week.days %}
+        <td class="cal-day {{ day.level_class }}{% if day.is_report_date %} cal-today{% endif %}">
+          {% if day.is_current_month %}
+          <div class="cal-day-num">{{ day.day }}</div>
+          <div class="cal-day-weekday">{{ day.weekday }}</div>
+          <div class="cal-day-line">↑ Приход: {{ day.amount_fmt }}</div>
+          {% if day.returns_amount %}<div class="cal-day-line cal-neg">↺ Возврат: {{ day.returns_amount_fmt }}</div>{% endif %}
+          <div class="cal-day-line cal-total">= Итого: {{ day.netto_amount_fmt }}</div>
+          {% endif %}
+        </td>
+        {% endfor %}
+        <td class="cal-summary">
+          {% if week.summary %}
+          <div class="cal-summary-row">
+            <span class="cal-summary-label">{{ week.summary.week_label }}</span>
+            <span class="cal-summary-pct dev-{% if week.summary.week_exec_pct >= 100 %}positive{% else %}negative{% endif %}">{{ week.summary.week_exec_pct_fmt }}</span>
+          </div>
+          <div class="cal-summary-status">
+            {% if week.summary.is_current_week %}ТЕКУЩАЯ НЕДЕЛЯ
+            {% elif week.summary.is_completed_week %}ЗАВЕРШЕНА
+            {% else %}ПЛАНОВАЯ{% endif %}
+          </div>
+          {% if week.summary.fact_days_count > 0 %}
+          <div class="bar-track cal-bar-track">
+            <div class="bar-fill bar-{% if week.summary.week_exec_pct >= 100 %}positive{% else %}negative{% endif %}" style="width: {{ week.summary.week_progress_width }}%;"></div>
+          </div>
+          <div class="cal-summary-figures">
+            {{ week.summary.week_fact_fmt }} / {% if week.summary.is_current_week %}план на дату {{ week.summary.week_plan_to_date_fmt }}{% else %}план недели {{ week.summary.week_plan_fmt }}{% endif %}
+          </div>
+          {% else %}
+          <div class="cal-summary-figures muted">0 / план ещё не наступил</div>
+          {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="cal-legend">
+    <span class="cal-legend-item"><i class="cal-swatch day-excellent"></i>выше плана дня</span>
+    <span class="cal-legend-item"><i class="cal-swatch day-good"></i>в темпе</span>
+    <span class="cal-legend-item"><i class="cal-swatch day-warning"></i>ниже темпа</span>
+    <span class="cal-legend-item"><i class="cal-swatch day-bad"></i>слабый день</span>
+    <span class="cal-legend-item"><i class="cal-swatch day-empty"></i>нет поступлений</span>
+  </div>
+</section>
+
+{% if payload.returns %}
+<section class="section returns-section">
+  <div class="section-head">
+    <div class="section-kicker">II — Возвраты и вознаграждения</div>
+    <h2 class="section-title">Возвраты и дизайнерское вознаграждение</h2>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Факт поступлений</div>
+      <div class="kpi-value">{{ payload.returns.total_income_fmt }} ₽</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Возвраты</div>
+      <div class="kpi-value kpi-negative">{{ payload.returns.total_returns_fmt }} ₽</div>
+      <div class="pace-note">{{ payload.returns.total_return_pct_fmt }} от факта</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Дизайнерское вознаграждение</div>
+      <div class="kpi-value kpi-negative">{{ payload.returns.total_designer_fmt }} ₽</div>
+      <div class="pace-note">{{ payload.returns.total_designer_pct_fmt }} от факта</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Чистый факт после вычетов</div>
+      <div class="kpi-value">{{ payload.returns.net_after_all_fmt }} ₽</div>
+    </div>
+  </div>
+
+  <p class="lead-text">{{ payload.returns_lead }}</p>
+
+  <table class="cash-store-table returns-table">
+    <colgroup>
+      <col class="rcol-store">
+      <col class="rcol-income">
+      <col class="rcol-returns">
+      <col class="rcol-returns-pct">
+      <col class="rcol-designer">
+      <col class="rcol-designer-pct">
+      <col class="rcol-net">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Магазин</th>
+        <th class="num">Факт, ₽</th>
+        <th class="num">Возврат, ₽</th>
+        <th class="num">% от факта</th>
+        <th class="num">Дизайн. возн., ₽</th>
+        <th class="num">% от факта</th>
+        <th class="num">Чистый факт, ₽</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in payload.returns.rows %}
+      <tr>
+        <td class="store-cell">{{ row.store_name }}</td>
+        <td class="num">{{ row.income_fmt }}</td>
+        <td class="num{% if row.returns_amount < 0 %} dev-negative{% endif %}">{{ row.returns_amount_fmt }}</td>
+        <td class="num">{{ row.return_pct_fmt }}</td>
+        <td class="num{% if row.designer_amount < 0 %} dev-negative{% endif %}">{{ row.designer_amount_fmt }}</td>
+        <td class="num">{{ row.designer_pct_fmt }}</td>
+        <td class="num">{{ row.net_after_all_fmt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="table-caption table-caption-left">
+    Возвраты и дизайнерское вознаграждение — из тех же операций 1С (orders_orderscf), что и факт
+    поступлений; проценты считаются от факта соответствующего магазина.
+  </div>
+</section>
+{% endif %}
+
+<section class="section stocks-section">
+  <div class="section-head">
+    <div class="section-kicker">III — Остатки</div>
+    <h2 class="section-title">Товарные запасы компании</h2>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Остаток всего</div>
+      <div class="kpi-value">{{ payload.stocks.qty_total_fmt }} шт.</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">В магазинах и на складах</div>
+      <div class="kpi-value">{{ payload.stocks.qty_available_fmt }} шт.</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">В пути (заказано)</div>
+      <div class="kpi-value">{{ payload.stocks.qty_ordered_fmt }} шт.</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Активных SKU с остатком</div>
+      <div class="kpi-value">{{ payload.stocks.sku_count_with_stock }}</div>
+    </div>
+  </div>
+
+  <p class="lead-text">{{ payload.stocks.lead }}</p>
+
+  <div class="two-col">
+    <div class="col chart-block">
+      {{ payload.charts.stock_distribution|safe }}
+      <div class="chart-caption">Распределение остатков по магазинам и складам, шт.</div>
+    </div>
+    <div class="col">
+      <table class="mini-table">
+        <thead>
+          <tr>
+            <th>Категория</th>
+            <th class="num">Остаток, шт.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cat in payload.stocks.top_categories %}
+          <tr>
+            <td>{{ cat.cat_name }}</td>
+            <td class="num">{{ cat.qty_available_fmt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="table-caption">Категории по количеству остатков</div>
+    </div>
+  </div>
+
+  <div class="table-caption table-caption-left">
+    Активных SKU с остатком: {{ payload.stocks.sku_count_with_stock }}.
+  </div>
+</section>
+
+<footer class="report-footer">
+  {{ payload.company.legal_name }} · {{ payload.meta.title }} · сформировано {{ payload.meta.generated_at_fmt }}
+</footer>
+
+</body>
+</html>
