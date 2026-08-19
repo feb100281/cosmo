@@ -18,7 +18,7 @@ COMPANY_LEGAL_NAME = 'ООО "КОСМО"'
 COMPANY_BRAND_NAME = "COSMORELAX"
 COMPANY_WEBSITE = ""
 REPORT_TITLE = "COSMORELAX Daily Brief"
-REPORT_SUBTITLE = "Управленческая сводка: кэш и остатки"
+REPORT_SUBTITLE = "Кэш и остатки товаров"
 
 # Имя файла на выходе: COSMORELAX_Daily_Brief_2026-08-18.pdf
 PDF_FILENAME_TEMPLATE = "COSMORELAX_Daily_Brief_{date}.pdf"
