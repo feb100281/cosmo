@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>{{ meta.title }} — {{ meta.report_date_fmt }}</title>
+</head>
+<body>
+
+<header class="masthead-band">
+  <div class="masthead">
+    <div class="masthead-row">
+      <div class="masthead-brand">
+        <div class="brand-name">{{ company.brand_name }}</div>
+        <div class="brand-sub">{{ meta.title }} · {{ meta.report_type_label }}</div>
+      </div>
+      <div class="masthead-meta">
+        <div class="masthead-date">{{ meta.weekday_ru }}, {{ meta.report_date_fmt }}</div>
+        <div class="masthead-site">{{ company.website }}</div>
+      </div>
+    </div>
+    <div class="masthead-subtitle">{{ period_label }} {{ period_value }} · № {{ report_number }}</div>
+  </div>
+</header>
+
+<!-- ======================================================================
+     I. ИТОГИ ПЕРИОДА (KPI)
+     ====================================================================== -->
+<section class="section kpi-section">
+
+  <div class="section-head">
+    <div class="section-kicker">I — Итоги периода</div>
+    <h2 class="section-title">{{ summary.title }}</h2>
+  </div>
+
+
+  <!-- ===================================================================
+       ВЕРХНИЕ KPI
+       =================================================================== -->
+  <div class="kpi-row kpi-top-row">
+
+    <div class="kpi">
+      <div class="kpi-label">Чистая выручка</div>
+      <div class="kpi-value">{{ summary.values.amount }}</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-label">Оборот</div>
+      <div class="kpi-value">{{ summary.values.dt }}</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-label">Возвраты</div>
+      <div class="kpi-value kpi-negative">
+        {{ summary.values.cr }}
+      </div>
+      <div class="pace-note">
+        {{ summary.values.rtr_ratio }} от оборота
+      </div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-label">Сумма услуг</div>
+      <div class="kpi-value">
+        {{ kpi_ctx.cards.amount_services }}
+      </div>
+      <div class="pace-note">
+        {{ kpi_ctx.cards.services_share }} от выручки
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ===================================================================
+       ПРИМЕЧАНИЕ
+       =================================================================== -->
+  <div class="kpi-note">
+    {{ summary.note }}
+  </div>
+
+
+  <!-- ===================================================================
+       ЛЕВАЯ КОЛОНКА: ТАБЛИЦА + MTD/YTD
+       ПРАВАЯ КОЛОНКА: ГРАФИК
+       =================================================================== -->
+  <div class="kpi-detail-layout">
+
+    <!-- ================================================================
+         ЛЕВАЯ КОЛОНКА
+         ================================================================ -->
+    <div class="kpi-detail-col">
+
+      <div class="kpi-detail-head">
+        <div class="kpi-detail-title">Сравнение периодов</div>
+        <div class="kpi-detail-code">₽</div>
+      </div>
+
+      <table class="mini-table compare-mini-table">
+
+        <thead>
+          <tr>
+            <th>Метрика</th>
+            <th class="num">Текущий период</th>
+            <th class="num">
+              {{ summary.compare.prev.label|capfirst }}
+            </th>
+            <th class="num">Год назад</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for row in summary.compare.rows %}
+          <tr>
+
+            <td>{{ row.title }}</td>
+
+            <td class="num">
+              {{ row.prev.curr }}
+            </td>
+
+            <td class="num dev-cell">
+              {{ row.prev.delta }}
+              <span class="dev-pill">
+                {{ row.prev.delta_pct }}
+              </span>
+            </td>
+
+            <td class="num dev-cell">
+              {{ row.ly.delta }}
+              <span class="dev-pill">
+                {{ row.ly.delta_pct }}
+              </span>
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+
+      <div class="table-caption table-caption-left">
+        Сравнение с {{ summary.compare.prev.label }}
+        и аналогичным периодом {{ summary.compare.ly.label }}.
+      </div>
+
+
+      <!-- ==============================================================
+           MTD / YTD ПОД ТАБЛИЦЕЙ
+           ============================================================== -->
+      <div class="kpi-mini-cards">
+
+        <!-- MTD -->
+        <div class="highlight-card highlight-neutral">
+
+          <div class="highlight-label">
+            {{ kpi_ctx.accum_cards.mtd.title }}
+            · {{ kpi_ctx.accum_cards.mtd.subtitle }}
+          </div>
+
+          <div class="highlight-value">
+            {{ kpi_ctx.accum_cards.mtd.amount }}
+          </div>
+
+          <div class="highlight-sub
+            {% if kpi_ctx.accum_cards.mtd.delta_is_positive %}
+              dev-positive
+            {% else %}
+              dev-negative
+            {% endif %}
+          ">
+            {{ kpi_ctx.accum_cards.mtd.delta_ly }} к прошлому году
+          </div>
+
+        </div>
+
+
+        <!-- YTD -->
+        <div class="highlight-card highlight-neutral">
+
+          <div class="highlight-label">
+            {{ kpi_ctx.accum_cards.ytd.title }}
+            · {{ kpi_ctx.accum_cards.ytd.subtitle }}
+          </div>
+
+          <div class="highlight-value">
+            {{ kpi_ctx.accum_cards.ytd.amount }}
+          </div>
+
+          <div class="highlight-sub
+            {% if kpi_ctx.accum_cards.ytd.delta_is_positive %}
+              dev-positive
+            {% else %}
+              dev-negative
+            {% endif %}
+          ">
+            {{ kpi_ctx.accum_cards.ytd.delta_ly }} к прошлому году
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ================================================================
+         ПРАВАЯ КОЛОНКА
+         ================================================================ -->
+    <div class="kpi-detail-col">
+
+      <div class="kpi-detail-head">
+        <div class="kpi-detail-title">Изменение показателей</div>
+        <div class="kpi-detail-code">%</div>
+      </div>
+
+      <div class="chart-block kpi-compare-chart">
+
+        {{ summary.compare_chart_svg_pct|safe }}
+
+        <div class="chart-caption">
+          Изменение показателей, % к сравниваемым периодам
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+<!-- ======================================================================
+     II. МАГАЗИНЫ
+     ====================================================================== -->
+<section class="section stores-section" style="break-before: page;">
+  <div class="section-head">
+    <div class="section-kicker">II — Магазины</div>
+    <h2 class="section-title">Продажи по магазинам за {{ period_value }}</h2>
+  </div>
+
+  <table class="cash-store-table stores-table">
+    <colgroup>
+      <col class="col-store-wide">
+      <col class="col-num-wide">
+      <col class="col-delta-wide">
+      <col class="col-num-wide">
+      <col class="col-num-wide">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Магазин</th>
+        <th class="num">Выручка, ₽</th>
+        <th class="num">Δ к пред. периоду</th>
+        <th class="num">Возврат, ₽</th>
+        <th class="num">% возвратов</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in store_sales %}
+      <tr{% if row.store == "ИТОГО" %} class="totals-row"{% endif %}>
+        <td class="store-cell">{{ row.store }}</td>
+        <td class="num">{{ row.amount }}</td>
+        <td class="num{% if row.delta %} dev-{{ row.delta.amount.dir }}{% endif %}">
+          {% if row.delta %}{{ row.delta.amount.abs }} <span class="dev-pill">{{ row.delta.amount.pct }}</span>{% else %}—{% endif %}
+        </td>
+        <td class="num">{{ row.cr }}</td>
+        <td class="num">{{ row.rtr_ratio }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="table-caption table-caption-left">
+    Δ считается к предыдущему сопоставимому периоду ({{ store_prev_start_fmt }}–{{ store_prev_end_fmt }}).
+  </div>
+
+<div class="store-charts-split">
+
+  <div class="store-chart-col">
+
+    <div class="store-chart-head">
+      <div class="store-chart-title">Выручка по магазинам</div>
+      <div class="store-chart-code">₽</div>
+    </div>
+
+    <div class="chart-block store-chart-block">
+      {{ store_chart_svg|safe }}
+      <div class="chart-caption">
+        Чистая выручка по магазинам за {{ period_value }}
+      </div>
+    </div>
+
+  </div>
+
+
+  <div class="store-chart-col">
+
+    <div class="store-chart-head">
+      <div class="store-chart-title">Структура выручки</div>
+      <div class="store-chart-code">%</div>
+    </div>
+
+    <div class="chart-block store-chart-block">
+      {{ store_share_pie_svg|safe }}
+      <div class="chart-caption">
+        Доли магазинов в выручке за {{ period_value }}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ===================================================================
+     KPI ПО МАГАЗИНАМ · MTD И YTD
+     =================================================================== -->
+{% if store_perf.has %}
+<div class="store-perf-block" style="break-before: page;">
+
+  <div class="subblock-head">
+    <div class="subblock-title">KPI по магазинам · MTD и YTD</div>
+    <div class="subblock-code">{{ store_perf.y_curr }} к {{ store_perf.y_prev }}</div>
+  </div>
+
+  <div class="two-col store-kpi-split">
+
+    <div class="col">
+      <div class="mini-table-caption">С начала месяца (MTD)</div>
+      <table class="mini-table store-kpi-table">
+        <thead>
+          <tr>
+            <th>Магазин</th>
+            <th class="num">Выручка</th>
+            <th class="num">Δ</th>
+            <th class="num">Δ%</th>
+            <th class="num">Возврат %</th>
+            <th class="num">Доля</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in store_perf.mtd_rows %}
+          <tr>
+            <td>{{ r.store }}</td>
+            <td class="num">{{ r.amount_curr }}</td>
+            <td class="num {{ r.delta_class }}">{{ r.delta }}</td>
+            <td class="num {{ r.delta_class }}">{{ r.delta_pct }}</td>
+            <td class="num">{{ r.rtr }}</td>
+            <td class="num">{{ r.share }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <div class="mini-table-caption">С начала года (YTD)</div>
+      <table class="mini-table store-kpi-table">
+        <thead>
+          <tr>
+            <th>Магазин</th>
+            <th class="num">Выручка</th>
+            <th class="num">Δ</th>
+            <th class="num">Δ%</th>
+            <th class="num">Возврат %</th>
+            <th class="num">Доля</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in store_perf.ytd_rows %}
+          <tr>
+            <td>{{ r.store }}</td>
+            <td class="num">{{ r.amount_curr }}</td>
+            <td class="num {{ r.delta_class }}">{{ r.delta }}</td>
+            <td class="num {{ r.delta_class }}">{{ r.delta_pct }}</td>
+            <td class="num">{{ r.rtr }}</td>
+            <td class="num">{{ r.share }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  {% if store_perf.mtd_chart_svg or store_perf.ytd_chart_svg %}
+  <div class="two-col store-kpi-split" style="margin-top: 4mm;">
+
+    <div class="col chart-block">
+      {{ store_perf.mtd_chart_svg|safe }}
+      <div class="chart-caption">Магазины: выручка MTD, {{ store_perf.y_curr }} к {{ store_perf.y_prev }}</div>
+    </div>
+
+    <div class="col chart-block">
+      {{ store_perf.ytd_chart_svg|safe }}
+      <div class="chart-caption">Магазины: выручка YTD, {{ store_perf.y_curr }} к {{ store_perf.y_prev }}</div>
+    </div>
+
+  </div>
+  {% endif %}
+
+  {% if store_perf.monthly_chart_svg %}
+  <div class="store-monthly-block" style="break-before: page;">
+    <div class="subblock-head">
+      <div class="subblock-title">Помесячная динамика по магазинам</div>
+      <div class="subblock-code">{{ store_perf.y_curr }} к {{ store_perf.y_prev }}</div>
+    </div>
+    <div class="chart-block store-monthly-chart-block">
+      {{ store_perf.monthly_chart_svg|safe }}
+      <div class="chart-caption">
+        Топ-6 магазинов по выручке YTD, помесячно, {{ store_perf.y_curr }} к {{ store_perf.y_prev }}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
+
+</section>
+
+<!-- ======================================================================
+     III. ТРЕНДЫ И ДИНАМИКА
+     ====================================================================== -->
+<section class="section trends-section" style="break-before: page;">
+
+  <div class="section-head">
+    <div class="section-kicker">III — Тренды и динамика</div>
+    <h2 class="section-title">{{ trend_meta.title }}</h2>
+  </div>
+
+  <div class="trend-layout">
+
+    <!-- ================================================================
+         ЛЕВАЯ КОЛОНКА — ТАБЛИЦА
+         ================================================================ -->
+    <div class="trend-left">
+
+      <div class="trend-col-head">
+        <div class="trend-col-title">Аналогичные периоды</div>
+        <div class="trend-col-code">12 периодов</div>
+      </div>
+
+      <table class="mini-table trend-table trend-table-compact">
+        <thead>
+          <tr>
+            <th>Период</th>
+            <th class="num">Выручка</th>
+            <th class="num">Оборот</th>
+            <th class="num">Возвраты</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for row in trend_rows %}
+          <tr{% if row.is_current %} class="row-current"{% endif %}>
+
+            <td>{{ row.label }}</td>
+            <td class="num">{{ row.amount }}</td>
+            <td class="num">{{ row.dt }}</td>
+            <td class="num">{{ row.cr }}</td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+    </div>
+
+
+    <!-- ================================================================
+         ПРАВАЯ КОЛОНКА — КАРТОЧКИ
+         ================================================================ -->
+    <div class="trend-right">
+
+      <div class="trend-col-head">
+        <div class="trend-col-title">Текущий результат</div>
+        <div class="trend-col-code">СЕЙЧАС</div>
+      </div>
+
+      {% for row in trend_rows %}
+        {% if row.is_current %}
+
+        <div class="highlight-card trend-current-card highlight-neutral">
+
+          <div class="highlight-label">
+            {{ row.label }}
+          </div>
+
+          <div class="trend-current-values">
+
+            <div class="trend-current-metric">
+              <div class="trend-current-label">Выручка</div>
+              <div class="trend-current-value">{{ row.amount }}</div>
+            </div>
+
+            <div class="trend-current-metric">
+              <div class="trend-current-label">Оборот</div>
+              <div class="trend-current-value">{{ row.dt }}</div>
+            </div>
+
+            <div class="trend-current-metric">
+              <div class="trend-current-label">Возвраты</div>
+              <div class="trend-current-value">{{ row.cr }}</div>
+            </div>
+
+          </div>
+
+        </div>
+
+        {% endif %}
+      {% endfor %}
+
+
+      <div class="trend-card-row">
+
+        <div class="highlight-card trend-delta-card
+          {% if trend_badges.vs_avg_class == 'dev-positive' %}highlight-positive{% elif trend_badges.vs_avg_class == 'dev-negative' %}highlight-negative{% else %}highlight-neutral{% endif %}">
+
+          <div class="highlight-label">
+            К среднему
+          </div>
+
+          <div class="highlight-value {{ trend_badges.vs_avg_class }}">
+            {{ trend_badges.vs_avg }}
+          </div>
+
+          <div class="highlight-sub">
+            относительно среднего по показанным периодам
+          </div>
+
+        </div>
+
+
+        <div class="highlight-card trend-delta-card
+          {% if trend_badges.vs_prev_class == 'dev-positive' %}highlight-positive{% elif trend_badges.vs_prev_class == 'dev-negative' %}highlight-negative{% else %}highlight-neutral{% endif %}">
+
+          <div class="highlight-label">
+            К пред. периоду
+          </div>
+
+          <div class="highlight-value {{ trend_badges.vs_prev_class }}">
+            {{ trend_badges.vs_prev }}
+          </div>
+
+          <div class="highlight-sub">
+            изменение к предыдущему сопоставимому дню
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="trend-method-card">
+        {{ trend_meta.subtitle }}
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ================================================================
+       ГРАФИК — НА ВСЮ ШИРИНУ
+       ================================================================ -->
+  <div class="chart-block trend-chart-block trend-chart-full">
+    {{ trend_chart_svg|safe }}
+
+    <div class="chart-caption">
+      Динамика чистой выручки по аналогичным периодам
+    </div>
+  </div>
+
+</section>
+
+<!-- ======================================================================
+     IV. ПРОГНОЗ (PROPHET)
+     ====================================================================== -->
+{% if ltm_prophet_year.has_data %}
+<section class="section" style="break-before: page;">
+  <div class="section-head">
+    <div class="section-kicker">IV — Прогноз</div>
+    <h2 class="section-title">Прогноз выручки до конца {{ ltm_prophet_year.year|stringformat:"d" }} года (Prophet)</h2>
+  </div>
+  <p class="lead-text">
+    Модель Prophet строится ежедневно на дневной чистой выручке и учитывает
+    недельную и годовую сезонность. FY-прогноз — это факт с начала года
+    (YTD) плюс прогноз на оставшиеся дни до конца года; вектор ниже
+    показывает, как прогноз сдвинулся по сравнению со вчерашним расчётом.
+  </p>
+
+  <div class="highlight-row">
+    <div class="highlight-card highlight-neutral">
+      <div class="highlight-label">FY-прогноз · до {{ ltm_prophet_year.year_end|date:"d.m.Y" }}</div>
+      <div class="highlight-value">{{ ltm_prophet_year.fy_forecast }}</div>
+      <div class="highlight-sub">YTD факт: {{ ltm_prophet_year.ytd_actual }} · осталось добрать: {{ ltm_prophet_year.remaining_forecast }}</div>
+    </div>
+    <div class="highlight-card highlight-{% if ltm_prophet_year.vector_dir == 'pos' %}positive{% elif ltm_prophet_year.vector_dir == 'neg' %}negative{% else %}neutral{% endif %}">
+      <div class="highlight-label">Изменение прогноза к вчера</div>
+      <div class="highlight-value">{{ ltm_prophet_year.d_fy }}</div>
+      <div class="highlight-sub">{{ ltm_prophet_year.d_fy_pct }} · вчера: {{ ltm_prophet_year.fy_yesterday }}</div>
+    </div>
+    <div class="highlight-card highlight-neutral">
+      <div class="highlight-label">Точность модели</div>
+      <div class="highlight-value">MAPE {{ ltm_prophet_year.mape_total }}</div>
+      <div class="highlight-sub">{{ ltm_prophet_year.vector_text }}</div>
+    </div>
+  </div>
+
+  {% if fy_bar_svg %}
+  <div class="chart-block">
+    {{ fy_bar_svg|safe }}
+    <div class="chart-caption">Факт по месяцам и прогноз Prophet до конца {{ ltm_prophet_year.year }} года</div>
+  </div>
+  {% endif %}
+
+  <div class="table-caption table-caption-left" style="margin-top: 2mm;">
+    Методика: FY-прогноз пересчитывается ежедневно по дневной выручке; Δ — разница между сегодняшним прогнозом
+    и прогнозом, построенным на данных до вчерашнего дня. MAPE — средняя ошибка модели на исторических данных.
+  </div>
+</section>
+{% endif %}
+
+<!-- ======================================================================
+     V. MTD
+     ====================================================================== -->
+<section class="section" style="break-before: page;">
+  <div class="section-head">
+    <div class="section-kicker">V — С начала месяца (MTD)</div>
+    <h2 class="section-title">Динамика месяца к текущей дате</h2>
+  </div>
+
+
+  <div class="two-col mtd-ytd-top">
+    <div class="col">
+      {{ table_mtd_html|safe }}
+    </div>
+    <div class="col chart-block cum-chart-block">
+      {{ mtd_cum_svg|safe }}
+      <div class="chart-caption">Накопленная выручка нарастающим итогом, MTD</div>
+    </div>
+  </div>
+
+
+  {% if mtd_cat_waterfall_svg %}
+  <div class="chart-block waterfall-block">
+    {{ mtd_cat_waterfall_svg|safe }}
+    <div class="chart-caption">Вклад категорий в изменение выручки MTD (топ-8, текущий год к прошлому)</div>
+  </div>
+  {% endif %}
+</section>
+
+<!-- ======================================================================
+     IV. YTD
+     ====================================================================== -->
+<section class="section" style="break-before: page;">
+  <div class="section-head">
+    <div class="section-kicker">VI — С начала года (YTD)</div>
+    <h2 class="section-title">Динамика года к текущей дате</h2>
+  </div>
+
+  <div class="two-col mtd-ytd-top">
+    <div class="col">
+      {{ table_ytd_html|safe }}
+    </div>
+    <div class="col chart-block cum-chart-block">
+      {{ ytd_cum_svg|safe }}
+      <div class="chart-caption">Накопленная выручка нарастающим итогом, YTD</div>
+    </div>
+  </div>
+
+  {% if period_text.ytd_text %}
+  <div class="period-text-block">
+    <div class="period-text-title">Категории YTD: {{ period_text.ytd_text.total_amount }} ({{ period_text.ytd_text.yoy_amount }}, {{ period_text.ytd_text.yoy_amount_pct }} к прошлому году)</div>
+    <p class="lead-text">
+      Топ-5 категорий формируют {{ period_text.ytd_text.pareto_topn_share }} выручки YTD.
+      {% if period_text.ytd_text.movers_up_str %}Растут быстрее всего: {{ period_text.ytd_text.movers_up_str }}.{% endif %}
+      {% if period_text.ytd_text.movers_down_str %}Снижаются: {{ period_text.ytd_text.movers_down_str }}.{% endif %}
+    </p>
+  </div>
+  {% endif %}
+
+  {% if ytd_cat_waterfall_svg %}
+  <div class="chart-block waterfall-block">
+    {{ ytd_cat_waterfall_svg|safe }}
+    <div class="chart-caption">Вклад категорий в изменение выручки YTD (топ-8, текущий год к прошлому)</div>
+  </div>
+  {% endif %}
+</section>
+
+<!-- ======================================================================
+     V. КАТЕГОРИИ
+     ====================================================================== -->
+<section class="section" style="break-before: page;">
+  <div class="section-head">
+    <div class="section-kicker">VII — Категории</div>
+    <h2 class="section-title">Топ категорий и подкатегорий</h2>
+  </div>
+
+
+  <div class="two-col categories-split">
+    <div class="col">
+      <table class="mini-table">
+        <thead>
+          <tr><th>Категория MTD</th><th class="num">Выручка</th><th class="num">Кол-во</th><th class="num">Δ</th><th class="num">Δ%</th></tr>
+        </thead>
+        <tbody>
+          {% for c in categories.cats %}
+          <tr>
+            <td>{{ c.cat_name }}</td>
+            <td class="num">{{ c.amount }}</td>
+            <td class="num">{{ c.quant }}</td>
+            <td class="num">{{ c.delta.abs }}</td>
+            <td class="num {% if '+' in c.delta.pct %}dev-positive{% elif '−' in c.delta.pct %}dev-negative{% endif %}">{{ c.delta.pct }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <table class="mini-table">
+        <thead>
+          <tr><th>Категория YTD</th><th class="num">Выручка</th><th class="num">Кол-во</th><th class="num">Δ</th><th class="num">Δ%</th></tr>
+        </thead>
+        <tbody>
+          {% for c in categories_ytd.cats %}
+          <tr>
+            <td>{{ c.cat_name }}</td>
+            <td class="num">{{ c.amount }}</td>
+            <td class="num">{{ c.quant }}</td>
+            <td class="num">{{ c.delta.abs }}</td>
+            <td class="num {% if '+' in c.delta.pct %}dev-positive{% elif '−' in c.delta.pct %}dev-negative{% endif %}">{{ c.delta.pct }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="two-col categories-split">
+    <div class="col">
+      <table class="mini-table">
+        <thead>
+          <tr><th>Подкатегория MTD</th><th class="num">Выручка</th><th class="num">Кол-во</th><th class="num">Δ%</th></tr>
+        </thead>
+        <tbody>
+          {% for c in categories.subcats %}
+          <tr>
+            <td>{{ c.cat_name }} · {{ c.sc_name }}</td>
+            <td class="num">{{ c.amount }}</td>
+            <td class="num">{{ c.quant }}</td>
+            <td class="num {% if '+' in c.delta.pct %}dev-positive{% elif '−' in c.delta.pct %}dev-negative{% endif %}">{{ c.delta.pct }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <table class="mini-table">
+        <thead>
+          <tr><th>Подкатегория YTD</th><th class="num">Выручка</th><th class="num">Кол-во</th><th class="num">Δ%</th></tr>
+        </thead>
+        <tbody>
+          {% for c in categories_ytd.subcats %}
+          <tr>
+            <td>{{ c.cat_name }} · {{ c.sc_name }}</td>
+            <td class="num">{{ c.amount }}</td>
+            <td class="num">{{ c.quant }}</td>
+            <td class="num {% if '+' in c.delta.pct %}dev-positive{% elif '−' in c.delta.pct %}dev-negative{% endif %}">{{ c.delta.pct }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     VI-b. КАТЕГОРИИ / ПРОИЗВОДИТЕЛИ ЗА ПЕРИОД
+     ====================================================================== -->
+<section class="section" style="break-before: page;">
+  <div class="section-head">
+    <div class="section-kicker">VII — Категории</div>
+    <h2 class="section-title">Категории и производители за {{ period_value }}</h2>
+  </div>
+
+  <p class="lead-text">
+    В отличие от MTD/YTD выше, здесь — срез только по отчётному периоду
+    ({{ period_value }}), без сравнения с прошлым годом: что реально
+    продавалось прямо сейчас, у кого из производителей и в каких категориях
+    сосредоточена выручка.
+  </p>
+
+  <div class="period-two-col">
+
+    <!-- ================================================================
+         КАТЕГОРИИ
+         ================================================================ -->
+    <div class="period-col">
+
+      <div class="period-col-head">
+        <div class="period-col-title">Категории</div>
+        <div class="period-col-code">TOP</div>
+      </div>
+
+      <table class="mini-table period-table">
+        <thead>
+          <tr>
+            <th>Категория</th>
+            <th class="num">Выручка</th>
+            <th class="num">Кол-во</th>
+            <th class="num">Доля</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in period_categories.rows %}
+          <tr>
+            <td>{{ r.name }}</td>
+            <td class="num">{{ r.amount }}</td>
+            <td class="num">{{ r.quant }}</td>
+            <td class="num">{{ r.share }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      
+
+    </div>
+
+
+    <!-- ================================================================
+         ПРОИЗВОДИТЕЛИ
+         ================================================================ -->
+    <div class="period-col">
+
+      <div class="period-col-head">
+        <div class="period-col-title">Производители</div>
+        <div class="period-col-code">TOP</div>
+      </div>
+
+      <table class="mini-table period-table">
+        <thead>
+          <tr>
+            <th>Производитель</th>
+            <th class="num">Выручка</th>
+            <th class="num">Кол-во</th>
+            <th class="num">Доля</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in period_manufacturers.rows %}
+          <tr>
+            <td>{{ r.name }}</td>
+            <td class="num">{{ r.amount }}</td>
+            <td class="num">{{ r.quant }}</td>
+            <td class="num">{{ r.share }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+
+
+    </div>
+
+  </div>
+</section>
+
+<!-- ======================================================================
+     VIII. МЕНЕДЖЕРЫ — MTD + YTD НА ОДНОЙ СТРАНИЦЕ
+     ====================================================================== -->
+<section class="section mgr-page" style="break-before: page;">
+
+  <div class="section-head">
+    <div class="section-kicker">VIII — Менеджеры</div>
+    <h2 class="section-title">Отгрузки по менеджерам · MTD и YTD</h2>
+  </div>
+
+  <div class="mgr-two-col">
+
+    <!-- ================================================================
+         MTD
+         ================================================================ -->
+    <div class="mgr-col">
+
+      <div class="mgr-period-head">
+        <div class="mgr-period-title">С начала месяца</div>
+        <div class="mgr-period-code">MTD</div>
+      </div>
+
+      {% if managers.mtd.insights %}
+      <div class="mgr-summary-block">
+        <div class="mgr-summary-title">Ключевые показатели</div>
+
+        <ul class="mgr-summary-list">
+          {% for insight_group in managers.mtd.insights %}
+            {% for item in insight_group.items %}
+            <li>{{ item|safe }}</li>
+            {% endfor %}
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <table class="mini-table mgr-table">
+        <thead>
+          <tr>
+            <th>Менеджер</th>
+            <th class="num">Выручка</th>
+            <th class="num">Заказы</th>
+            <th class="num">Возврат %</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for r in managers.mtd.rows %}
+          <tr>
+            <td>{{ r.manager_l1 }} {{ r.manager_l2 }}</td>
+            <td class="num">{{ r.amount }}</td>
+            <td class="num">{{ r.orders_with_shipments }}</td>
+
+            <td class="num badge-cell">
+              {% if r.rr_class == "rr-ok" %}
+                <span class="badge badge-ok">{{ r.return_rate }}</span>
+              {% elif r.rr_class == "rr-warn" %}
+                <span class="badge badge-warn">{{ r.return_rate }}</span>
+              {% elif r.rr_class == "rr-crit" %}
+                <span class="badge badge-crit">{{ r.return_rate }}</span>
+              {% else %}
+                <span class="badge badge-na">{{ r.return_rate }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if managers.mtd.rows_hidden_count %}
+      <div class="mgr-table-note">
+        Ещё {{ managers.mtd.rows_hidden_count }} менеджер(ов) ·
+        показан топ-20 по чистой выручке
+      </div>
+      {% endif %}
+
+    </div>
+
+
+    <!-- ================================================================
+         YTD
+         ================================================================ -->
+    <div class="mgr-col">
+
+      <div class="mgr-period-head">
+        <div class="mgr-period-title">С начала года</div>
+        <div class="mgr-period-code">YTD</div>
+      </div>
+
+      {% if managers.ytd.insights %}
+      <div class="mgr-summary-block">
+        <div class="mgr-summary-title">Ключевые показатели</div>
+
+        <ul class="mgr-summary-list">
+          {% for insight_group in managers.ytd.insights %}
+            {% for item in insight_group.items %}
+            <li>{{ item|safe }}</li>
+            {% endfor %}
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <table class="mini-table mgr-table">
+        <thead>
+          <tr>
+            <th>Менеджер</th>
+            <th class="num">Выручка</th>
+            <th class="num">Заказы</th>
+            <th class="num">Возврат %</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for r in managers.ytd.rows %}
+          <tr>
+            <td>{{ r.manager_l1 }} {{ r.manager_l2 }}</td>
+            <td class="num">{{ r.amount }}</td>
+            <td class="num">{{ r.orders_with_shipments }}</td>
+
+            <td class="num badge-cell">
+              {% if r.rr_class == "rr-ok" %}
+                <span class="badge badge-ok">{{ r.return_rate }}</span>
+              {% elif r.rr_class == "rr-warn" %}
+                <span class="badge badge-warn">{{ r.return_rate }}</span>
+              {% elif r.rr_class == "rr-crit" %}
+                <span class="badge badge-crit">{{ r.return_rate }}</span>
+              {% else %}
+                <span class="badge badge-na">{{ r.return_rate }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if managers.ytd.rows_hidden_count %}
+      <div class="mgr-table-note">
+        Ещё {{ managers.ytd.rows_hidden_count }} менеджер(ов) ·
+        показан топ-20 по чистой выручке
+      </div>
+      {% endif %}
+
+    </div>
+
+  </div>
+
+</section>
+
+<!-- ======================================================================
+     IX. ПОДКАТЕГОРИИ YTD (БЫЛО / СТАЛО)
+     ====================================================================== -->
+{% if subcats_ytd.has %}
+<section class="section" style="break-before: page;">
+  <div class="section-head">
+    <div class="section-kicker">IX — Подкатегории YTD</div>
+    <h2 class="section-title">{{ subcats_ytd.title }}</h2>
+  </div>
+
+  {% for c in subcats_ytd.cats %}
+  <div class="subcats-cat-block">
+    <div class="subcats-cat-title">{{ c.cat }}</div>
+
+    <table class="mini-table subcats-table">
+      <thead>
+        <tr>
+          <th>Подкатегория</th>
+          <th class="num">Выручка {{ subcats_ytd.years.prev }}</th>
+          <th class="num">Выручка {{ subcats_ytd.years.curr }}</th>
+          <th class="num">Δ</th>
+          <th class="num">Кол-во {{ subcats_ytd.years.prev }}</th>
+          <th class="num">Кол-во {{ subcats_ytd.years.curr }}</th>
+          <th class="num">Δ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in c.rows %}
+        <tr>
+          <td>{{ r.subcat }}</td>
+          <td class="num">{{ r.amount_prev }}</td>
+          <td class="num">{{ r.amount_curr }}</td>
+          <td class="num {% if r.d_amount_dir == 'pos' %}dev-positive{% elif r.d_amount_dir == 'neg' %}dev-negative{% endif %}">{{ r.d_amount }}</td>
+          <td class="num">{{ r.quant_prev }}</td>
+          <td class="num">{{ r.quant_curr }}</td>
+          <td class="num {% if r.d_quant_dir == 'pos' %}dev-positive{% elif r.d_quant_dir == 'neg' %}dev-negative{% endif %}">{{ r.d_quant }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="totals-row">
+          <td>Итого по категории</td>
+          <td class="num">{{ c.totals.amount_prev }}</td>
+          <td class="num">{{ c.totals.amount_curr }}</td>
+          <td class="num {% if c.totals.d_amount_dir == 'pos' %}dev-positive{% elif c.totals.d_amount_dir == 'neg' %}dev-negative{% endif %}">{{ c.totals.d_amount }}</td>
+          <td class="num">{{ c.totals.quant_prev }}</td>
+          <td class="num">{{ c.totals.quant_curr }}</td>
+          <td class="num {% if c.totals.d_quant_dir == 'pos' %}dev-positive{% elif c.totals.d_quant_dir == 'neg' %}dev-negative{% endif %}">{{ c.totals.d_quant }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+
+</section>
+{% endif %}
+
+<!-- ======================================================================
+     X. МАТРИЦЫ ИЗМЕНЕНИЙ (МАГАЗИН × КАТЕГОРИЯ)
+     ====================================================================== -->
+{% if store_category_matrices.ytd.has or store_category_matrices.mtd.has %}
+<section class="section" style="break-before: page;">
+  <div class="section-head">
+    <div class="section-kicker">X — Матрицы изменений</div>
+    <h2 class="section-title">Изменение выручки и штук по магазинам и категориям</h2>
+  </div>
+
+  <p class="lead-text">
+    Матрицы показывают изменение (Δ) чистой выручки и количества проданных
+    товаров по каждой паре «магазин × категория» год к году — где именно
+    сосредоточен рост или падение. Цвет ячейки — знак и сила изменения
+    (зелёный — рост, терракотовый — падение), число в ячейке — сама величина Δ.
+  </p>
+
+  {% if store_category_matrices.ytd.has %}
+  <div class="matrix-period-block">
+
+    <div class="subblock-head">
+      <div class="subblock-title">YTD, {{ store_category_matrices.ytd.y_curr }} к {{ store_category_matrices.ytd.y_prev }}</div>
+    </div>
+    {% for block_html in store_category_matrices.ytd.category_blocks_html %}
+    <div class="matrix-category-pair">{{ block_html|safe }}</div>
+    {% endfor %}
+
+  </div>
+  {% endif %}
+
+  {% if store_category_matrices.mtd.has %}
+  <div class="matrix-period-block" style="break-before: page;">
+
+    <div class="subblock-head">
+      <div class="subblock-title">MTD, {{ store_category_matrices.mtd.y_curr }} к {{ store_category_matrices.mtd.y_prev }}</div>
+    </div>
+    {% for block_html in store_category_matrices.mtd.category_blocks_html %}
+    <div class="matrix-category-pair">{{ block_html|safe }}</div>
+    {% endfor %}
+
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+<footer class="report-footer">
+  {{ company.legal_name }} · {{ meta.title }} · сформировано {{ meta.generated_at_fmt }}
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,2018 @@
+/* static/sales_digest/report.css
+ *
+ * Editorial / financial-newspaper print stylesheet for COSMORELAX Sales
+ * Digest — тот же визуальный язык, что у COSMORELAX Daily Brief
+ * (sales.reports.newspaper): базовые классы (masthead, section, kpi-row,
+ * mini-table, badge, bar-track...) буквально скопированы из
+ * newspaper/static/newspaper/report.css, чтобы оба отчёта выглядели как
+ * одна система. Ниже, после исходного блока newspaper, идут ДОПОЛНИТЕЛЬНЫЕ
+ * классы, нужные только этому — более крупному и многосекционному — отчёту
+ * (мосты MTD/YTD, сравнение периодов, бейджи менеджеров и т.п.).
+ *
+ * Rendered by WeasyPrint only — no browser print stylesheet assumptions.
+ */
+
+@page {
+  size: A4 landscape;
+  margin: 10mm 12mm 14mm 12mm;
+  /* Красим ВСЮ физическую страницу (включая поля вокруг content-box), а не
+     только содержимое внутри полей — иначе по краям страницы остаётся
+     белая рамка шириной с margin, даже если сам body кремовый. WeasyPrint
+     поддерживает background на @page (CSS Paged Media), поэтому белых
+     полей не должно быть вообще ни на одной странице отчёта. */
+  background: #f7f8f3;
+
+  @bottom-left {
+    content: "COSMORELAX Sales Digest";
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 7.2pt;
+    color: #8c9188;
+  }
+
+  @bottom-right {
+    content: "Стр. " counter(page) " из " counter(pages);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 7.2pt;
+    color: #8c9188;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #f7f8f3;
+  color: #1c2321;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 9.2pt;
+  line-height: 1.4;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Masthead — full-bleed цветная плашка (уходит за поля страницы)         */
+/* ---------------------------------------------------------------------- */
+
+.masthead-band {
+  background: #1e3d32;
+  margin: -10mm -12mm 3mm -12mm;
+  padding: 5mm 18mm 4mm 18mm;
+}
+
+.masthead-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.brand-name {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  font-size: 25pt;
+  letter-spacing: 0.5pt;
+  color: #f7f8f3;
+}
+
+.brand-sub {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 11pt;
+  color: #e3b48f;
+  margin-top: 1mm;
+}
+
+.masthead-meta {
+  text-align: right;
+}
+
+.masthead-date {
+  font-size: 10pt;
+  font-weight: 600;
+  color: #f7f8f3;
+}
+
+.masthead-site {
+  font-size: 8pt;
+  color: #cfd8d1;
+  margin-top: 1mm;
+}
+
+.masthead-subtitle {
+  font-size: 8.6pt;
+  color: #cfd8d1;
+  text-transform: uppercase;
+  letter-spacing: 0.6pt;
+  margin-top: 3mm;
+  border-top: 0.6pt solid rgba(247, 248, 243, 0.35);
+  padding-top: 2mm;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Cover insights                                                         */
+/* ---------------------------------------------------------------------- */
+
+.cover-insights {
+  margin: 0 0 3mm 0;
+  padding: 2.4mm 4mm;
+  border-left: 2.4pt solid #c1663a;
+  background: #f2ede3;
+  break-inside: avoid;
+}
+
+.section-kicker {
+  font-size: 10.5pt;
+  text-transform: uppercase;
+  letter-spacing: 1.2pt;
+  color: #c1663a;
+  font-weight: 700;
+  margin-bottom: 1.2mm;
+}
+
+.insight-list {
+  margin: 0;
+  padding-left: 4mm;
+}
+
+.insight-item {
+  margin: 1.2mm 0;
+  font-size: 9pt;
+}
+
+.insight-negative { color: #b8492f; }
+.insight-positive { color: #1e6b4f; }
+.insight-neutral { color: #1c2321; }
+
+/* ---------------------------------------------------------------------- */
+/* Sections                                                                */
+/* ---------------------------------------------------------------------- */
+
+.section {
+  margin-bottom: 5mm;
+}
+
+.cover-insights {
+  break-inside: avoid;
+}
+
+.stocks-section {
+  break-before: page;
+}
+
+.calendar-section {
+  break-before: page;
+}
+
+.returns-section {
+  break-before: page;
+}
+
+.section-head {
+  border-bottom: 0.6pt solid #d7ddd3;
+  padding-bottom: 1.5mm;
+  margin-bottom: 2.5mm;
+  /* Заголовок раздела никогда не должен остаться "сиротой" в самом низу
+     страницы, оторванным от собственного содержимого (см. правку про
+     разрыв страницы в разделе IX "Матрицы изменений") — это касается
+     всех разделов отчёта одинаково, поэтому правило общее, а не только
+     для одной секции. */
+  break-after: avoid;
+}
+
+.section-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 13.5pt;
+  font-weight: 700;
+  margin: 0.5mm 0 0 0;
+}
+
+.lead-text {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 10pt;
+  line-height: 1.5;
+  color: #1c2321;
+  margin: 0 0 2.5mm 0;
+  text-align: justify;
+  hyphens: auto;
+  max-width: 190mm;
+  /* Вступительный абзац всегда идёт сразу перед содержимым (таблицей,
+     графиком, матрицами) — не должен остаться один в конце страницы,
+     оторванным от того, что он вводит. */
+  break-after: avoid;
+}
+
+.lead-text::first-letter {
+  font-size: 16pt;
+  font-weight: 700;
+  color: #c1663a;
+}
+
+/* ---------------------------------------------------------------------- */
+/* KPI row                                                                 */
+/* ---------------------------------------------------------------------- */
+
+.kpi-row {
+  display: flex;
+  gap: 8mm;
+  margin-bottom: 2.5mm;
+}
+
+.kpi {
+  flex: 1;
+  max-width: 55mm;
+  border-top: 1.2pt solid #1c2321;
+  padding-top: 1.5mm;
+}
+
+.kpi-label {
+  font-size: 7.4pt;
+  text-transform: uppercase;
+  letter-spacing: 0.4pt;
+  color: #5b6b63;
+}
+
+.kpi-value {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15pt;
+  font-weight: 700;
+  margin-top: 0.6mm;
+}
+
+.kpi-positive { color: #1e6b4f; }
+.kpi-negative { color: #b8492f; }
+.kpi-neutral { color: #1c2321; }
+
+.pace-note {
+  font-size: 7.8pt;
+  color: #5b6b63;
+  margin-top: 1.5mm;
+}
+
+.chart-block {
+  break-inside: avoid;
+}
+
+.chart-block svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-caption, .table-caption {
+  font-size: 7.4pt;
+  color: #8c9188;
+  text-align: center;
+  margin-top: 1mm;
+}
+
+.chart-caption-left, .table-caption-left {
+  text-align: left;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Два графика в ряд на 1 странице: сетевой темп + выполнение по магазинам */
+/* (донат-чарт кэша по магазинам переехал на страницу с таблицей)         */
+/* ---------------------------------------------------------------------- */
+
+.cash-charts-row {
+  display: flex;
+  gap: 8mm;
+  align-items: flex-start;
+  margin-bottom: 3mm;
+  break-inside: avoid;
+}
+
+.cash-charts-pace {
+  flex: 1.3;
+  min-width: 0;
+}
+
+.cash-charts-pace svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.cash-charts-pace .pace-note {
+  margin-top: 2mm;
+}
+
+.cash-charts-stores {
+  flex: 1;
+  min-width: 0;
+  max-width: 90mm;
+}
+
+.cash-charts-stores svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Карточки-хайлайты (лидер / аутсайдер / прогноз) --------------------- */
+
+.highlight-row {
+  display: flex;
+  gap: 6mm;
+  margin-bottom: 4mm;
+  break-inside: avoid;
+}
+
+.highlight-card {
+  flex: 1;
+  max-width: 78mm;
+  background: #f2ede3;
+  border-top: 1.2pt solid #1c2321;
+  padding: 2.4mm 4mm 3mm 4mm;
+}
+
+.highlight-label {
+  font-size: 7.2pt;
+  text-transform: uppercase;
+  letter-spacing: 0.4pt;
+  color: #5b6b63;
+}
+
+.highlight-value {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 12.5pt;
+  font-weight: 700;
+  margin-top: 0.8mm;
+  color: #1c2321;
+}
+
+.highlight-sub {
+  font-size: 7.8pt;
+  color: #5b6b63;
+  margin-top: 0.6mm;
+}
+
+.highlight-positive { border-top-color: #1e6b4f; }
+.highlight-negative { border-top-color: #b8492f; }
+.highlight-neutral { border-top-color: #c1663a; }
+
+/* Донат-чарт структуры кэша — во всю ширину, на странице с таблицей ---- */
+
+.cash-share-row-full {
+  margin-top: 5mm;
+  text-align: center;
+  break-inside: avoid;
+}
+
+.cash-share-row-full svg {
+  width: auto;
+  height: 62mm;
+  display: block;
+  margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Two-column layout (stocks section)                                     */
+/* ---------------------------------------------------------------------- */
+
+.two-col {
+  display: flex;
+  gap: 10mm;
+  margin-bottom: 4mm;
+}
+
+.two-col .col {
+  flex: 1;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Tables                                                                  */
+/* ---------------------------------------------------------------------- */
+
+.mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.4pt;
+  break-inside: avoid;
+}
+
+.mini-table th {
+  text-align: left;
+  font-size: 7.2pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  color: #5b6b63;
+  border-bottom: 0.8pt solid #1c2321;
+  padding: 1mm 1.5mm;
+}
+
+.mini-table td {
+  padding: 1mm 1.5mm;
+  border-bottom: 0.4pt solid #e5e0d6;
+}
+
+.mini-table tr {
+  break-inside: avoid;
+}
+
+.mini-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted { color: #8c9188; font-style: italic; }
+
+/* Big cash-by-store table -------------------------------------------- */
+
+.cash-store-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 8.4pt;
+  margin-bottom: 1.5mm;
+  break-inside: avoid;
+}
+
+.returns-table col.rcol-store        { width: 22%; }
+.returns-table col.rcol-income       { width: 13%; }
+.returns-table col.rcol-returns      { width: 14%; }
+.returns-table col.rcol-returns-pct  { width: 11%; }
+.returns-table col.rcol-designer     { width: 15%; }
+.returns-table col.rcol-designer-pct { width: 11%; }
+.returns-table col.rcol-net          { width: 14%; }
+
+.cash-store-table col.col-store        { width: 16%; }
+.cash-store-table col.col-plan         { width: 9.5%; }
+.cash-store-table col.col-fact         { width: 9.5%; }
+.cash-store-table col.col-mom          { width: 8%; }
+.cash-store-table col.col-yoy          { width: 8%; }
+.cash-store-table col.col-bar          { width: 15%; }
+.cash-store-table col.col-remaining    { width: 9.5%; }
+.cash-store-table col.col-required     { width: 8.5%; }
+.cash-store-table col.col-forecast     { width: 9.5%; }
+.cash-store-table col.col-status       { width: 6.5%; }
+
+.cash-store-table th {
+  text-align: right;
+  font-size: 6.9pt;
+  text-transform: uppercase;
+  letter-spacing: 0.2pt;
+  color: #f7f8f3;
+  background: #1e3d32;
+  padding: 1.8mm 1.6mm;
+  overflow: hidden;
+}
+
+.cash-store-table th:first-child { text-align: left; }
+
+.cash-store-table td {
+  padding: 1.6mm 1.6mm;
+  border-bottom: 0.4pt solid #e5e0d6;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cash-store-table tr:nth-child(even) td {
+  background: #f2efe7;
+}
+
+.cash-store-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cash-store-table .store-cell {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Progress bar (used in table + calendar week summaries) ------------- */
+
+.bar-track {
+  position: relative;
+  width: 100%;
+  height: 3.8mm;
+  background: #e5ded0;
+  overflow: hidden;
+}
+
+.bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+}
+
+.bar-fill.bar-positive { background: #1e6b4f; }
+.bar-fill.bar-negative { background: #b8492f; }
+
+.bar-label {
+  position: relative;
+  z-index: 2;
+  display: block;
+  text-align: center;
+  font-size: 7.4pt;
+  font-weight: 700;
+  line-height: 3.8mm;
+  color: #1c2321;
+  mix-blend-mode: difference;
+}
+
+/* Badges --------------------------------------------------------------- */
+
+.badge {
+  display: inline-block;
+  font-size: 6.6pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  font-weight: 700;
+  padding: 0.6mm 1.6mm;
+  border-radius: 1.5pt;
+  white-space: nowrap;
+}
+
+.badge-positive { background: #e2efe6; color: #1e6b4f; }
+.badge-negative { background: #f6e6e0; color: #b8492f; }
+.badge-neutral { background: #ece7da; color: #5b6b63; }
+.badge-muted { background: #ece7da; color: #8c9188; }
+
+.dev-positive { color: #1e6b4f; font-weight: 700; }
+.dev-negative { color: #b8492f; font-weight: 700; }
+
+/* ---------------------------------------------------------------------- */
+/* Weekly cash calendar                                                    */
+/* ---------------------------------------------------------------------- */
+
+.cash-calendar {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 7pt;
+  margin-bottom: 3mm;
+}
+
+.cash-calendar th {
+  background: #1e3d32;
+  color: #f7f8f3;
+  font-size: 7.4pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  padding: 1.6mm 1mm;
+  text-align: center;
+}
+
+.cash-calendar .cal-summary-head {
+  width: 16%;
+}
+
+.cash-calendar td {
+  border: 0.4pt solid #e5e0d6;
+  vertical-align: top;
+  padding: 1.4mm 1.6mm;
+  height: 24mm;
+}
+
+.cal-day-num {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  font-size: 11pt;
+  line-height: 1.1;
+}
+
+.cal-day-weekday {
+  font-size: 6.4pt;
+  text-transform: uppercase;
+  color: #5b6b63;
+  margin-bottom: 1mm;
+}
+
+.cal-day-line {
+  font-size: 6.8pt;
+  line-height: 1.4;
+  color: #1c2321;
+}
+
+.cal-day-line.cal-neg { color: #b8492f; }
+.cal-day-line.cal-total { font-weight: 700; }
+
+.day-excellent { background: #cfe7c4; }
+.day-good { background: #e2efe6; }
+.day-warning { background: #f6e3ae; }
+.day-bad { background: #f3d3cb; }
+.day-empty, .day-future { background: #eef0ea; }
+.cal-day.day-outside { background: transparent; border-color: transparent; }
+
+.cal-today { outline: 1.6pt solid #1c2321; outline-offset: -1.6pt; }
+
+.cal-summary {
+  background: #f2ede3;
+  vertical-align: top;
+}
+
+.cal-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.8mm;
+}
+
+.cal-summary-label {
+  font-weight: 700;
+  font-size: 7.8pt;
+}
+
+.cal-summary-pct {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 10.5pt;
+  font-weight: 700;
+}
+
+.cal-summary-status {
+  font-size: 6.2pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  color: #8c9188;
+  margin-bottom: 1.2mm;
+}
+
+.cal-bar-track {
+  height: 2.8mm;
+  margin-bottom: 1.2mm;
+}
+
+.cal-summary-figures {
+  font-size: 6.8pt;
+  color: #5b6b63;
+}
+
+.cal-legend {
+  display: flex;
+  gap: 5mm;
+  flex-wrap: wrap;
+  font-size: 7.4pt;
+  color: #5b6b63;
+}
+
+.cal-legend-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.cal-swatch {
+  display: inline-block;
+  width: 3.2mm;
+  height: 3.2mm;
+  margin-right: 1.4mm;
+  border: 0.4pt solid #d7ddd3;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Stock-by-store table                                                    */
+/* ---------------------------------------------------------------------- */
+
+.stock-store-table {
+  margin-top: 1mm;
+}
+
+.stock-store-warehouse td {
+  font-style: italic;
+  color: #5b6b63;
+  border-top: 0.8pt solid #1c2321;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Footer                                                                  */
+/* ---------------------------------------------------------------------- */
+
+.report-footer {
+  display: none; /* содержимое футера выводится через @page (@bottom-*) */
+}
+
+/* ==========================================================================
+   ДОПОЛНИТЕЛЬНЫЕ КЛАССЫ — только sales_digest (не используются в newspaper)
+   ========================================================================== */
+
+/* Направления отклонений в стиле up/down/flat/na (store_sales/store_rows из
+   старого builder.py используют эти имена, а не positive/negative) --------- */
+
+.dev-up { color: #1e6b4f; font-weight: 700; }
+.dev-down { color: #b8492f; font-weight: 700; }
+.dev-flat, .dev-na { color: #5b6b63; }
+
+.dev-pill {
+  display: inline-block;
+  font-size: 7pt;
+  color: #5b6b63;
+  margin-left: 0.8mm;
+}
+
+.dev-cell { white-space: nowrap; }
+
+/* Comparison mini-table (сравнение с пред. периодом / годом назад) ------- */
+
+.compare-mini-table td, .compare-mini-table th {
+  white-space: nowrap;
+}
+
+/* Большие таблицы, приходящие уже готовым HTML из старого print_utils.py
+   (build_mtd_table / build_ytd_table) — там разметка вида <table class='tbl'>
+   с классами metric/num/pos/neg. Стилизуем их под тот же mini-table вид. --- */
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.4pt;
+}
+
+.tbl th {
+  text-align: right;
+  font-size: 7.2pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  color: #f7f8f3;
+  background: #1e3d32;
+  padding: 1.6mm 1.6mm;
+}
+
+.tbl th:first-child { text-align: left; }
+
+.tbl td {
+  padding: 1.2mm 1.6mm;
+  border-bottom: 0.4pt solid #e5e0d6;
+}
+
+.tbl tr {
+  break-inside: avoid;
+}
+
+.tbl tr:nth-child(even) td {
+  background: #f2efe7;
+}
+
+.tbl td.metric {
+  font-weight: 700;
+}
+
+.tbl td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tbl td.pos { color: #1e6b4f; font-weight: 700; }
+.tbl td.neg { color: #b8492f; font-weight: 700; }
+
+.tbl .note {
+  font-size: 8pt;
+  color: #8c9188;
+  font-style: italic;
+  padding: 2mm 0;
+}
+
+/* Categories compare table (print_utils_categories.py — kpi-compare-section) */
+
+.kpi-compare-section { margin-top: 0; }
+
+.compare-title {
+  font-size: 9.5pt;
+  font-weight: 700;
+  font-family: Georgia, 'Times New Roman', serif;
+  margin: 0 0 1.5mm 0;
+}
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.2pt;
+}
+
+.compare-table th {
+  text-align: left;
+  font-size: 7pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  color: #5b6b63;
+  border-bottom: 0.8pt solid #1c2321;
+  padding: 1mm 1.5mm;
+}
+
+.compare-table td {
+  padding: 1mm 1.5mm;
+  border-bottom: 0.4pt solid #e5e0d6;
+}
+
+.compare-table td.positive { color: #1e6b4f; font-weight: 700; }
+.compare-table td.negative { color: #b8492f; font-weight: 700; }
+
+/* Stores table (section II) — расширяет .cash-store-table своими колонками */
+
+.stores-table col.col-store { width: 20%; }
+.stores-table col.col-num { width: 12%; }
+.stores-table col.col-delta { width: 15%; }
+
+/* Укороченная версия таблицы (без Заказов/Ср. чека) — 5 колонок вместо 8 */
+.stores-table col.col-store-wide { width: 32%; }
+.stores-table col.col-num-wide { width: 16%; }
+.stores-table col.col-delta-wide { width: 20%; }
+
+.stores-table .totals-row td {
+  border-top: 1.2pt solid #1c2321;
+  border-bottom: none;
+  font-weight: 700;
+  background: #f2ede3 !important;
+}
+
+.store-chart-block {
+  margin-top: 4mm;
+  text-align: center;
+}
+
+.store-chart-block svg {
+  height: 62mm;
+  width: auto;
+  margin: 0 auto;
+}
+
+/* Revenue bridge / waterfall explainer (MTD/YTD) -------------------------- */
+
+.bridge-block {
+  margin: 3mm 0 2mm 0;
+  break-inside: avoid;
+}
+
+.bridge-title {
+  font-size: 9pt;
+  font-weight: 700;
+  margin-bottom: 1.5mm;
+}
+
+.bridge-row {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+}
+
+.bridge-item {
+  flex: 1;
+  background: #f2ede3;
+  border-top: 1.2pt solid #1c2321;
+  padding: 2mm 3mm;
+}
+
+.bridge-item-total {
+  border-top-color: #c1663a;
+}
+
+.bridge-label {
+  font-size: 7pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  color: #5b6b63;
+}
+
+.bridge-value {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 11pt;
+  font-weight: 700;
+  margin-top: 0.6mm;
+}
+
+.bridge-arrow {
+  font-size: 12pt;
+  color: #8c9188;
+  font-weight: 700;
+}
+
+/* Category / period narrative block --------------------------------------- */
+
+.period-text-block {
+  margin: 2mm 0 3mm 0;
+  padding: 2mm 3mm;
+  border-left: 2.4pt solid #c1663a;
+  background: #f2ede3;
+  break-inside: avoid;
+}
+
+.period-text-title {
+  font-size: 8.6pt;
+  font-weight: 700;
+  margin-bottom: 1mm;
+}
+
+.period-text-block .lead-text {
+  margin: 0;
+  font-size: 9pt;
+}
+
+.period-text-block .lead-text::first-letter {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+/* Managers section --------------------------------------------------------- */
+
+.mgr-block-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 11pt;
+  font-weight: 700;
+  margin-bottom: 1.5mm;
+}
+
+.badge-cell { text-align: center !important; }
+
+.badge-ok { background: #e2efe6; color: #1e6b4f; }
+.badge-warn { background: #fdecd2; color: #a3661a; }
+.badge-crit { background: #f6e6e0; color: #b8492f; }
+.badge-na { background: #ece7da; color: #8c9188; }
+
+.row-flag-warn td { background: #fdf6ea !important; }
+.row-flag-crit td { background: #faece7 !important; }
+
+/* ==========================================================================
+   ТРЕНДЫ И ДИНАМИКА
+   ========================================================================== */
+
+.trend-layout {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  margin-bottom: 4mm;
+}
+
+.trend-left,
+.trend-right {
+  display: table-cell;
+  width: 50%;
+  vertical-align: top;
+}
+
+.trend-left {
+  padding-right: 5mm;
+  border-right: 0.6pt solid #d7ddd3;
+}
+
+.trend-right {
+  padding-left: 5mm;
+}
+
+
+/* Заголовки колонок */
+.trend-col-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+
+  border-bottom: 1.2pt solid #1e3d32;
+  padding-bottom: 1.3mm;
+  margin-bottom: 2mm;
+}
+
+.trend-col-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 11pt;
+  font-weight: 700;
+  color: #1c2321;
+}
+
+.trend-col-code {
+  font-size: 6.8pt;
+  font-weight: 700;
+  letter-spacing: 0.6pt;
+  text-transform: uppercase;
+  color: #c1663a;
+}
+
+
+/* Таблица */
+.trend-table-compact {
+  font-size: 7.3pt;
+}
+
+.trend-table-compact th {
+  font-size: 6.3pt;
+  padding: 0.6mm 1mm;
+}
+
+.trend-table-compact td {
+  font-size: 7.1pt;
+  padding: 0.55mm 1mm;
+  line-height: 1.15;
+}
+
+
+/* Текущая строка */
+.trend-table-compact .row-current td {
+  border-top: 1.2pt solid #1e3d32;
+  font-weight: 700;
+  background: #f2ede3 !important;
+}
+
+
+/* Data bar в ячейке Выручка */
+.trend-amount-cell {
+  position: relative;
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      to right,
+      rgba(30, 61, 50, 0.12) 0%,
+      rgba(30, 61, 50, 0.12) var(--bar-pct),
+      transparent var(--bar-pct),
+      transparent 100%
+    );
+}
+
+.trend-amount-cell span {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* Текущий период — лёгкий терракотовый data bar */
+.trend-table-compact .row-current .trend-amount-cell {
+  background:
+    linear-gradient(
+      to right,
+      rgba(193, 102, 58, 0.16) 0%,
+      rgba(193, 102, 58, 0.16) var(--bar-pct),
+      #f2ede3 var(--bar-pct),
+      #f2ede3 100%
+    ) !important;
+}
+
+
+/* Главная карточка справа */
+.trend-current-card {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 3mm;
+  padding: 3mm 4mm;
+}
+
+.trend-current-values {
+  display: flex;
+  gap: 4mm;
+  margin-top: 2mm;
+}
+
+.trend-current-metric {
+  flex: 1;
+}
+
+.trend-current-label {
+  font-size: 6.4pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  color: #8c9188;
+}
+
+.trend-current-value {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 13pt;
+  font-weight: 700;
+  color: #1c2321;
+  margin-top: 0.7mm;
+}
+
+
+/* Две карточки отклонений */
+.trend-card-row {
+  display: flex;
+  gap: 3mm;
+  margin-bottom: 3mm;
+}
+
+.trend-delta-card {
+  flex: 1;
+  max-width: none;
+  margin: 0;
+  padding: 3mm 3.5mm;
+}
+
+.trend-delta-card .highlight-value {
+  font-size: 17pt;
+  margin-top: 1mm;
+}
+
+.trend-delta-card .highlight-sub {
+  font-size: 6.7pt;
+  line-height: 1.3;
+}
+
+
+/* Методика */
+.trend-method-card {
+  background: #f2ede3;
+  border-left: 2.4pt solid #c1663a;
+
+  padding: 2.5mm 3mm;
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 7.5pt;
+  line-height: 1.4;
+  color: #5b6b63;
+}
+
+
+/* Нижний график */
+.trend-chart-full {
+  width: 94%;
+  margin: 2mm auto 0 auto;
+}
+
+.trend-chart-full svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Накопительные графики MTD/YTD (правая колонка) — тоже не на всю ширину
+   колонки, иначе при узкой колонке svg (viewBox ~ 4.6:2.15) растягивается
+   по высоте больше расчётного. */
+.cum-chart-block {
+  width: 96%;
+}
+
+/* Блок "Вклад категорий в изменение выручки" (waterfall, MTD/YTD) — во всю
+   ширину полосы, но с ограничением по высоте самого графика, чтобы вместе
+   с таблицей/текстом секция помещалась на одну страницу. */
+.waterfall-block {
+  width: 100%;
+  margin: 2mm auto 0 auto;
+  break-inside: avoid;
+}
+
+.waterfall-block svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* "Категории/Производители за период" (раздел VII) — таблицы + графики,
+   каждая пара (таблицы или графики) держится вместе, чтобы не расползаться
+   по страницам, отступы уменьшены под более плотную вёрстку. */
+.period-kpi-block {
+  break-inside: avoid;
+  margin-bottom: 3mm;
+}
+
+/* Раздел "Менеджеры" — инсайты компактнее обычного insight-list (тут это
+   не врезка сверху страницы, а короткая сводка перед таблицей). */
+.mgr-insight-list {
+  margin-bottom: 2.5mm;
+}
+
+.mgr-insight-list .insight-item {
+  margin: 0.6mm 0;
+}
+
+
+/* ============================================================
+   MTD / YTD — исправление огромной высоты flex в WeasyPrint
+   ============================================================ */
+
+.mtd-ytd-top {
+    display: table !important;
+    width: 100%;
+    table-layout: fixed;
+    margin-bottom: 2mm !important;
+}
+
+.mtd-ytd-top > .col {
+    display: table-cell !important;
+    width: 50%;
+    vertical-align: top;
+}
+
+.mtd-ytd-top > .col:first-child {
+    padding-right: 5mm;
+}
+
+.mtd-ytd-top > .col:last-child {
+    padding-left: 5mm;
+}
+
+
+
+
+/* ==========================================================================
+   МЕНЕДЖЕРЫ — MTD + YTD НА ОДНОЙ СТРАНИЦЕ
+   ========================================================================== */
+
+.mgr-page {
+  break-inside: avoid;
+}
+
+
+/* Две колонки */
+.mgr-two-col {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.mgr-col {
+  display: table-cell;
+  width: 50%;
+  vertical-align: top;
+}
+
+.mgr-col:first-child {
+  padding-right: 5mm;
+  border-right: 0.6pt solid #d7ddd3;
+}
+
+.mgr-col:last-child {
+  padding-left: 5mm;
+}
+
+
+/* Заголовок периода */
+.mgr-period-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+
+  border-bottom: 1.2pt solid #1e3d32;
+  padding-bottom: 1.3mm;
+  margin-bottom: 2mm;
+}
+
+.mgr-period-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 11pt;
+  font-weight: 700;
+  color: #1c2321;
+}
+
+.mgr-period-code {
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.7pt;
+  color: #c1663a;
+}
+
+
+/* Верхний аналитический блок */
+.mgr-summary-block {
+  background: #f2ede3;
+  border-left: 2.4pt solid #c1663a;
+
+  padding: 2.2mm 3mm;
+  margin-bottom: 2.5mm;
+
+  break-inside: avoid;
+}
+
+.mgr-summary-title {
+  font-size: 7pt;
+  text-transform: uppercase;
+  letter-spacing: 0.45pt;
+  font-weight: 700;
+  color: #5b6b63;
+
+  margin-bottom: 1mm;
+}
+
+.mgr-summary-list {
+  margin: 0;
+  padding-left: 3.5mm;
+}
+
+.mgr-summary-list li {
+  margin: 0.45mm 0;
+  font-size: 7.2pt;
+  line-height: 1.3;
+  color: #1c2321;
+}
+
+
+/* Таблица менеджеров */
+.mgr-table {
+  font-size: 7.5pt;
+  table-layout: fixed;
+}
+
+.mgr-table th {
+  padding: 0.85mm 1.1mm;
+  font-size: 6.4pt;
+}
+
+.mgr-table td {
+  padding: 0.72mm 1.1mm;
+  line-height: 1.2;
+}
+
+.mgr-table th:first-child,
+.mgr-table td:first-child {
+  width: 43%;
+}
+
+.mgr-table th:nth-child(2),
+.mgr-table td:nth-child(2) {
+  width: 22%;
+}
+
+.mgr-table th:nth-child(3),
+.mgr-table td:nth-child(3) {
+  width: 15%;
+}
+
+.mgr-table th:nth-child(4),
+.mgr-table td:nth-child(4) {
+  width: 20%;
+}
+
+
+/* Возврат % компактнее */
+.mgr-table .badge {
+  font-size: 6pt;
+  padding: 0.35mm 1mm;
+}
+
+
+/* Подпись под таблицей */
+.mgr-table-note {
+  margin-top: 1.2mm;
+  font-size: 6.4pt;
+  color: #8c9188;
+}
+
+
+
+/* ==========================================================================
+   КАТЕГОРИИ / ПРОИЗВОДИТЕЛИ — ДВЕ АККУРАТНЫЕ КОЛОНКИ
+   ========================================================================== */
+
+.period-two-col {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.period-col {
+  display: table-cell;
+  width: 50%;
+  vertical-align: top;
+}
+
+.period-col:first-child {
+  padding-right: 5mm;
+  border-right: 0.6pt solid #d7ddd3;
+}
+
+.period-col:last-child {
+  padding-left: 5mm;
+}
+
+
+/* Заголовки колонок */
+.period-col-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+
+  border-bottom: 1.2pt solid #1e3d32;
+  padding-bottom: 1.3mm;
+  margin-bottom: 2mm;
+}
+
+.period-col-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 11pt;
+  font-weight: 700;
+  color: #1c2321;
+}
+
+.period-col-code {
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.7pt;
+  color: #c1663a;
+}
+
+
+/* Таблица */
+.period-table {
+  table-layout: fixed;
+  font-size: 7.7pt;
+}
+
+.period-table th {
+  padding: 0.85mm 1.1mm;
+  font-size: 6.4pt;
+}
+
+.period-table td {
+  padding: 0.8mm 1.1mm;
+  line-height: 1.2;
+}
+
+.period-table th:first-child,
+.period-table td:first-child {
+  width: 46%;
+}
+
+.period-table th:nth-child(2),
+.period-table td:nth-child(2) {
+  width: 24%;
+}
+
+.period-table th:nth-child(3),
+.period-table td:nth-child(3) {
+  width: 14%;
+}
+
+.period-table th:nth-child(4),
+.period-table td:nth-child(4) {
+  width: 16%;
+}
+
+
+/* График сразу под своей таблицей */
+.period-chart-block {
+  margin-top: 3mm;
+  break-inside: avoid;
+}
+
+.period-chart-block svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.period-chart-block .chart-caption {
+  margin-top: 1mm;
+}
+
+
+/* ==========================================================================
+   КАТЕГОРИИ MTD / YTD — вертикальный разделитель
+   ========================================================================== */
+
+.categories-split {
+  gap: 0 !important;
+}
+
+.categories-split > .col:first-child {
+  padding-right: 5mm;
+  border-right: 0.6pt solid #d7ddd3;
+}
+
+.categories-split > .col:last-child {
+  padding-left: 5mm;
+}
+
+
+
+/* ==========================================================================
+   МАГАЗИНЫ — два графика в аккуратных колонках
+   ========================================================================== */
+
+.store-charts-split {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+
+  margin-top: 4mm;
+}
+
+.store-chart-col {
+  display: table-cell;
+  width: 50%;
+  vertical-align: top;
+}
+
+.store-chart-col:first-child {
+  padding-right: 5mm;
+  border-right: 0.6pt solid #d7ddd3;
+}
+
+.store-chart-col:last-child {
+  padding-left: 5mm;
+}
+
+
+/* Заголовки над графиками */
+.store-chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+
+  border-bottom: 1.2pt solid #1e3d32;
+  padding-bottom: 1.2mm;
+  margin-bottom: 2mm;
+}
+
+.store-chart-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 10.5pt;
+  font-weight: 700;
+  color: #1c2321;
+}
+
+.store-chart-code {
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.5pt;
+  color: #c1663a;
+}
+
+
+/* Сам график */
+.store-chart-col .store-chart-block {
+  margin-top: 0;
+}
+
+.store-chart-col .store-chart-block svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+
+
+
+/* ==========================================================================
+   KPI — ПЕРВАЯ СТРАНИЦА
+   ========================================================================== */
+
+.kpi-section {
+  margin-bottom: 0 !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   Верхние KPI
+   -------------------------------------------------------------------------- */
+
+.kpi-section .section-head {
+  margin-bottom: 2mm;
+}
+
+.kpi-top-row {
+  margin-bottom: 2.5mm !important;
+}
+
+.kpi-top-row .kpi {
+  padding-top: 1.2mm;
+}
+
+.kpi-top-row .kpi-value {
+  margin-top: 0.4mm;
+}
+
+.kpi-top-row .pace-note {
+  margin-top: 0.8mm;
+}
+
+
+/* --------------------------------------------------------------------------
+   Служебная заметка
+   -------------------------------------------------------------------------- */
+
+.kpi-note {
+  margin: 0 0 2.5mm 0;
+  padding: 1.7mm 3mm;
+
+  background: #f2ede3;
+  border-left: 2.4pt solid #c1663a;
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 7.8pt;
+  line-height: 1.3;
+  color: #5b6b63;
+
+  break-inside: avoid;
+}
+
+
+/* --------------------------------------------------------------------------
+   Основные две колонки
+   -------------------------------------------------------------------------- */
+
+.kpi-detail-layout {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+
+  margin: 0;
+
+  break-inside: avoid;
+}
+
+.kpi-detail-col {
+  display: table-cell;
+  width: 50%;
+  vertical-align: top;
+}
+
+.kpi-detail-col:first-child {
+  padding-right: 5mm;
+  border-right: 0.6pt solid #d7ddd3;
+}
+
+.kpi-detail-col:last-child {
+  padding-left: 5mm;
+}
+
+
+/* Заголовок каждой колонки */
+.kpi-detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+
+  border-bottom: 1.2pt solid #1e3d32;
+
+  padding-bottom: 1mm;
+  margin-bottom: 1.5mm;
+}
+
+.kpi-detail-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 9.8pt;
+  font-weight: 700;
+  color: #1c2321;
+}
+
+.kpi-detail-code {
+  font-size: 6.5pt;
+  font-weight: 700;
+  letter-spacing: 0.4pt;
+  color: #c1663a;
+}
+
+
+/* --------------------------------------------------------------------------
+   Сравнительная таблица слева
+   -------------------------------------------------------------------------- */
+
+.kpi-detail-layout .compare-mini-table {
+  font-size: 7.6pt;
+}
+
+.kpi-detail-layout .compare-mini-table th {
+  font-size: 6.4pt;
+  padding: 0.65mm 1mm;
+}
+
+.kpi-detail-layout .compare-mini-table td {
+  font-size: 7.3pt;
+  padding: 0.65mm 1mm;
+  line-height: 1.15;
+}
+
+.kpi-detail-layout .table-caption {
+  margin-top: 0.8mm;
+  font-size: 6.5pt;
+}
+
+
+/* --------------------------------------------------------------------------
+   MTD / YTD под таблицей
+   -------------------------------------------------------------------------- */
+
+.kpi-mini-cards {
+  display: flex;
+  gap: 3mm;
+
+  margin-top: 3mm;
+
+  break-inside: avoid;
+}
+
+.kpi-mini-cards .highlight-card {
+  flex: 1;
+
+  max-width: none !important;
+  min-height: 0 !important;
+
+  margin: 0;
+  padding: 2.2mm 3mm 2.5mm 3mm;
+
+  break-inside: avoid;
+}
+
+.kpi-mini-cards .highlight-label {
+  font-size: 6.4pt;
+  line-height: 1.2;
+}
+
+.kpi-mini-cards .highlight-value {
+  font-size: 11pt;
+  margin-top: 0.7mm;
+}
+
+.kpi-mini-cards .highlight-sub {
+  font-size: 6.6pt;
+  line-height: 1.2;
+  margin-top: 0.5mm;
+}
+
+
+/* --------------------------------------------------------------------------
+   График справа
+   -------------------------------------------------------------------------- */
+
+.kpi-compare-chart {
+  width: 94%;
+  margin: 0 auto;
+}
+
+.kpi-compare-chart svg {
+  width: 100%;
+  height: auto;
+  max-height: 58mm;
+  display: block;
+}
+
+.kpi-compare-chart .chart-caption {
+  margin-top: 0.6mm;
+  font-size: 6.5pt;
+}
+
+
+/* ==========================================================================
+   ОБЩИЙ ЗАГОЛОВОК ПОДРАЗДЕЛА (переиспользуется KPI по магазинам, матрицами
+   изменений и т.п. — тот же визуальный приём, что и у .trend-col-head /
+   .mgr-period-head / .period-col-head / .store-chart-head: Georgia-заголовок
+   слева + терракотовый код справа, разделены линией снизу). Один общий
+   класс вместо очередной почти-копии, чтобы не плодить дубликаты правил.
+   ========================================================================== */
+
+.subblock-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+
+  border-bottom: 1.2pt solid #1e3d32;
+  padding-bottom: 1.2mm;
+  margin-bottom: 2mm;
+
+  /* Тот же приём, что и у .section-head — заголовок подраздела никогда не
+     должен остаться "сиротой" внизу страницы, оторванным от своего
+     содержимого (график/таблица/матрицы сразу под ним). Общее правило для
+     всех переиспользований этого класса (KPI по магазинам, помесячная
+     динамика, матрицы изменений и т.п.), а не точечный фикс одного блока. */
+  break-after: avoid;
+}
+
+.subblock-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 10.5pt;
+  font-weight: 700;
+  color: #1c2321;
+}
+
+.subblock-code {
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.5pt;
+  color: #c1663a;
+  white-space: nowrap;
+}
+
+.mini-table-caption {
+  font-size: 7.4pt;
+  text-transform: uppercase;
+  letter-spacing: 0.4pt;
+  color: #5b6b63;
+  /* Тот же тонкий серый разделитель, что и под заголовками разделов
+     (.section-head) и .subcats-cat-title — раньше этой подписи ("С начала
+     месяца (MTD)" / "С начала года (YTD)" в KPI по магазинам) не хватало
+     линии, и на фоне остальных заголовков подблоков она выглядела
+     "недоделанной". */
+  border-bottom: 0.6pt solid #d7ddd3;
+  padding-bottom: 0.8mm;
+  margin-bottom: 1.4mm;
+}
+
+/* Итоговая строка — переиспользуем тот же вид, что и .stores-table
+   .totals-row, но для любой .mini-table (подкатегории, KPI по магазинам). */
+.mini-table .totals-row td {
+  border-top: 1.2pt solid #1c2321;
+  border-bottom: none;
+  font-weight: 700;
+  background: #f2ede3 !important;
+}
+
+
+/* ==========================================================================
+   МАГАЗИНЫ — KPI ПО МАГАЗИНАМ (MTD/YTD) И ПОМЕСЯЧНАЯ ДИНАМИКА
+   ========================================================================== */
+
+.store-perf-block {
+  margin-top: 5mm;
+  break-inside: avoid;
+}
+
+.store-kpi-split {
+  gap: 0 !important;
+}
+
+.store-kpi-split > .col:first-child {
+  padding-right: 5mm;
+  border-right: 0.6pt solid #d7ddd3;
+}
+
+.store-kpi-split > .col:last-child {
+  padding-left: 5mm;
+}
+
+.store-kpi-table {
+  font-size: 7.6pt;
+}
+
+.store-kpi-table th {
+  font-size: 6.6pt;
+  padding: 0.7mm 1mm;
+}
+
+.store-kpi-table td {
+  padding: 0.7mm 1mm;
+  line-height: 1.2;
+}
+
+/* Помесячная динамика по магазинам — вернули по фидбэку (см. комментарий в
+   render/html.py _build_store_perf_context), но перерисовали: раньше здесь
+   была узкая сетка спарклайнов на много колонок, теперь один SVG со
+   сгруппированными столбиками, 2 колонки × 3 строки (matplotlib-подграфики,
+   см. charts.build_store_monthly_bars_chart) — своей отдельной CSS-сетки
+   не нужно, вся раскладка уже внутри самого SVG. Блок сразу с новой
+   страницы (break-before: page), т.к. на полную ширину разворота A4
+   landscape ему нужно много вертикального места.
+
+   Фикс "заголовок на одной странице, график на другой, подпись на третьей":
+   .store-monthly-block уже был единым div (заголовок + chart-block) с
+   break-inside: avoid — по спецификации CSS Fragmentation это "по
+   возможности", а не гарантия: если весь блок физически не помещается ни
+   на одной странице целиком, UA всё равно обязан где-то разбить его, и
+   выбирает границу между дочерними блоками (subblock-head / chart-block),
+   отрывая заголовок от графика и оставляя пустой хвост страницы. Раньше
+   реальная причина была именно в этом: SVG растягивается на всю ширину
+   контейнера (width: 100%), а высота графика (charts.py height_in=6.8 при
+   width_in=10.2, т.е. ratio ~0.667) при масштабировании до полной ширины
+   страницы (~273mm) давала ~182mm — больше, чем оставалось места под
+   график на странице вместе с заголовком и подписью (бюджет ~169mm). Из-за
+   этого блок не помещался ни на одной странице целиком, break-inside:
+   avoid не мог сработать как задумано, и вложенный .chart-block (у него
+   тоже break-inside: avoid) отламывался от графика ещё раз при попытке
+   не поместиться. Высота графика уменьшена (см.
+   charts.build_store_monthly_bars_chart height_in=6.0, ratio ~0.588 →
+   ~161mm после масштабирования), и .subblock-head получил
+   break-after: avoid (тот же приём, что и .section-head) — теперь весь
+   блок физически помещается на одной свежей странице и остаётся единым
+   целым, лишняя пустая страница-хвост тоже исчезает как побочный эффект. */
+.store-monthly-block {
+  margin-top: 5mm;
+  break-inside: avoid;
+}
+
+.store-monthly-chart-block {
+  margin-top: 2mm;
+}
+
+.store-monthly-chart-block svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+
+/* ==========================================================================
+   МАТРИЦЫ ИЗМЕНЕНИЙ (МАГАЗИН × КАТЕГОРИЯ) — Δ₽ / Δшт, MTD / YTD
+   ========================================================================== */
+
+/* Фикс пустой страницы после заголовка раздела IX: .matrix-period-block
+   раньше был break-inside: avoid, но оборачивает ВЕСЬ набор матриц одного
+   периода (MTD или YTD, до 4 пар "деньги+штуки" подряд) — это заведомо
+   больше одной страницы, поэтому break-inside: avoid не мог сработать
+   (тот же механизм, что и с .store-monthly-block выше): UA двигал весь
+   огромный блок целиком на следующую страницу, оставляя section-head +
+   lead-text с пустым хвостом на предыдущей. Атомарность нужна только
+   ВНУТРИ одной пары "root-категория" (см. .matrix-category-pair /
+   .matrix-block ниже — они уже break-inside: avoid), а не на весь
+   многостраничный список пар, поэтому здесь правило снято — блок теперь
+   спокойно продолжается на следующей странице без разрыва пары/пустой
+   страницы. */
+.matrix-period-block {
+  margin-bottom: 3mm;
+}
+
+.matrix-block {
+  margin-bottom: 4mm;
+  break-inside: avoid;
+}
+
+/* Пара матриц одной root-категории (рублёвая, сразу под ней —
+   количественная) — по фидбэку матрицы должны группироваться по категории,
+   а не по метрике (см. _build_store_category_matrices в render/html.py).
+   .matrix-block внутри пары уже сам break-inside: avoid, здесь просто
+   небольшой отступ между парами разных категорий. */
+.matrix-category-pair {
+  margin-bottom: 1mm;
+}
+
+/* Пометка метрики ("Δ, ₽" / "Δ, шт") рядом с названием root-категории в
+   заголовке матрицы — раньше метрика была понятна из заголовка всей группы
+   (.subblock-code), но теперь группировка идёт по категории, а не по
+   метрике, так что подпись метрики нужна у каждой отдельной матрицы. Тот
+   же лёгкий терракотовый акцент, что и у .subblock-code. */
+.matrix-metric-tag {
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.3pt;
+  color: #c1663a;
+  white-space: nowrap;
+}
+
+/* Пара узких матриц (≤3 колонки-категории) в один ряд — см.
+   _pack_matrix_html в render/html.py. Тот же приём двухколоночной
+   раскладки, что и .two-col/.store-kpi-split в остальном отчёте. */
+.matrix-row {
+  display: flex;
+  gap: 8mm;
+  margin-bottom: 4mm;
+  break-inside: avoid;
+}
+
+.matrix-row .matrix-block {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.matrix-block-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 9pt;
+  font-weight: 700;
+  color: #1c2321;
+  /* Тот же тонкий серый разделитель, что и у .section-head/.subcats-cat-title
+     /.mini-table-caption — раньше заголовок матрицы (название root-категории)
+     не имел никакой линии под собой, из-за чего сама матрица визуально
+     "слипалась" с заголовком. */
+  border-bottom: 0.6pt solid #d7ddd3;
+  padding-bottom: 0.8mm;
+  margin-bottom: 1.4mm;
+}
+
+/* Более лёгкий, элегантный дизайн матриц (по фидбэку первая версия была
+   слишком плотной): чуть больше воздуха в ячейках, тонкая сетка вместо
+   тяжёлой (наследуется от .mini-table — border-bottom 0.4pt), заливка
+   heatmap сама стала светлее (см. _matrix_cell_style в render/html.py). */
+.matrix-table {
+  font-size: 7pt;
+}
+
+.matrix-table th {
+  font-size: 6.3pt;
+  padding: 0.9mm 1.1mm;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matrix-table td.matrix-cell {
+  padding: 1mm 1.3mm;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.matrix-table td.store-cell {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 32mm;
+  padding: 1mm 1.3mm;
+}
+
+
+/* ==========================================================================
+   ПОДКАТЕГОРИИ YTD (БЫЛО / СТАЛО)
+   ========================================================================== */
+
+.subcats-cat-block {
+  margin-bottom: 4mm;
+  break-inside: avoid;
+}
+
+.subcats-cat-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 9.6pt;
+  font-weight: 700;
+  color: #1c2321;
+  margin-bottom: 1mm;
+  border-bottom: 0.6pt solid #d7ddd3;
+  padding-bottom: 0.8mm;
+}
+
+.subcats-table {
+  font-size: 7.8pt;
+}
+
+.subcats-table th {
+  font-size: 6.6pt;
+}

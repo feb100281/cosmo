@@ -29,6 +29,7 @@ from django.templatetags.static import static
 from sales.reports.sales_plan_report.exporter import build_sales_plan_pdf_response
 from sales.reports.newspaper.render.pdf import build_newspaper_pdf_response
 from sales.reports.store_plan.render.pdf import build_store_plan_pdf_response
+from sales.reports.sales_digest.render.pdf import build_sales_digest_pdf_response
 
 from .print_utils import (
     build_mtd_table,     
@@ -156,6 +157,7 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
         "print_link",
         "plan_report_link",
         'newspaper_link',
+        'sales_digest_link',
     )
     search_fields = ("date",)
     # list_filter = ("date", )
@@ -206,9 +208,18 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
             'style="text-decoration:none;font-size:14px;">📰</a>',
             url,
         )
-        
-    
-    
+
+    @admin.display(description="Sales Digest")
+    def sales_digest_link(self, obj):
+        url = reverse(
+            f"admin:{MV_Daily_Sales._meta.app_label}_{MV_Daily_Sales._meta.model_name}_sales_digest",
+            args=[obj.pk.isoformat()],
+        )
+        return format_html(
+            '<a href="{}" target="_blank" title="COSMORELAX Sales Digest (новый отчёт по продажам)" '
+            'style="text-decoration:none;font-size:14px;">📈</a>',
+            url,
+        )
 
     # --- Добавляем кастомный url /print/ ---
     def get_urls(self):
@@ -229,6 +240,11 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
                 "<slug:pk>/newspaper/",
                 self.admin_site.admin_view(self.print_newspaper),
                 name=f"{MV_Daily_Sales._meta.app_label}_{MV_Daily_Sales._meta.model_name}_newspaper",
+            ),
+            path(
+                "<slug:pk>/sales-digest/",
+                self.admin_site.admin_view(self.print_sales_digest),
+                name=f"{MV_Daily_Sales._meta.app_label}_{MV_Daily_Sales._meta.model_name}_sales_digest",
             ),
         ]
         return my_urls + urls
@@ -275,10 +291,16 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
             raise Http404("Invalid date format. Expected YYYY-MM-DD")
 
         return build_newspaper_pdf_response(d, request=request)
-            
-        
-        
-    
+
+    def print_sales_digest(self, request, pk: str):
+        try:
+            d = date.fromisoformat(pk)
+        except ValueError:
+            raise Http404("Invalid date format. Expected YYYY-MM-DD")
+
+        return build_sales_digest_pdf_response(d, request=request)
+
+
 
 
 
