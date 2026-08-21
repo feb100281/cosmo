@@ -2173,3 +2173,61 @@ html, body {
 .period-analysis {
   margin-top: 4mm;
 }
+
+
+/* ======================================================================
+   IV. ПРОГНОЗ — держим всё на одной странице
+   ====================================================================== */
+
+.forecast-section {
+  margin-bottom: 0;
+}
+
+.forecast-section .section-head {
+  margin-bottom: 2mm;
+}
+
+.forecast-section .lead-text {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 1.5mm;
+  line-height: 1.35;
+}
+
+.forecast-section .highlight-row {
+  margin-bottom: 2mm;
+}
+
+.forecast-section .forecast-chart-block {
+  margin-top: 1mm;
+  margin-bottom: 0;
+}
+
+.forecast-section .forecast-chart-block svg {
+  width: 100%;
+  height: auto;
+  max-height: 76mm;
+  display: block;
+}
+
+.forecast-section .forecast-chart-block .chart-caption {
+  margin-top: 0.4mm;
+}
+
+.forecast-section .forecast-key-dynamics {
+  margin-top: 2mm;
+  padding-top: 2mm;
+  padding-bottom: 2mm;
+
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.forecast-section .key-dynamics-row {
+  line-height: 1.32;
+}
+
+.forecast-section .key-dynamics-row + .key-dynamics-row {
+  margin-top: 1mm;
+  padding-top: 1mm;
+}
