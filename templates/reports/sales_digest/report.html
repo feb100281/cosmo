@@ -118,19 +118,19 @@
               {{ row.prev.curr }}
             </td>
 
-            <td class="num dev-cell">
-              {{ row.prev.delta }}
-              <span class="dev-pill">
-                {{ row.prev.delta_pct }}
-              </span>
-            </td>
+        <td class="num dev-cell">
+          {{ row.prev.base }}
+          <span class="dev-pill">
+            ({{ row.prev.delta }} · {{ row.prev.delta_pct }})
+          </span>
+        </td>
 
-            <td class="num dev-cell">
-              {{ row.ly.delta }}
-              <span class="dev-pill">
-                {{ row.ly.delta_pct }}
-              </span>
-            </td>
+        <td class="num dev-cell">
+          {{ row.ly.base }}
+          <span class="dev-pill">
+            ({{ row.ly.delta }} · {{ row.ly.delta_pct }})
+          </span>
+        </td>
 
           </tr>
           {% endfor %}
@@ -195,10 +195,126 @@
           ">
             {{ kpi_ctx.accum_cards.ytd.delta_ly }} к прошлому году
           </div>
-
+          
         </div>
 
       </div>
+
+      {% if period_text.mtd_text or period_text.ytd_text %}
+<div class="key-dynamics">
+
+  <div class="key-dynamics-title">Ключевая динамика</div>
+
+
+  <!-- MTD -->
+  {% if period_text.mtd_text %}
+  <div class="key-dynamics-row">
+    <span class="key-dynamics-period">MTD.</span>
+
+    {% if period_text.mtd_text.yoy_amount_pct|slice:":1" == "−" %}
+
+      Выручка снизилась на
+      <strong class="dyn-down">{{ period_text.mtd_text.yoy_amount_pct }}</strong>
+      к прошлому году.
+
+      {% if period_text.mtd_text.movers_down %}
+        <strong>Основное снижение:</strong>
+        {% for item in period_text.mtd_text.movers_down %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-down">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if period_text.mtd_text.movers_up %}
+        <strong>Частично компенсировали снижение:</strong>
+        {% for item in period_text.mtd_text.movers_up %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-up">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+    {% else %}
+
+      Выручка выросла на
+      <strong class="dyn-up">{{ period_text.mtd_text.yoy_amount_pct }}</strong>
+      к прошлому году.
+
+      {% if period_text.mtd_text.movers_up %}
+        <strong>Основной рост обеспечили:</strong>
+        {% for item in period_text.mtd_text.movers_up %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-up">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if period_text.mtd_text.movers_down %}
+        <strong>Сдерживали рост:</strong>
+        {% for item in period_text.mtd_text.movers_down %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-down">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+    {% endif %}
+  </div>
+  {% endif %}
+
+
+  <!-- YTD -->
+  {% if period_text.ytd_text %}
+  <div class="key-dynamics-row">
+    <span class="key-dynamics-period">YTD.</span>
+
+    {% if period_text.ytd_text.yoy_amount_pct|slice:":1" == "−" %}
+
+      Выручка снизилась на
+      <strong class="dyn-down">{{ period_text.ytd_text.yoy_amount_pct }}</strong>
+      к прошлому году.
+
+      {% if period_text.ytd_text.movers_down %}
+        <strong>Основное снижение:</strong>
+        {% for item in period_text.ytd_text.movers_down %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-down">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if period_text.ytd_text.movers_up %}
+        <strong>Частично компенсировали снижение:</strong>
+        {% for item in period_text.ytd_text.movers_up %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-up">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+    {% else %}
+
+      Выручка выросла на
+      <strong class="dyn-up">{{ period_text.ytd_text.yoy_amount_pct }}</strong>
+      к прошлому году.
+
+      {% if period_text.ytd_text.movers_up %}
+        <strong>Основной рост обеспечили:</strong>
+        {% for item in period_text.ytd_text.movers_up %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-up">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if period_text.ytd_text.movers_down %}
+        <strong>Сдерживали рост:</strong>
+        {% for item in period_text.ytd_text.movers_down %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-down">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
 
     </div>
 
@@ -232,12 +348,18 @@
      II. МАГАЗИНЫ
      ====================================================================== -->
 <section class="section stores-section" style="break-before: page;">
+
   <div class="section-head">
     <div class="section-kicker">II — Магазины</div>
     <h2 class="section-title">Продажи по магазинам за {{ period_value }}</h2>
   </div>
 
+
+  <!-- ===================================================================
+       ТАБЛИЦА ПРОДАЖ ПО МАГАЗИНАМ
+       =================================================================== -->
   <table class="cash-store-table stores-table">
+
     <colgroup>
       <col class="col-store-wide">
       <col class="col-num-wide">
@@ -245,6 +367,7 @@
       <col class="col-num-wide">
       <col class="col-num-wide">
     </colgroup>
+
     <thead>
       <tr>
         <th>Магазин</th>
@@ -254,60 +377,299 @@
         <th class="num">% возвратов</th>
       </tr>
     </thead>
+
     <tbody>
       {% for row in store_sales %}
       <tr{% if row.store == "ИТОГО" %} class="totals-row"{% endif %}>
-        <td class="store-cell">{{ row.store }}</td>
-        <td class="num">{{ row.amount }}</td>
-        <td class="num{% if row.delta %} dev-{{ row.delta.amount.dir }}{% endif %}">
-          {% if row.delta %}{{ row.delta.amount.abs }} <span class="dev-pill">{{ row.delta.amount.pct }}</span>{% else %}—{% endif %}
+
+        <td class="store-cell">
+          {{ row.store }}
         </td>
-        <td class="num">{{ row.cr }}</td>
-        <td class="num">{{ row.rtr_ratio }}</td>
+
+        <td class="num">
+          {{ row.amount }}
+        </td>
+
+        <td class="num{% if row.delta %} dev-{{ row.delta.amount.dir }}{% endif %}">
+          {% if row.delta %}
+            {{ row.delta.amount.abs }}
+            <span class="dev-pill">
+              {{ row.delta.amount.pct }}
+            </span>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+
+        <td class="num">
+          {{ row.cr }}
+        </td>
+
+        <td class="num">
+          {{ row.rtr_ratio }}
+        </td>
+
       </tr>
       {% endfor %}
     </tbody>
+
   </table>
+
+
   <div class="table-caption table-caption-left">
-    Δ считается к предыдущему сопоставимому периоду ({{ store_prev_start_fmt }}–{{ store_prev_end_fmt }}).
+    Δ считается к предыдущему сопоставимому периоду
+    ({{ store_prev_start_fmt }}–{{ store_prev_end_fmt }}).
   </div>
 
-<div class="store-charts-split">
 
-  <div class="store-chart-col">
+  <!-- ===================================================================
+       ГРАФИКИ ПО МАГАЗИНАМ
+       =================================================================== -->
+  <div class="store-charts-split">
 
-    <div class="store-chart-head">
-      <div class="store-chart-title">Выручка по магазинам</div>
-      <div class="store-chart-code">₽</div>
-    </div>
 
-    <div class="chart-block store-chart-block">
-      {{ store_chart_svg|safe }}
-      <div class="chart-caption">
-        Чистая выручка по магазинам за {{ period_value }}
+    <!-- ЛЕВЫЙ ГРАФИК -->
+    <div class="store-chart-col">
+
+      <div class="store-chart-head">
+        <div class="store-chart-title">
+          Выручка по магазинам
+        </div>
+
+        <div class="store-chart-code">
+          ₽
+        </div>
       </div>
-    </div>
 
-  </div>
+      <div class="chart-block store-chart-block">
 
+        {{ store_chart_svg|safe }}
 
-  <div class="store-chart-col">
+        <div class="chart-caption">
+          Чистая выручка по магазинам за {{ period_value }}
+        </div>
 
-    <div class="store-chart-head">
-      <div class="store-chart-title">Структура выручки</div>
-      <div class="store-chart-code">%</div>
-    </div>
-
-    <div class="chart-block store-chart-block">
-      {{ store_share_pie_svg|safe }}
-      <div class="chart-caption">
-        Доли магазинов в выручке за {{ period_value }}
       </div>
+
     </div>
+
+
+    <!-- ПРАВЫЙ ГРАФИК -->
+    <div class="store-chart-col">
+
+      <div class="store-chart-head">
+
+        <div class="store-chart-title">
+          Структура выручки
+        </div>
+
+        <div class="store-chart-code">
+          %
+        </div>
+
+      </div>
+
+      <div class="chart-block store-chart-block">
+
+        {{ store_share_pie_svg|safe }}
+
+        <div class="chart-caption">
+          Доли магазинов в выручке за {{ period_value }}
+        </div>
+
+      </div>
+
+    </div>
+
 
   </div>
 
-</div>
+
+  <!-- ===================================================================
+       КЛЮЧЕВАЯ ДИНАМИКА ПО МАГАЗИНАМ
+       =================================================================== -->
+  {% if store_perf.insights.mtd or store_perf.insights.ytd %}
+
+  <div class="key-dynamics store-key-dynamics">
+
+    <div class="key-dynamics-title">
+      Ключевая динамика по магазинам
+    </div>
+
+
+    <!-- ===============================================================
+         MTD
+         =============================================================== -->
+    {% if store_perf.insights.mtd %}
+    {% with x=store_perf.insights.mtd %}
+
+    <div class="key-dynamics-row">
+
+      <span class="key-dynamics-period">
+        MTD.
+      </span>
+
+
+      <!-- Общая динамика -->
+      {% if x.is_positive %}
+
+        Выручка выросла на
+        <strong class="dyn-up">
+          {{ x.total_delta_pct|floatformat:1 }}%
+        </strong>
+        к прошлому году.
+
+      {% else %}
+
+        Выручка снизилась на
+        <strong class="dyn-down">
+          {{ x.total_delta_pct|floatformat:1 }}%
+        </strong>
+        к прошлому году.
+
+      {% endif %}
+
+
+      <!-- Структура -->
+      {% if x.leaders %}
+
+      <strong>Доля в выручке:</strong>
+
+      {% for item in x.leaders %}
+        <strong>{{ item.store }}</strong>
+        — {{ item.share|floatformat:1 }}%
+        {% if not forloop.last %}, {% else %};{% endif %}
+      {% endfor %}
+
+      вместе два крупнейших магазина формируют
+      {{ x.top2_share|floatformat:1 }}% выручки.
+
+      {% endif %}
+
+
+      <!-- Рост -->
+      {% if x.is_positive and x.movers_up %}
+
+        <strong>Основной рост:</strong>
+
+        {% for item in x.movers_up %}
+          <strong>{{ item.store }}</strong>
+          <span class="dyn-up">
+            {{ item.delta }}
+          </span>
+          {% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+
+
+      <!-- Снижение -->
+      {% elif not x.is_positive and x.movers_down %}
+
+        <strong>Основное снижение к прошлому году:</strong>
+
+        {% for item in x.movers_down %}
+          <strong>{{ item.store }}</strong>
+          <span class="dyn-down">
+            {{ item.delta }}
+          </span>
+          {% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+
+      {% endif %}
+
+    </div>
+
+    {% endwith %}
+    {% endif %}
+
+
+
+    <!-- ===============================================================
+         YTD
+         =============================================================== -->
+    {% if store_perf.insights.ytd %}
+    {% with x=store_perf.insights.ytd %}
+
+    <div class="key-dynamics-row">
+
+      <span class="key-dynamics-period">
+        YTD.
+      </span>
+
+
+      <!-- Общая динамика -->
+      {% if x.is_positive %}
+
+        Выручка выросла на
+        <strong class="dyn-up">
+          {{ x.total_delta_pct|floatformat:1 }}%
+        </strong>
+        к прошлому году.
+
+      {% else %}
+
+        Выручка снизилась на
+        <strong class="dyn-down">
+          {{ x.total_delta_pct|floatformat:1 }}%
+        </strong>
+        к прошлому году.
+
+      {% endif %}
+
+
+      <!-- Рост -->
+      {% if x.is_positive and x.movers_up %}
+
+        <strong>Основной рост:</strong>
+
+        {% for item in x.movers_up %}
+          <strong>{{ item.store }}</strong>
+          <span class="dyn-up">
+            {{ item.delta }}
+          </span>
+          {% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+
+
+      <!-- Снижение -->
+      {% elif not x.is_positive and x.movers_down %}
+
+        <strong>Основное снижение:</strong>
+
+        {% for item in x.movers_down %}
+          <strong>{{ item.store }}</strong>
+          <span class="dyn-down">
+            {{ item.delta }}
+          </span>
+          {% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+
+      {% endif %}
+
+
+      <!-- Возвраты -->
+      {% if x.returns %}
+
+        <strong>Возвраты:</strong>
+
+        {% for item in x.returns %}
+          <strong>{{ item.store }}</strong>
+          — {{ item.amount }}
+          ({{ item.ratio|floatformat:1 }}%)
+          {% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+
+      {% endif %}
+
+    </div>
+
+    {% endwith %}
+    {% endif %}
+
+
+  </div>
+
+  {% endif %}
+
 
 <!-- ===================================================================
      KPI ПО МАГАЗИНАМ · MTD И YTD
@@ -395,6 +757,9 @@
 
   </div>
   {% endif %}
+
+
+  
 
   {% if store_perf.monthly_chart_svg %}
   <div class="store-monthly-block" style="break-before: page;">
@@ -569,6 +934,82 @@
     </div>
   </div>
 
+  {% if trend_insight %}
+<div class="key-dynamics trend-key-dynamics">
+
+  <div class="key-dynamics-title">
+    Ключевая динамика
+  </div>
+
+  <div class="key-dynamics-row">
+
+    <span class="key-dynamics-period">
+      {{ trend_insight.period_label }}.
+    </span>
+
+    Текущий результат занимает
+    <strong>
+      {{ trend_insight.current_rank }}-е место
+      из {{ trend_insight.count }}
+    </strong>
+    сопоставимых периодов.
+
+    <strong>Максимум:</strong>
+    {{ trend_insight.max_amount }}
+    ({{ trend_insight.max_label }}).
+
+    <strong>Минимум:</strong>
+    {{ trend_insight.min_amount }}
+    ({{ trend_insight.min_label }}).
+
+    {% if trend_insight.current_rank != 1 %}
+      До максимального результата не хватает
+      <strong>{{ trend_insight.gap_to_max }}</strong>
+      {% if trend_insight.gap_to_max_pct is not None %}
+        ({{ trend_insight.gap_to_max_pct|floatformat:1 }}%)
+      {% endif %}.
+    {% else %}
+      Текущий результат является
+      <strong class="dyn-up">максимальным</strong>
+      среди показанных периодов.
+    {% endif %}
+
+  </div>
+
+
+  <div class="key-dynamics-row">
+
+    <strong>Устойчивость.</strong>
+
+    Выше среднего уровня прошли
+    <strong>{{ trend_insight.above_avg_count }}</strong>
+    из {{ trend_insight.count }} периодов;
+
+    ниже среднего —
+    <strong>{{ trend_insight.below_avg_count }}</strong>.
+
+    {% if trend_insight.curr_cr and trend_insight.prev_cr %}
+      <strong>Возвраты:</strong>
+      {{ trend_insight.curr_cr }}
+      против {{ trend_insight.prev_cr }}
+      в предыдущем сопоставимом периоде.
+
+      {% if trend_insight.cr_delta %}
+        Изменение —
+        <span class="{% if trend_insight.cr_worse %}dyn-down{% else %}dyn-up{% endif %}">
+          {{ trend_insight.cr_delta }}
+          {% if trend_insight.cr_delta_pct is not None %}
+            ({{ trend_insight.cr_delta_pct|floatformat:1 }}%)
+          {% endif %}
+        </span>.
+      {% endif %}
+    {% endif %}
+
+  </div>
+
+</div>
+{% endif %}
+
 </section>
 
 <!-- ======================================================================
@@ -576,6 +1017,7 @@
      ====================================================================== -->
 {% if ltm_prophet_year.has_data %}
 <section class="section" style="break-before: page;">
+
   <div class="section-head">
     <div class="section-kicker">IV — Прогноз</div>
     <h2 class="section-title">Прогноз выручки до конца {{ ltm_prophet_year.year|stringformat:"d" }} года (Prophet)</h2>
@@ -605,17 +1047,112 @@
     </div>
   </div>
 
-  {% if fy_bar_svg %}
-  <div class="chart-block">
-    {{ fy_bar_svg|safe }}
-    <div class="chart-caption">Факт по месяцам и прогноз Prophet до конца {{ ltm_prophet_year.year }} года</div>
+{% if fy_bar_svg %}
+<div class="chart-block forecast-chart-block">
+  {{ fy_bar_svg|safe }}
+
+  <div class="chart-caption">
+    Факт по месяцам и прогноз Prophet до конца
+    {{ ltm_prophet_year.year }} года
+  </div>
+</div>
+{% endif %}
+
+{% if forecast_insight %}
+<div class="key-dynamics forecast-key-dynamics">
+
+  <div class="key-dynamics-title">
+    Что означает прогноз
+  </div>
+
+  <div class="key-dynamics-row">
+
+    К текущей дате выполнено
+    <strong class="dyn-up">
+      {{ forecast_insight.done_pct|floatformat:1 }}%
+    </strong>
+    ожидаемой годовой выручки;
+
+    до конца года модель прогнозирует ещё
+    <strong>
+      {{ forecast_insight.remaining_forecast }}
+    </strong>
+    — это
+    <strong>
+      {{ forecast_insight.remaining_pct|floatformat:1 }}%
+    </strong>
+    FY-прогноза.
+
+    До конца года осталось
+    <strong>{{ forecast_insight.days_left }} дн.</strong>
+
+  </div>
+
+
+  <div class="key-dynamics-row">
+
+    <strong>Необходимый темп.</strong>
+
+    Для выхода на прогнозный результат необходимо получать в среднем
+    <strong>
+      {{ forecast_insight.required_daily_pace }}
+      в день
+    </strong>.
+
+    Фактический средний темп с начала года —
+    <strong>
+      {{ forecast_insight.actual_daily_pace }}
+      в день
+    </strong>.
+
+    {% if forecast_insight.pace_delta_pct is not None %}
+
+      {% if forecast_insight.pace_needs_growth %}
+
+        То есть до конца года темп должен быть примерно на
+        <strong class="dyn-up">
+          {{ forecast_insight.pace_delta_pct|floatformat:1 }}%
+        </strong>
+        выше среднего YTD.
+
+      {% else %}
+
+        Текущий средний темп уже выше необходимого примерно на
+        <strong class="dyn-up">
+          {{ forecast_insight.pace_delta_pct|floatformat:1|cut:"-" }}%
+        </strong>.
+
+      {% endif %}
+
+    {% endif %}
+
+  </div>
+
+
+  {% if forecast_insight.strongest_month %}
+  <div class="key-dynamics-row">
+
+    <strong>Сезонность прогноза.</strong>
+
+    Самый сильный оставшийся месяц по модели —
+    <strong>
+      {{ forecast_insight.strongest_month.name }}
+    </strong>:
+
+    ожидаемая выручка —
+    <strong class="dyn-up">
+      {{ forecast_insight.strongest_month.amount }}
+    </strong>.
+
+    Основная часть ожидаемого результата, таким образом,
+    приходится на оставшуюся часть года.
+
   </div>
   {% endif %}
 
-  <div class="table-caption table-caption-left" style="margin-top: 2mm;">
-    Методика: FY-прогноз пересчитывается ежедневно по дневной выручке; Δ — разница между сегодняшним прогнозом
-    и прогнозом, построенным на данных до вчерашнего дня. MAPE — средняя ошибка модели на исторических данных.
-  </div>
+</div>
+{% endif %}
+
 </section>
 {% endif %}
 
@@ -630,7 +1167,7 @@
 
 
   <div class="two-col mtd-ytd-top">
-    <div class="col">
+    <div class="col col-divider">
       {{ table_mtd_html|safe }}
     </div>
     <div class="col chart-block cum-chart-block">
@@ -646,6 +1183,113 @@
     <div class="chart-caption">Вклад категорий в изменение выручки MTD (топ-8, текущий год к прошлому)</div>
   </div>
   {% endif %}
+
+  {% if mtd_insight %}
+<div class="key-dynamics period-analysis">
+
+  <div class="key-dynamics-title">
+    Ключевая динамика
+  </div>
+
+  <div class="key-dynamics-row">
+
+    <span class="key-dynamics-period">MTD.</span>
+
+    Выручка
+
+    {% if mtd_insight.amount_is_positive %}
+      выросла на
+      <strong class="dyn-up">
+        {{ period_text.mtd_text.yoy_amount_pct }}
+      </strong>
+    {% else %}
+      снизилась на
+      <strong class="dyn-down">
+        {{ period_text.mtd_text.yoy_amount_pct }}
+      </strong>
+    {% endif %}
+
+    к прошлому году, при этом количество
+
+    {% if mtd_insight.quant_is_positive %}
+      выросло на
+      <strong class="dyn-up">
+        {{ period_text.mtd_text.yoy_quant_pct }}
+      </strong>.
+    {% else %}
+      снизилось на
+      <strong class="dyn-down">
+        {{ period_text.mtd_text.yoy_quant_pct }}
+      </strong>.
+    {% endif %}
+
+    {% if mtd_insight.revenue_per_unit_pct is not None %}
+      Выручка на единицу
+
+      {% if mtd_insight.revenue_per_unit_pct >= 0 %}
+        выросла примерно на
+        <strong class="dyn-up">
+          {{ mtd_insight.revenue_per_unit_pct|floatformat:1 }}%
+        </strong>.
+      {% else %}
+        снизилась примерно на
+        <strong class="dyn-down">
+          {{ mtd_insight.revenue_per_unit_pct|floatformat:1 }}%
+        </strong>.
+      {% endif %}
+    {% endif %}
+
+  </div>
+
+
+  <div class="key-dynamics-row">
+
+    {% if not mtd_insight.amount_is_positive %}
+
+      {% if mtd_insight.movers_down %}
+        <strong>Основное снижение связано с:</strong>
+
+        {% for item in mtd_insight.movers_down %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-down">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if mtd_insight.movers_up %}
+        <strong>Частично компенсировали снижение:</strong>
+
+        {% for item in mtd_insight.movers_up %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-up">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+    {% else %}
+
+      {% if mtd_insight.movers_up %}
+        <strong>Основной рост обеспечили:</strong>
+
+        {% for item in mtd_insight.movers_up %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-up">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if mtd_insight.movers_down %}
+        <strong>Сдерживали рост:</strong>
+
+        {% for item in mtd_insight.movers_down %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-down">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+    {% endif %}
+
+  </div>
+
+</div>
+{% endif %}
 </section>
 
 <!-- ======================================================================
@@ -658,7 +1302,7 @@
   </div>
 
   <div class="two-col mtd-ytd-top">
-    <div class="col">
+    <div class="col col-divider">
       {{ table_ytd_html|safe }}
     </div>
     <div class="col chart-block cum-chart-block">
@@ -667,16 +1311,6 @@
     </div>
   </div>
 
-  {% if period_text.ytd_text %}
-  <div class="period-text-block">
-    <div class="period-text-title">Категории YTD: {{ period_text.ytd_text.total_amount }} ({{ period_text.ytd_text.yoy_amount }}, {{ period_text.ytd_text.yoy_amount_pct }} к прошлому году)</div>
-    <p class="lead-text">
-      Топ-5 категорий формируют {{ period_text.ytd_text.pareto_topn_share }} выручки YTD.
-      {% if period_text.ytd_text.movers_up_str %}Растут быстрее всего: {{ period_text.ytd_text.movers_up_str }}.{% endif %}
-      {% if period_text.ytd_text.movers_down_str %}Снижаются: {{ period_text.ytd_text.movers_down_str }}.{% endif %}
-    </p>
-  </div>
-  {% endif %}
 
   {% if ytd_cat_waterfall_svg %}
   <div class="chart-block waterfall-block">
@@ -684,6 +1318,114 @@
     <div class="chart-caption">Вклад категорий в изменение выручки YTD (топ-8, текущий год к прошлому)</div>
   </div>
   {% endif %}
+
+  {% if ytd_insight %}
+<div class="key-dynamics period-analysis">
+
+  <div class="key-dynamics-title">
+    Ключевая динамика
+  </div>
+
+  <div class="key-dynamics-row">
+
+    <span class="key-dynamics-period">YTD.</span>
+
+    Выручка
+
+    {% if ytd_insight.amount_is_positive %}
+      выросла на
+      <strong class="dyn-up">
+        {{ period_text.ytd_text.yoy_amount_pct }}
+      </strong>
+    {% else %}
+      снизилась на
+      <strong class="dyn-down">
+        {{ period_text.ytd_text.yoy_amount_pct }}
+      </strong>
+    {% endif %}
+
+    к прошлому году, при этом количество
+
+    {% if ytd_insight.quant_is_positive %}
+      выросло на
+      <strong class="dyn-up">
+        {{ period_text.ytd_text.yoy_quant_pct }}
+      </strong>.
+    {% else %}
+      снизилось на
+      <strong class="dyn-down">
+        {{ period_text.ytd_text.yoy_quant_pct }}
+      </strong>.
+    {% endif %}
+
+    {% if ytd_insight.revenue_per_unit_pct is not None %}
+      Выручка на единицу
+
+      {% if ytd_insight.revenue_per_unit_pct >= 0 %}
+        выросла примерно на
+        <strong class="dyn-up">
+          {{ ytd_insight.revenue_per_unit_pct|floatformat:1 }}%
+        </strong>.
+      {% else %}
+        снизилась примерно на
+        <strong class="dyn-down">
+          {{ ytd_insight.revenue_per_unit_pct|floatformat:1 }}%
+        </strong>.
+      {% endif %}
+    {% endif %}
+
+  </div>
+
+
+  <div class="key-dynamics-row">
+
+    {% if ytd_insight.amount_is_positive %}
+
+      {% if ytd_insight.movers_up %}
+        <strong>Основной рост обеспечили:</strong>
+
+        {% for item in ytd_insight.movers_up %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-up">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if ytd_insight.movers_down %}
+        <strong>Сдерживали рост:</strong>
+
+        {% for item in ytd_insight.movers_down %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-down">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+    {% else %}
+
+      {% if ytd_insight.movers_down %}
+        <strong>Основное снижение связано с:</strong>
+
+        {% for item in ytd_insight.movers_down %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-down">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if ytd_insight.movers_up %}
+        <strong>Частично компенсировали снижение:</strong>
+
+        {% for item in ytd_insight.movers_up %}
+          <strong>{{ item.cat }}</strong>
+          <span class="dyn-up">{{ item.d_amount }}</span>{% if not forloop.last %}, {% else %}.{% endif %}
+        {% endfor %}
+      {% endif %}
+
+    {% endif %}
+
+  </div>
+
+</div>
+{% endif %}
+
 </section>
 
 <!-- ======================================================================

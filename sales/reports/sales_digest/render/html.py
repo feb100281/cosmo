@@ -136,7 +136,187 @@ def _trend_badges(trend_rows: list) -> dict:
         "vs_prev": _fmt_pp(vs_prev),
         "vs_prev_class": _tone_class(vs_prev),
     }
+    
+    
 
+def _build_trend_insight(trend_rows: list, report_type: str) -> dict | None:
+    if not trend_rows:
+        return None
+
+    rows = [
+        r for r in trend_rows
+        if r.get("amount_raw") is not None
+    ]
+
+    if not rows:
+        return None
+
+    curr_idx = next(
+        (
+            i for i, r in enumerate(rows)
+            if r.get("is_current")
+        ),
+        len(rows) - 1,
+    )
+
+    curr = rows[curr_idx]
+    prev = rows[curr_idx - 1] if curr_idx > 0 else None
+
+    amounts = [
+        float(r["amount_raw"])
+        for r in rows
+    ]
+
+    curr_amount = float(curr["amount_raw"])
+    avg_amount = sum(amounts) / len(amounts)
+
+    max_row = max(
+        rows,
+        key=lambda r: float(r["amount_raw"]),
+    )
+
+    min_row = min(
+        rows,
+        key=lambda r: float(r["amount_raw"]),
+    )
+
+    max_amount = float(max_row["amount_raw"])
+    min_amount = float(min_row["amount_raw"])
+
+    # ---------------------------------------------------------
+    # Ранг текущего результата
+    # ---------------------------------------------------------
+    sorted_amounts = sorted(
+        amounts,
+        reverse=True,
+    )
+
+    current_rank = (
+        sorted_amounts.index(curr_amount) + 1
+    )
+
+    # ---------------------------------------------------------
+    # Сколько периодов выше / ниже среднего
+    # ---------------------------------------------------------
+    above_avg_count = sum(
+        1 for v in amounts
+        if v > avg_amount
+    )
+
+    below_avg_count = sum(
+        1 for v in amounts
+        if v < avg_amount
+    )
+
+    # ---------------------------------------------------------
+    # Насколько текущий результат ниже максимума
+    # ---------------------------------------------------------
+    gap_to_max = max_amount - curr_amount
+
+    gap_to_max_pct = (
+        gap_to_max / max_amount * 100
+        if max_amount
+        else None
+    )
+
+    # ---------------------------------------------------------
+    # Возвраты: текущий vs предыдущий период
+    # ---------------------------------------------------------
+    curr_cr_raw = curr.get("cr_raw")
+    prev_cr_raw = (
+        prev.get("cr_raw")
+        if prev
+        else None
+    )
+
+    cr_delta = None
+    cr_delta_pct = None
+
+    try:
+        if curr_cr_raw is not None and prev_cr_raw is not None:
+            curr_cr_raw = float(curr_cr_raw)
+            prev_cr_raw = float(prev_cr_raw)
+
+            cr_delta = curr_cr_raw - prev_cr_raw
+
+            if prev_cr_raw:
+                cr_delta_pct = (
+                    cr_delta / prev_cr_raw * 100
+                )
+    except Exception:
+        curr_cr_raw = None
+        prev_cr_raw = None
+        cr_delta = None
+        cr_delta_pct = None
+
+    labels = {
+        "daily": {
+            "period": "Текущий день",
+            "period_plural": "дней",
+        },
+        "weekly": {
+            "period": "Текущая неделя",
+            "period_plural": "недель",
+        },
+        "monthly": {
+            "period": "Текущий месяц",
+            "period_plural": "месяцев",
+        },
+    }
+
+    wording = labels.get(
+        report_type,
+        labels["daily"],
+    )
+
+    return {
+        "period_label": wording["period"],
+        "period_plural": wording["period_plural"],
+
+        "count": len(rows),
+
+        "current_rank": current_rank,
+
+        "max_amount": fmt_money(max_amount),
+        "max_label": max_row.get("label") or "—",
+
+        "min_amount": fmt_money(min_amount),
+        "min_label": min_row.get("label") or "—",
+
+        "gap_to_max": fmt_money(gap_to_max),
+        "gap_to_max_pct": gap_to_max_pct,
+
+        "above_avg_count": above_avg_count,
+        "below_avg_count": below_avg_count,
+
+        "curr_cr": (
+            fmt_money(curr_cr_raw)
+            if curr_cr_raw is not None
+            else curr.get("cr")
+        ),
+
+        "prev_cr": (
+            fmt_money(prev_cr_raw)
+            if prev_cr_raw is not None
+            else (
+                prev.get("cr")
+                if prev
+                else None
+            )
+        ),
+
+        "cr_delta": (
+            fmt_delta_money(cr_delta)
+            if cr_delta is not None
+            else None
+        ),
+
+        "cr_delta_pct": cr_delta_pct,
+        "cr_worse": (
+            cr_delta is not None
+            and cr_delta > 0
+        ),
+    }
 
 def _enrich_period_text(period_text: dict | None) -> None:
     if not period_text:
@@ -147,7 +327,75 @@ def _enrich_period_text(period_text: dict | None) -> None:
             continue
         block["movers_up_str"] = _movers_str(block.get("movers_up") or [])
         block["movers_down_str"] = _movers_str(block.get("movers_down") or [])
+        
 
+
+
+def _parse_pct_text(value) -> float | None:
+    """
+    '−4,9%' / '+10,6%' / '-3.2%' -> float
+    """
+    if value in (None, "", "—"):
+        return None
+
+    try:
+        s = str(value).strip()
+        s = (
+            s.replace("%", "")
+            .replace("−", "-")
+            .replace(",", ".")
+            .replace(" ", "")
+        )
+        return float(s)
+    except (TypeError, ValueError):
+        return None
+
+
+def _build_period_insight(block: dict | None) -> dict | None:
+    """
+    Аналитический вывод MTD/YTD только для sales_digest.
+    Используем уже готовые данные period_text.
+    """
+    if not block:
+        return None
+
+    amount_pct = _parse_pct_text(block.get("yoy_amount_pct"))
+    quant_pct = _parse_pct_text(block.get("yoy_quant_pct"))
+
+    # Изменение выручки на единицу:
+    # (1 + изменение выручки) / (1 + изменение количества) - 1
+    revenue_per_unit_pct = None
+
+    if (
+        amount_pct is not None
+        and quant_pct is not None
+        and (100.0 + quant_pct) != 0
+    ):
+        revenue_per_unit_pct = (
+            (1.0 + amount_pct / 100.0)
+            / (1.0 + quant_pct / 100.0)
+            - 1.0
+        ) * 100.0
+
+    return {
+        "amount_pct": amount_pct,
+        "quant_pct": quant_pct,
+
+        "amount_is_positive": (
+            amount_pct is not None
+            and amount_pct >= 0
+        ),
+
+        "quant_is_positive": (
+            quant_pct is not None
+            and quant_pct >= 0
+        ),
+
+        "revenue_per_unit_pct": revenue_per_unit_pct,
+
+        "movers_up": block.get("movers_up") or [],
+        "movers_down": block.get("movers_down") or [],
+    }
 
 _STRIPPED_METRICS = ("Заказы", "Ср. чек")
 
@@ -512,6 +760,120 @@ def _store_perf_long_df(perf_df, y_prev: int, y_curr: int):
     return pd.DataFrame(rows)
 
 
+
+def _build_store_insight(perf_df) -> dict | None:
+    if perf_df is None or perf_df.empty:
+        return None
+
+    df = perf_df.copy()
+
+    total_curr = float(df["amount_curr"].sum())
+    total_prev = float(df["amount_prev"].sum())
+    total_delta = total_curr - total_prev
+
+    total_delta_pct = (
+        (total_delta / total_prev * 100)
+        if total_prev
+        else None
+    )
+
+    # ---------------------------------------------------------
+    # Лидеры по доле в текущей выручке
+    # ---------------------------------------------------------
+    leaders = (
+        df.sort_values("amount_curr", ascending=False)
+        .head(2)
+    )
+
+    leaders_rows = []
+    for _, r in leaders.iterrows():
+        share = (
+            float(r["amount_curr"]) / total_curr * 100
+            if total_curr
+            else 0
+        )
+
+        leaders_rows.append({
+            "store": r["store"],
+            "share": share,
+        })
+
+    top2_share = sum(x["share"] for x in leaders_rows)
+
+    # ---------------------------------------------------------
+    # Рост
+    # ---------------------------------------------------------
+    up = (
+        df[df["delta_amount"] > 0]
+        .sort_values("delta_amount", ascending=False)
+        .head(3)
+    )
+
+    movers_up = [
+        {
+            "store": r["store"],
+            "delta": fmt_delta_money(float(r["delta_amount"])),
+        }
+        for _, r in up.iterrows()
+    ]
+
+    # ---------------------------------------------------------
+    # Снижение
+    # ---------------------------------------------------------
+    down = (
+        df[df["delta_amount"] < 0]
+        .sort_values("delta_amount", ascending=True)
+        .head(3)
+    )
+
+    movers_down = [
+        {
+            "store": r["store"],
+            "delta": fmt_delta_money(float(r["delta_amount"])),
+        }
+        for _, r in down.iterrows()
+    ]
+
+    # ---------------------------------------------------------
+    # Возвраты — топ по сумме возвратов
+    # ---------------------------------------------------------
+    returns_df = (
+        df[df["cr_curr"] > 0]
+        .sort_values("cr_curr", ascending=False)
+        .head(3)
+    )
+
+    returns = []
+
+    for _, r in returns_df.iterrows():
+        cr = float(r["cr_curr"] or 0)
+        dt = float(r["dt_curr"] or 0)
+
+        ratio = (cr / dt * 100) if dt else 0
+
+        returns.append({
+            "store": r["store"],
+            "amount": fmt_money(cr),
+            "ratio": ratio,
+        })
+
+    return {
+        "total_curr": total_curr,
+        "total_prev": total_prev,
+        "total_delta": fmt_delta_money(total_delta),
+        "total_delta_pct": total_delta_pct,
+        "is_positive": total_delta >= 0,
+
+        "leaders": leaders_rows,
+        "top2_share": top2_share,
+
+        "movers_up": movers_up,
+        "movers_down": movers_down,
+
+        "returns": returns,
+    }
+
+
 def _build_store_perf_context(d: date) -> dict:
     """
     Раздел "KPI по магазинам · MTD и YTD" (II) — расчёт полностью из старого
@@ -559,6 +921,11 @@ def _build_store_perf_context(d: date) -> dict:
         "monthly_chart_svg": build_store_monthly_bars_chart(
             monthly_df, y_curr, y_prev, top_n=6,
         ),
+        
+        "insights": {
+            "mtd": _build_store_insight(mtd_df),
+            "ytd": _build_store_insight(ytd_df),
+        },
     }
 
 
@@ -609,6 +976,169 @@ def _reorder_subcats_ytd(subcats_ytd: dict | None) -> None:
             ordered.append(c)
 
     subcats_ytd["cats"] = ordered
+    
+    
+def _build_forecast_insight(
+    df_actual: pd.DataFrame,
+    forecast_df: pd.DataFrame,
+    report_date: date,
+) -> dict | None:
+
+    if (
+        df_actual is None
+        or df_actual.empty
+        or forecast_df is None
+        or forecast_df.empty
+    ):
+        return None
+
+    # =========================================================
+    # ФАКТ YTD
+    # =========================================================
+    actual = df_actual.copy()
+    actual["date"] = pd.to_datetime(actual["date"], errors="coerce")
+    actual["amount"] = pd.to_numeric(actual["amount"], errors="coerce").fillna(0.0)
+
+    actual = actual[
+        (actual["date"].dt.year == report_date.year)
+        & (actual["date"].dt.date <= report_date)
+    ]
+
+    ytd_actual = float(actual["amount"].sum())
+
+    # =========================================================
+    # ПРОГНОЗ ДО КОНЦА ГОДА
+    # =========================================================
+    fc = forecast_df.copy()
+
+    if "ds" not in fc.columns or "yhat" not in fc.columns:
+        return None
+
+    fc["ds"] = pd.to_datetime(fc["ds"], errors="coerce")
+    fc["yhat"] = pd.to_numeric(fc["yhat"], errors="coerce").fillna(0.0)
+
+    year_end = pd.Timestamp(date(report_date.year, 12, 31))
+
+    future = fc[
+        (fc["ds"].dt.date > report_date)
+        & (fc["ds"] <= year_end)
+    ].copy()
+
+    if future.empty:
+        return None
+
+    remaining_forecast = float(future["yhat"].sum())
+    fy_forecast = ytd_actual + remaining_forecast
+
+    # =========================================================
+    # СКОЛЬКО ПРОГНОЗА УЖЕ ВЫПОЛНЕНО
+    # =========================================================
+    done_pct = (
+        ytd_actual / fy_forecast * 100
+        if fy_forecast
+        else None
+    )
+
+    remaining_pct = (
+        remaining_forecast / fy_forecast * 100
+        if fy_forecast
+        else None
+    )
+
+    # =========================================================
+    # ТЕМП ДО КОНЦА ГОДА
+    # =========================================================
+    days_elapsed = report_date.timetuple().tm_yday
+    days_left = (date(report_date.year, 12, 31) - report_date).days
+
+    actual_daily_pace = (
+        ytd_actual / days_elapsed
+        if days_elapsed
+        else None
+    )
+
+    required_daily_pace = (
+        remaining_forecast / days_left
+        if days_left
+        else None
+    )
+
+    pace_delta_pct = (
+        (required_daily_pace - actual_daily_pace)
+        / actual_daily_pace
+        * 100
+        if actual_daily_pace
+        and required_daily_pace is not None
+        else None
+    )
+
+    # =========================================================
+    # ПРОГНОЗ ПО ОСТАВШИМСЯ МЕСЯЦАМ
+    # =========================================================
+    future["month_no"] = future["ds"].dt.month
+
+    monthly = (
+        future.groupby("month_no", as_index=False)["yhat"]
+        .sum()
+    )
+
+    RU_MONTHS_FULL = {
+        1: "январь",
+        2: "февраль",
+        3: "март",
+        4: "апрель",
+        5: "май",
+        6: "июнь",
+        7: "июль",
+        8: "август",
+        9: "сентябрь",
+        10: "октябрь",
+        11: "ноябрь",
+        12: "декабрь",
+    }
+
+    strongest_month = None
+
+    if not monthly.empty:
+        strongest = monthly.loc[monthly["yhat"].idxmax()]
+
+        strongest_month = {
+            "name": RU_MONTHS_FULL.get(
+                int(strongest["month_no"]),
+                "—",
+            ),
+            "amount": fmt_money(float(strongest["yhat"])),
+        }
+
+    return {
+        "done_pct": done_pct,
+        "remaining_pct": remaining_pct,
+
+        "ytd_actual": fmt_money(ytd_actual),
+        "remaining_forecast": fmt_money(remaining_forecast),
+        "fy_forecast": fmt_money(fy_forecast),
+
+        "actual_daily_pace": (
+            fmt_money(actual_daily_pace)
+            if actual_daily_pace is not None
+            else "—"
+        ),
+
+        "required_daily_pace": (
+            fmt_money(required_daily_pace)
+            if required_daily_pace is not None
+            else "—"
+        ),
+
+        "pace_delta_pct": pace_delta_pct,
+        "pace_needs_growth": (
+            pace_delta_pct is not None
+            and pace_delta_pct > 0
+        ),
+
+        "days_left": days_left,
+        "strongest_month": strongest_month,
+    }
 
 
 def build_sales_digest_context(d: date, request=None) -> dict:
@@ -635,6 +1165,18 @@ def build_sales_digest_context(d: date, request=None) -> dict:
         ctx["store_prev_end_fmt"] = ctx["store_prev_end"].strftime("%d.%m.%Y")
 
     _enrich_period_text(ctx.get("period_text"))
+    
+    period_text = ctx.get("period_text") or {}
+
+    ctx["mtd_insight"] = _build_period_insight(
+        period_text.get("mtd_text")
+    )
+
+    ctx["ytd_insight"] = _build_period_insight(
+        period_text.get("ytd_text")
+    )
+    
+    
 
     # Свои графики вместо старых (см. charts.py: разваливались под WeasyPrint
     # и/или были нарисованы в чужой палитре) — считаются по тем же самым
@@ -658,6 +1200,7 @@ def build_sales_digest_context(d: date, request=None) -> dict:
     ctx["trend_meta"] = (ctx.get("kpi_ctx") or {}).get("trend_meta") or {}
     ctx["trend_chart_svg"] = build_trend_chart(trend_rows)
     ctx["trend_badges"] = _trend_badges(trend_rows)
+    ctx["trend_insight"] = _build_trend_insight(trend_rows,ctx["report_type"],)
 
     # MTD: свой накопительный график вместо старого (тоже был в чужой
     # сине-розовой палитре) — считаем те же самые исходные данные ещё раз
@@ -771,6 +1314,12 @@ def build_sales_digest_context(d: date, request=None) -> dict:
         )
         df_fc_raw = pd.DataFrame(list(qs_fc))
         ctx["fy_bar_svg"] = build_prophet_fy_chart(df_fc_raw, forecast_df, d)
+        
+        ctx["forecast_insight"] = _build_forecast_insight(
+                df_fc_raw,
+                forecast_df,
+                d,
+            )
 
     # Раздел II (доп.): KPI по магазинам MTD/YTD + помесячная динамика год к
     # году — расчёт из stores/performance/metrics.build_store_performance_block

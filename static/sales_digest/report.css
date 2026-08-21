@@ -195,7 +195,8 @@ html, body {
   margin: 0 0 2.5mm 0;
   text-align: justify;
   hyphens: auto;
-  max-width: 190mm;
+  max-width: none;
+  width: 100%;
   /* Вступительный абзац всегда идёт сразу перед содержимым (таблицей,
      графиком, матрицами) — не должен остаться один в конце страницы,
      оторванным от того, что он вводит. */
@@ -1476,6 +1477,7 @@ html, body {
   table-layout: fixed;
 
   margin-top: 4mm;
+  break-inside: avoid;
 }
 
 .store-chart-col {
@@ -1527,7 +1529,7 @@ html, body {
 
 .store-chart-col .store-chart-block svg {
   width: 100%;
-  height: auto;
+  height: 55mm;
   display: block;
 }
 
@@ -1717,14 +1719,14 @@ html, body {
    -------------------------------------------------------------------------- */
 
 .kpi-compare-chart {
-  width: 94%;
+  width: 100%;
   margin: 0 auto;
 }
 
 .kpi-compare-chart svg {
   width: 100%;
   height: auto;
-  max-height: 58mm;
+  max-height: 92mm;
   display: block;
 }
 
@@ -2015,4 +2017,159 @@ html, body {
 
 .subcats-table th {
   font-size: 6.6pt;
+}
+
+
+.col-divider {
+  border-right: 0.6pt solid #d7ddd3;
+  padding-right: 5mm;
+}
+
+
+
+/* =====================================================================
+   КЛЮЧЕВАЯ ДИНАМИКА — MTD / YTD
+   ===================================================================== */
+
+.key-dynamics {
+  margin-top: 4mm;
+  padding: 3mm 4mm 3.2mm 4mm;
+
+  background: #f2eee5;
+  border-left: 1.1mm solid #c86436;
+
+  break-inside: avoid;
+}
+
+.key-dynamics-title {
+  margin-bottom: 1.6mm;
+
+  font-family: Arial, sans-serif;
+  font-size: 6.8pt;
+  font-weight: 700;
+  line-height: 1;
+
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+
+  color: #c86436;
+}
+
+.key-dynamics-row {
+  font-family: Georgia, serif;
+  font-size: 8pt;
+  line-height: 1.45;
+
+  color: #202724;
+}
+
+.key-dynamics-row + .key-dynamics-row {
+  margin-top: 1.5mm;
+  padding-top: 1.5mm;
+  border-top: 0.4pt solid #d7ddd3;
+}
+
+.key-dynamics-period {
+  font-family: Arial, sans-serif;
+  font-size: 7.5pt;
+  font-weight: 700;
+
+  color: #173f34;
+}
+
+.key-dynamics-row strong {
+  font-weight: 700;
+}
+
+.key-dynamics .dyn-up {
+  color: #16704f;
+}
+
+.key-dynamics .dyn-down {
+  color: #bd452d;
+}
+
+
+
+
+/* ======================================================================
+   II. МАГАЗИНЫ — компактная первая страница
+   ====================================================================== */
+
+/* таблица */
+.stores-section .stores-table th {
+    padding-top: 1.5mm;
+    padding-bottom: 1.5mm;
+    font-size: 7.3pt;
+}
+
+.stores-section .stores-table td {
+    padding-top: 1.35mm;
+    padding-bottom: 1.35mm;
+    font-size: 7.8pt;
+}
+
+/* подпись под таблицей */
+.stores-section .table-caption {
+    margin-top: 1.2mm;
+    font-size: 6.6pt;
+}
+
+
+/* блок двух графиков */
+.stores-section .store-charts-split {
+    margin-top: 3mm;
+}
+
+
+/* заголовки графиков */
+.stores-section .store-chart-head {
+    margin-bottom: 1.5mm;
+}
+
+.stores-section .store-chart-title {
+    font-size: 10pt;
+}
+
+
+/* сами SVG немного ниже */
+.stores-section .store-chart-block svg {
+    width: 100%;
+    height: auto;
+    max-height: 55mm;
+}
+
+
+/* подписи графиков ближе */
+.stores-section .store-chart-block .chart-caption {
+    margin-top: 0.5mm;
+    font-size: 6.5pt;
+}
+
+
+/* аналитический блок */
+.stores-section .store-key-dynamics {
+    margin-top: 3mm;
+    padding-top: 3mm;
+    padding-bottom: 3mm;
+
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+
+.forecast-chart-block svg {
+  width: 100%;
+  height: auto;
+  max-height: 72mm;
+  display: block;
+}
+
+.forecast-key-dynamics {
+  margin-top: 3mm;
+}
+
+
+.period-analysis {
+  margin-top: 4mm;
 }

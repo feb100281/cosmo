@@ -1,10 +1,20 @@
+# sales/reports/sales_report/kpi/kpi_compare.py
 from __future__ import annotations
 
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 
 from .kpi_data import build_kpi_for_range
-from ..formatters import pct_change, fmt_pp, fmt_money, fmt_int, fmt_pct
+
+
+from ..formatters import (
+    pct_change,
+    fmt_pp,
+    fmt_money,
+    fmt_int,
+    fmt_pct,
+    fmt_delta_money,
+)
 
 
 def _prev_range(report_type: str, start: date, end: date) -> tuple[date, date, str]:
@@ -59,7 +69,7 @@ def _block(metric: str, curr: dict, base: dict) -> dict:
     return {
         "base": _fmt_value(metric, base_v),
         "curr": _fmt_value(metric, curr_v),
-        "delta": _fmt_value(metric, delta) if delta is not None else "—",
+        "delta": fmt_delta_money(delta) if delta is not None else "—",
         "delta_pct": fmt_pp(dpct),
     }
 

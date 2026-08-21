@@ -154,8 +154,8 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
         "dt",
         "cr",
         "rtr_ratio", 
-        "print_link",
-        "plan_report_link",
+        # "print_link",
+        # "plan_report_link",
         'newspaper_link',
         'sales_digest_link',
     )
