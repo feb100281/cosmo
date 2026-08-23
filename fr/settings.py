@@ -107,7 +107,7 @@ JAZZMIN_SETTINGS = {
     "topmenu_links": [
         # стандартные ссылки
         {"name": "Home", },
-        {"model": "auth.User"},
+        # {"model": "auth.User"},
         {"model": "sales.MV_Daily_Sales"},
         # ссылка на Dash Upload Form
         # {"name": "Upload Form", "url": "/upload-sales", "new_window": True},
@@ -115,6 +115,7 @@ JAZZMIN_SETTINGS = {
         # {"name": "Upload orders", "url": "/upload-orders", "new_window": True},
         # {"name": "Upload cf", "url": "/upload-cf", "new_window": True},
          {"name": "Upload Form", "url": "/orders/upload-all-orders/"},
+         {"name": "Загрузка остатков","url": "/orders/upload-stocks/",},
     ],
     
 

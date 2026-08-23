@@ -1,0 +1,351 @@
+<style>
+  .stocks-upload-page {
+    width: 100%;
+    max-width: 760px;
+    margin: 32px auto;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    color: #172033;
+  }
+
+  /* ================================================================
+     СООБЩЕНИЯ
+     ================================================================ */
+
+  .stocks-messages {
+    margin-bottom: 18px;
+  }
+
+  .stocks-message {
+    position: relative;
+    margin-bottom: 10px;
+    padding: 13px 16px 13px 42px;
+    border: 1px solid #d9e0e8;
+    border-left: 3px solid #315b7d;
+    background: #f8fafc;
+    color: #263548;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .stocks-message::before {
+    content: "✓";
+    position: absolute;
+    top: 13px;
+    left: 16px;
+    color: #315b7d;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  /* ================================================================
+     ОСНОВНОЙ БЛОК
+     ================================================================ */
+
+  .stocks-card {
+    overflow: hidden;
+    border: 1px solid #d8dee7;
+    background: #ffffff;
+    box-shadow:
+      0 18px 45px rgba(25, 40, 65, 0.08),
+      0 2px 7px rgba(25, 40, 65, 0.04);
+  }
+
+  .stocks-card__header {
+    position: relative;
+    padding: 27px 30px 25px;
+    border-bottom: 1px solid #dfe4eb;
+    background:
+      linear-gradient(
+        120deg,
+        #263228 0%,
+        #354b39 58%,
+        #48634c 100%
+      );
+  }
+
+  .stocks-card__header::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 220px;
+    height: 100%;
+    background:
+      linear-gradient(
+        135deg,
+        transparent 20%,
+        rgba(255, 255, 255, 0.055) 100%
+      );
+    pointer-events: none;
+  }
+
+  .stocks-card__kicker {
+    position: relative;
+    z-index: 1;
+    margin: 0 0 8px;
+    color: #b9c8bb;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+  }
+
+  .stocks-card__title {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    color: #ffffff;
+    font-size: 25px;
+    font-weight: 650;
+    letter-spacing: -0.4px;
+  }
+
+  .stocks-card__description {
+    position: relative;
+    z-index: 1;
+    max-width: 620px;
+    margin: 8px 0 0;
+    color: #d0dad1;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* ================================================================
+     ФОРМА
+     ================================================================ */
+
+  .stocks-form {
+    padding: 27px 30px 30px;
+  }
+
+  .stocks-file-label {
+    display: block;
+    margin-bottom: 7px;
+    color: #182638;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .stocks-file-hint {
+    display: block;
+    margin-bottom: 14px;
+    color: #7a8795;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .stocks-form input[type="file"] {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-height: 45px;
+    padding: 6px;
+    border: 1px solid #cdd5df;
+    background: #fbfcfd;
+    color: #536170;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .stocks-form input[type="file"]:hover {
+    border-color: #8fa1b2;
+    background: #ffffff;
+  }
+
+  .stocks-form input[type="file"]:focus {
+    outline: none;
+    border-color: #45634a;
+    box-shadow: 0 0 0 3px rgba(69, 99, 74, 0.12);
+  }
+
+  .stocks-form input[type="file"]::file-selector-button {
+    min-height: 31px;
+    margin-right: 12px;
+    padding: 7px 14px;
+    border: 0;
+    background: #e8eee9;
+    color: #304b35;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .stocks-form input[type="file"]::file-selector-button:hover {
+    background: #d9e4db;
+  }
+
+  /* ================================================================
+     ОШИБКИ
+     ================================================================ */
+
+  .stocks-errors {
+    margin: 8px 0 0;
+    padding: 0;
+    color: #a53a3a;
+    font-size: 12px;
+    list-style: none;
+  }
+
+  /* ================================================================
+     НИЖНЯЯ ПАНЕЛЬ
+     ================================================================ */
+
+  .stocks-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 24px;
+    padding-top: 22px;
+    border-top: 1px solid #e6eaf0;
+  }
+
+  .stocks-actions__note {
+    max-width: 420px;
+    margin: 0;
+    color: #7a8795;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .stocks-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-width: 205px;
+    min-height: 45px;
+    padding: 11px 20px;
+    border: 1px solid #29452e;
+    background:
+      linear-gradient(
+        135deg,
+        #45634a 0%,
+        #304a35 100%
+      );
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 750;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(48, 74, 53, 0.18);
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .stocks-submit:hover {
+    background:
+      linear-gradient(
+        135deg,
+        #527359 0%,
+        #39583f 100%
+      );
+    box-shadow: 0 10px 22px rgba(48, 74, 53, 0.24);
+    transform: translateY(-1px);
+  }
+
+  .stocks-submit:active {
+    transform: translateY(0);
+  }
+
+  @media (max-width: 650px) {
+    .stocks-card__header,
+    .stocks-form {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .stocks-actions {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .stocks-submit {
+      width: 100%;
+    }
+  }
+</style>
+
+
+<div class="stocks-upload-page">
+
+  {% if messages %}
+    <div class="stocks-messages">
+      {% for message in messages %}
+        <div class="stocks-message">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+
+  <div class="stocks-card">
+
+    <div class="stocks-card__header">
+      <div class="stocks-card__kicker">
+        Складской учёт
+      </div>
+
+      <h2 class="stocks-card__title">
+        Загрузка остатков товаров
+      </h2>
+
+      <p class="stocks-card__description">
+        Загрузите актуальный Excel-файл с остатками товаров.
+        
+      </p>
+    </div>
+
+
+    <form
+      method="post"
+      enctype="multipart/form-data"
+      class="stocks-form"
+    >
+      {% csrf_token %}
+
+      <label
+        for="{{ form.stocks_file.id_for_label }}"
+        class="stocks-file-label"
+      >
+        Файл остатков
+      </label>
+
+      <span class="stocks-file-hint">
+        Поддерживается файл Excel в формате XLSX.
+      </span>
+
+      {{ form.stocks_file }}
+
+      {% if form.stocks_file.errors %}
+        <ul class="stocks-errors">
+          {% for error in form.stocks_file.errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+
+      <div class="stocks-actions">
+        <p class="stocks-actions__note">
+          Выберите актуальную выгрузку остатков. Не закрывайте
+          страницу до появления сообщения об успешной загрузке.
+        </p>
+
+        <button
+          type="submit"
+          class="stocks-submit"
+        >
+          <span>↑</span>
+          <span>Загрузить остатки</span>
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>

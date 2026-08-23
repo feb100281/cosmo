@@ -72,10 +72,20 @@
 #     return render(request, "upload_orders.html", {"form": form})
 
 # orders/views.py
+import os
+import tempfile
+
+from io import StringIO
+
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.core.management import call_command
 
-from .forms import UploadForm, UploadAllOrdersForm
+from .forms import (
+    UploadForm,
+    UploadAllOrdersForm,
+    UploadStocksForm,
+)
 
 
 def upload_sales_view(request):
@@ -229,3 +239,115 @@ def upload_all_orders_view(request):
         form = UploadAllOrdersForm()
 
     return render(request, "upload_all_orders.html", {"form": form})
+
+
+def upload_stocks_view(request):
+    """
+    Отдельная загрузка остатков товаров.
+
+    Загруженный Excel временно сохраняется на сервере,
+    после чего запускается команда import_stocks.
+    """
+
+    if request.method == "POST":
+        form = UploadStocksForm(
+            request.POST,
+            request.FILES,
+        )
+
+        if form.is_valid():
+            stocks_file = form.cleaned_data[
+                "stocks_file"
+            ]
+
+            temp_path = None
+            command_output = StringIO()
+
+            try:
+                # =====================================================
+                # СОХРАНЯЕМ EXCEL ВО ВРЕМЕННЫЙ ФАЙЛ
+                # =====================================================
+
+                with tempfile.NamedTemporaryFile(
+                    mode="wb",
+                    suffix=".xlsx",
+                    delete=False,
+                ) as temp_file:
+
+                    for chunk in stocks_file.chunks():
+                        temp_file.write(chunk)
+
+                    temp_path = temp_file.name
+
+                # =====================================================
+                # ПЕРВЫЙ ЗАПУСК IMPORT_STOCKS
+                # =====================================================
+
+                call_command(
+                    "import_stocks",
+                    temp_path,
+                    stdout=command_output,
+                )
+
+                # =====================================================
+                # ВТОРОЙ ЗАПУСК IMPORT_STOCKS
+                # Оставляем вашу текущую последовательность импорта.
+                # =====================================================
+
+                call_command(
+                    "import_stocks",
+                    temp_path,
+                    stdout=command_output,
+                )
+
+                # Получаем текст, который вывела команда.
+                result = command_output.getvalue()
+
+                # Выводим полезные строки отдельно.
+                if result:
+                    for line in result.splitlines():
+                        line = line.strip()
+
+                        if line:
+                            messages.success(
+                                request,
+                                line,
+                            )
+
+                messages.success(
+                    request,
+                    (
+                        f'Файл «{stocks_file.name}» '
+                        "успешно обработан. Остатки загружены."
+                    ),
+                )
+
+                return redirect(request.path)
+
+            except Exception as exc:
+                messages.error(
+                    request,
+                    (
+                        "Ошибка загрузки остатков: "
+                        f"{exc}"
+                    ),
+                )
+
+            finally:
+                # Временный Excel больше не нужен.
+                if (
+                    temp_path
+                    and os.path.isfile(temp_path)
+                ):
+                    os.remove(temp_path)
+
+    else:
+        form = UploadStocksForm()
+
+    return render(
+        request,
+        "upload_stocks.html",
+        {
+            "form": form,
+        },
+    )

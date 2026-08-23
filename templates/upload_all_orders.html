@@ -1,4 +1,4 @@
-{% if messages %}
+{% comment %} {% if messages %}
   <div style="max-width: 980px; margin: 24px 0;">
     {% for message in messages %}
       <div style="
@@ -101,4 +101,532 @@
       Загрузить все файлы
     </button>
   </form>
+</div> {% endcomment %}
+
+
+
+
+
+
+<style>
+  /* =====================================================================
+     ОБЩАЯ ОБЛАСТЬ
+     ===================================================================== */
+
+  .upload-page {
+    width: 100%;
+    max-width: 920px;
+    margin: 32px auto;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    color: #172033;
+  }
+
+  /* =====================================================================
+     СООБЩЕНИЯ DJANGO
+     ===================================================================== */
+
+  .upload-messages {
+    margin: 0 0 18px;
+  }
+
+  .upload-message {
+    position: relative;
+    margin-bottom: 10px;
+    padding: 13px 16px 13px 42px;
+    border: 1px solid #d9e0e8;
+    border-left: 3px solid #315b7d;
+    background: #f8fafc;
+    color: #263548;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .upload-message::before {
+    content: "✓";
+    position: absolute;
+    top: 13px;
+    left: 16px;
+    color: #315b7d;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  /* =====================================================================
+     ОСНОВНАЯ КАРТОЧКА
+     ===================================================================== */
+
+  .upload-card {
+    overflow: hidden;
+    border: 1px solid #d8dee7;
+    background: #ffffff;
+    box-shadow:
+      0 18px 45px rgba(25, 40, 65, 0.08),
+      0 2px 7px rgba(25, 40, 65, 0.04);
+  }
+
+  .upload-card__header {
+    position: relative;
+    padding: 27px 30px 25px;
+    border-bottom: 1px solid #dfe4eb;
+    background:
+      linear-gradient(
+        120deg,
+        #172638 0%,
+        #203a50 58%,
+        #294d67 100%
+      );
+  }
+
+  .upload-card__header::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 220px;
+    height: 100%;
+    background:
+      linear-gradient(
+        135deg,
+        transparent 20%,
+        rgba(255, 255, 255, 0.055) 100%
+      );
+    pointer-events: none;
+  }
+
+  .upload-card__kicker {
+    position: relative;
+    z-index: 1;
+    margin: 0 0 8px;
+    color: #aebdca;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+  }
+
+  .upload-card__title {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    color: #ffffff;
+    font-size: 25px;
+    font-weight: 650;
+    letter-spacing: -0.4px;
+  }
+
+  .upload-card__description {
+    position: relative;
+    z-index: 1;
+    max-width: 650px;
+    margin: 8px 0 0;
+    color: #c8d2db;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* =====================================================================
+     ФОРМА
+     ===================================================================== */
+
+  .upload-form {
+    padding: 8px 30px 30px;
+  }
+
+  .upload-field {
+    display: grid;
+    grid-template-columns: 46px minmax(190px, 0.75fr) minmax(300px, 1.5fr);
+    align-items: center;
+    gap: 16px;
+    min-height: 84px;
+    border-bottom: 1px solid #e6eaf0;
+  }
+
+  .upload-field__number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 31px;
+    height: 31px;
+    border: 1px solid #aebbc8;
+    background: #f5f7fa;
+    color: #31516b;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .upload-field__content {
+    min-width: 0;
+  }
+
+  .upload-field__label {
+    display: block;
+    margin-bottom: 4px;
+    color: #182638;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .upload-field__hint {
+    display: block;
+    color: #7a8795;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .upload-field__control {
+    min-width: 0;
+  }
+
+  /*
+   * Оформление стандартных Django file input.
+   * Применится к полям, которые выводятся через {{ form... }}.
+   */
+
+  .upload-field input[type="file"] {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-height: 43px;
+    padding: 5px;
+    border: 1px solid #cdd5df;
+    background: #fbfcfd;
+    color: #536170;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      background 0.18s ease;
+  }
+
+  .upload-field input[type="file"]:hover {
+    border-color: #8fa1b2;
+    background: #ffffff;
+  }
+
+  .upload-field input[type="file"]:focus {
+    outline: none;
+    border-color: #315b7d;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(49, 91, 125, 0.11);
+  }
+
+  .upload-field input[type="file"]::file-selector-button {
+    min-height: 31px;
+    margin-right: 12px;
+    padding: 7px 14px;
+    border: 0;
+    background: #e9eef3;
+    color: #263c50;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      color 0.18s ease,
+      background 0.18s ease;
+  }
+
+  .upload-field input[type="file"]::file-selector-button:hover {
+    background: #dce5ec;
+    color: #152b3e;
+  }
+
+  /* =====================================================================
+     ОШИБКИ ПОЛЕЙ
+     ===================================================================== */
+
+  .upload-field__errors {
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+    color: #a53a3a;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .upload-form__errors {
+    margin: 20px 0 0;
+    padding: 12px 14px;
+    border-left: 3px solid #a53a3a;
+    background: #fff7f7;
+    color: #873333;
+    font-size: 13px;
+  }
+
+  /* =====================================================================
+     НИЖНЯЯ ПАНЕЛЬ И КНОПКА
+     ===================================================================== */
+
+  .upload-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding-top: 24px;
+  }
+
+  .upload-actions__note {
+    max-width: 480px;
+    margin: 0;
+    color: #7a8795;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .upload-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-width: 205px;
+    min-height: 45px;
+    padding: 11px 20px;
+    border: 1px solid #183a55;
+    background:
+      linear-gradient(
+        135deg,
+        #234b68 0%,
+        #18384f 100%
+      );
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 750;
+    letter-spacing: 0.25px;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(24, 56, 79, 0.18);
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease,
+      background 0.18s ease;
+  }
+
+  .upload-submit:hover {
+    background:
+      linear-gradient(
+        135deg,
+        #2a5879 0%,
+        #1d425d 100%
+      );
+    box-shadow: 0 10px 22px rgba(24, 56, 79, 0.24);
+    transform: translateY(-1px);
+  }
+
+  .upload-submit:active {
+    transform: translateY(0);
+  }
+
+  .upload-submit__icon {
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  /* =====================================================================
+     АДАПТИВНОСТЬ
+     ===================================================================== */
+
+  @media (max-width: 760px) {
+    .upload-page {
+      margin: 18px 0;
+    }
+
+    .upload-card__header,
+    .upload-form {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .upload-field {
+      grid-template-columns: 38px 1fr;
+      gap: 12px;
+      padding: 18px 0;
+    }
+
+    .upload-field__control {
+      grid-column: 1 / -1;
+    }
+
+    .upload-actions {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .upload-submit {
+      width: 100%;
+    }
+  }
+</style>
+
+
+<div class="upload-page">
+
+  {% if messages %}
+    <div class="upload-messages">
+      {% for message in messages %}
+        <div class="upload-message">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+
+  <div class="upload-card">
+
+    <div class="upload-card__header">
+      <div class="upload-card__kicker">
+        Импорт данных
+      </div>
+
+      <h2 class="upload-card__title">
+        Загрузка файлов по заказам
+      </h2>
+
+      <p class="upload-card__description">
+        Добавьте файлы заказов, оплат и продаж. Все три источника
+        будут обработаны последовательно после запуска загрузки.
+      </p>
+    </div>
+
+
+    <form
+      method="post"
+      enctype="multipart/form-data"
+      class="upload-form"
+    >
+      {% csrf_token %}
+
+      <!-- ===============================================================
+           01. ЗАКАЗЫ
+           =============================================================== -->
+
+      <div class="upload-field">
+        <div class="upload-field__number">
+          01
+        </div>
+
+        <div class="upload-field__content">
+          <label
+            for="{{ form.orders_file.id_for_label }}"
+            class="upload-field__label"
+          >
+            Файл заказов
+          </label>
+
+          <span class="upload-field__hint">
+            Основной реестр заказов
+          </span>
+        </div>
+
+        <div class="upload-field__control">
+          {{ form.orders_file }}
+
+          {% if form.orders_file.errors %}
+            <ul class="upload-field__errors">
+              {% for error in form.orders_file.errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      </div>
+
+
+      <!-- ===============================================================
+           02. ОПЛАТЫ / CF
+           =============================================================== -->
+
+      <div class="upload-field">
+        <div class="upload-field__number">
+          02
+        </div>
+
+        <div class="upload-field__content">
+          <label
+            for="{{ form.cf_file.id_for_label }}"
+            class="upload-field__label"
+          >
+            Файл оплат / CF
+          </label>
+
+          <span class="upload-field__hint">
+            Данные по оплатам и денежным потокам
+          </span>
+        </div>
+
+        <div class="upload-field__control">
+          {{ form.cf_file }}
+
+          {% if form.cf_file.errors %}
+            <ul class="upload-field__errors">
+              {% for error in form.cf_file.errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      </div>
+
+
+      <!-- ===============================================================
+           03. ПРОДАЖИ
+           =============================================================== -->
+
+      <div class="upload-field">
+        <div class="upload-field__number">
+          03
+        </div>
+
+        <div class="upload-field__content">
+          <label
+            for="{{ form.sales_file.id_for_label }}"
+            class="upload-field__label"
+          >
+            Файл продаж
+          </label>
+
+          <span class="upload-field__hint">
+            Реестр продаж и возвратов
+          </span>
+        </div>
+
+        <div class="upload-field__control">
+          {{ form.sales_file }}
+
+          {% if form.sales_file.errors %}
+            <ul class="upload-field__errors">
+              {% for error in form.sales_file.errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      </div>
+
+
+      {% if form.non_field_errors %}
+        <div class="upload-form__errors">
+          {% for error in form.non_field_errors %}
+            <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+
+      <div class="upload-actions">
+        <p class="upload-actions__note">
+          Перед запуском проверьте, что выбраны актуальные версии всех
+          трёх файлов. Не закрывайте страницу до завершения обработки.
+        </p>
+
+        <button type="submit" class="upload-submit">
+          <span class="upload-submit__icon">↑</span>
+          <span>Загрузить файлы</span>
+        </button>
+      </div>
+    </form>
+
+  </div>
 </div>

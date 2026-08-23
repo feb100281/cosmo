@@ -116,7 +116,7 @@
 
 
 
-
+// static/js/custom.js
 console.log("✅ custom.js loaded");
 
 // -------------------------------------------------
@@ -198,6 +198,7 @@ document.addEventListener("click", function (event) {
     Пользователи: "fa-solid fa-users",
     "Дневные Продажи": "fa-solid fa-calendar-days",
     "Upload Form": "fa-solid fa-cloud-arrow-up",
+    "Загрузка остатков": "fa-solid fa-boxes-stacked",
     "Redis update": "fa-solid fa-arrows-rotate",
   };
 
