@@ -419,10 +419,16 @@ def _strip_metric_rows(table_html: str, metrics: tuple[str, ...] = _STRIPPED_MET
 def _build_ytd_cum_series(df_ytd_raw, report_date: date) -> dict:
     """
     Аналог build_mtd_cum_series (sales_report/trends/mtd_cum_data.py), но
-    накопление по дню года (day-of-year), а не дню месяца — тот модуль
+    накопление помесячно (get_ytd_data отдаёт по одной агрегированной
+    строке на месяц, с датой = LAST_DAY месяца), а не по дням — тот модуль
     жёстко завязан на один месяц и для YTD не подходит. Считается заново
     из df_ytd_raw (get_ytd_data) — та же чистая функция без побочных
     эффектов, что и остальные повторные вычисления в этом файле.
+
+    report_date оставлен в сигнатуре для совместимости с вызовом на
+    строке ~1217, но здесь больше не используется для фильтрации: сама
+    get_ytd_data(d) уже ограничивает выборку датой отчёта на уровне SQL
+    (см. её WHERE date < d + 1 day), включая текущий незакрытый месяц.
     """
     empty = {"series_cur": [], "series_ly": []}
     if df_ytd_raw is None or len(df_ytd_raw) == 0:
@@ -431,19 +437,26 @@ def _build_ytd_cum_series(df_ytd_raw, report_date: date) -> dict:
     df = df_ytd_raw.copy()
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df = df.dropna(subset=["date"])
-    df = df[df["date"].dt.date <= report_date]
     if df.empty:
         return empty
 
+    # ВАЖНО: get_ytd_data() агрегирует продажи по месяцам (GROUP BY
+    # LAST_DAY(date)) — колонка "date" здесь это последний день месяца,
+    # а НЕ дата последней реальной записи, и SQL там же уже ограничивает
+    # выборку датой отчёта (report_date). Раньше здесь была повторная
+    # фильтрация "date <= report_date" / "doy <= doy_max" — для текущего
+    # (ещё не закрытого) месяца LAST_DAY всегда позже report_date, поэтому
+    # весь текущий месяц вырезался целиком и график обрывался на конце
+    # последнего ПОЛНОГО месяца (расходясь с таблицей, где такой фильтрации
+    # нет). Данные уже корректно ограничены на уровне SQL — повторно
+    # фильтровать по дате здесь не нужно и неверно.
     df["amount"] = pd.to_numeric(df.get("amount"), errors="coerce").fillna(0.0)
     df["year"] = df["date"].dt.year
-    df["doy"] = df["date"].dt.dayofyear
 
     years = sorted(df["year"].unique())
-    doy_max = report_date.timetuple().tm_yday
 
     def _make(y: int) -> list[dict]:
-        dd = df[(df["year"] == y) & (df["doy"] <= doy_max)].sort_values("date").copy()
+        dd = df[df["year"] == y].sort_values("date").copy()
         dd["cum_raw"] = dd["amount"].cumsum()
         return [{"label": r.date.strftime("%d.%m"), "cum_raw": float(r.cum_raw)} for r in dd.itertuples()]
 
