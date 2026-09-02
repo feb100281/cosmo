@@ -88,6 +88,35 @@ def _cash_insights(cash_data: dict, cash_analytics: dict) -> list:
     return insights
 
 
+def _cash_ytd_insights(ytd_data: dict, ytd_analytics: dict) -> list:
+    insights = []
+    totals = ytd_data["totals"]
+
+    if totals["plan_to_date"] <= 0:
+        return insights
+
+    exec_pct = float(totals["exec_pct"])
+
+    if ytd_analytics["is_behind_pace"]:
+        insights.append({
+            "level": "negative",
+            "text": (
+                f"С начала года выполнение плана по кэшу — {fmt_pct(totals['exec_pct'])} "
+                f"от накопительного плана на сегодня."
+            ),
+        })
+    elif ytd_analytics["is_ahead_pace"]:
+        insights.append({
+            "level": "positive",
+            "text": (
+                f"С начала года план по кэшу перевыполнен: {fmt_pct(totals['exec_pct'])} "
+                f"от накопительного плана на сегодня."
+            ),
+        })
+
+    return insights
+
+
 def _stocks_insights(stocks_data: dict, stocks_analytics: dict) -> list:
     insights = []
 
@@ -120,9 +149,14 @@ def _store_insights(store_sections: list) -> list:
     return insights
 
 
-def build_insights(cash_data, cash_analytics, stocks_data, stocks_analytics, store_sections) -> list:
+def build_insights(
+    cash_data, cash_analytics, stocks_data, stocks_analytics, store_sections,
+    ytd_data=None, ytd_analytics=None,
+) -> list:
     insights = []
     insights.extend(_cash_insights(cash_data, cash_analytics))
+    if ytd_data is not None and ytd_analytics is not None:
+        insights.extend(_cash_ytd_insights(ytd_data, ytd_analytics))
     insights.extend(_stocks_insights(stocks_data, stocks_analytics))
     insights.extend(_store_insights(store_sections))
     return insights

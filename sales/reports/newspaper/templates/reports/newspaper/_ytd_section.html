@@ -1,0 +1,99 @@
+{# sales/reports/newspaper/templates/reports/newspaper/_ytd_section.html
+   Страница "Год к дате" (YTD) — накопительный план/факт по кэшу с начала
+   года. Отдельная страница (.ytd-section, break-before: page), последняя
+   в отчёте — вставлена в templates/reports/newspaper/report.html (корень
+   проекта) после </section> секции stocks-section и перед <footer>. #}
+
+<section class="section ytd-section">
+  <div class="section-head">
+    <div class="section-kicker">IV — Кэш · Год к дате</div>
+    <h2 class="section-title">Накопительный план и факт с начала {{ payload.meta.report_date.year|stringformat:"d" }} года</h2>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">План с начала года (на сегодня)</div>
+      <div class="kpi-value">{{ payload.cash_ytd.plan_to_date_fmt }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Факт с начала года</div>
+      <div class="kpi-value">{{ payload.cash_ytd.fact_fmt }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Выполнение плана на сегодня</div>
+      <div class="kpi-value kpi-{{ payload.cash_ytd.totals.is_done|yesno:'positive,negative' }}">{{ payload.cash_ytd.exec_pct_fmt }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Годовой план · выполнено</div>
+      <div class="kpi-value">{{ payload.cash_ytd.year_pct_fmt }}</div>
+    </div>
+  </div>
+
+  <p class="lead-text">{{ payload.cash_ytd.lead }}</p>
+
+  <div class="chart-block ytd-chart-block">
+    <div class="chart-caption chart-caption-left">Темп сбора кэша с начала года против плана на сегодня, годового плана и прогноза</div>
+    {{ payload.charts.cash_ytd_pace|safe }}
+    <div class="pace-note">
+      Пройдено {{ payload.cash_ytd.days_passed_year }} из {{ payload.cash_ytd.days_in_year }} дней года.
+    </div>
+  </div>
+
+  <div class="highlight-row">
+    {% if payload.cash_ytd.analytics.best_store %}
+    <div class="highlight-card highlight-positive">
+      <div class="highlight-label">Лидер года</div>
+      <div class="highlight-value">{{ payload.cash_ytd.analytics.best_store.store_name }}</div>
+      <div class="highlight-sub">{{ payload.cash_ytd.analytics.best_store.exec_pct_fmt }} выполнения плана на сегодня</div>
+    </div>
+    {% endif %}
+    {% if payload.cash_ytd.analytics.worst_store %}
+    <div class="highlight-card highlight-negative">
+      <div class="highlight-label">Требует внимания</div>
+      <div class="highlight-value">{{ payload.cash_ytd.analytics.worst_store.store_name }}</div>
+      <div class="highlight-sub">{{ payload.cash_ytd.analytics.worst_store.exec_pct_fmt }} выполнения плана на сегодня</div>
+    </div>
+    {% endif %}
+    <div class="highlight-card highlight-neutral">
+      <div class="highlight-label">Прогноз на конец года</div>
+      <div class="highlight-value">{{ payload.cash_ytd.forecast_fmt }}</div>
+      <div class="highlight-sub">
+        {% if payload.cash_ytd.totals.projected_year_diff < 0 %}ниже плана на {{ payload.cash_ytd.totals.projected_year_diff_fmt }} ₽
+        {% else %}выше плана на {{ payload.cash_ytd.totals.projected_year_diff_fmt }} ₽{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-block ytd-chart-block">
+    <div class="chart-caption chart-caption-left">Факт по месяцам, {{ payload.meta.report_date.year|stringformat:"d" }}</div>
+    {{ payload.charts.cash_ytd_monthly|safe }}
+  </div>
+
+  {% if payload.cash_ytd.rows %}
+  <table class="mini-table ytd-store-table">
+    <thead>
+      <tr>
+        <th>Магазин</th>
+        <th class="num">План на сегодня, ₽</th>
+        <th class="num">Факт, ₽</th>
+        <th class="num">Выполнение</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in payload.cash_ytd.rows %}
+      <tr>
+        <td>{{ row.store_name }}</td>
+        <td class="num">{{ row.plan_to_date_fmt }}</td>
+        <td class="num">{{ row.fact_fmt }}</td>
+        <td class="num">
+          <span class="badge {% if row.status_tier == 'good' %}badge-positive{% elif row.status_tier == 'bad' %}badge-negative{% else %}badge-neutral{% endif %}">{{ row.exec_pct_fmt }}</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="table-caption table-caption-left">
+    «План на сегодня» — накопительно с 1 января: прошедшие месяцы целиком, текущий — пропорционально прошедшим дням. Выполнение считается от него же, без учёта возвратов.
+  </div>
+  {% endif %}
+</section>

@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from sales.reports.sales_plan_report.data import get_sales_plan_data
+from sales.reports.sales_plan_report.data import get_cash_ytd_data as _get_cash_ytd_data
 
 
 def get_cash_data(report_date):
@@ -29,3 +30,13 @@ def get_cash_data(report_date):
     поверх только форматирование и аналитику — без изменения бизнес-логики.
     """
     return get_sales_plan_data(report_date)
+
+
+def get_cash_ytd_data(report_date):
+    """
+    Тонкая обёртка над тем же принципом, что и get_cash_data выше: вся
+    методология накопительного план/факта с начала года (YTD) живёт в
+    sales.reports.sales_plan_report.data.get_cash_ytd_data — здесь только
+    проброс вызова, без собственных расчётов.
+    """
+    return _get_cash_ytd_data(report_date)

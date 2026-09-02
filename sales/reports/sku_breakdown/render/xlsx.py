@@ -54,7 +54,7 @@ FONT_GRAND_TOTAL = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
 FONT_CELL = Font(name="Calibri", size=10, color=_hex(COLOR_INK))
 
 THIN = Side(style="thin", color=_hex(COLOR_RULE))
-BORDER_ROW = Border(bottom=THIN)
+BORDER_ROW = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 
 MONEY_FMT = "#,##0.00"
 QTY_FMT = "#,##0.###"
@@ -120,6 +120,7 @@ def _write_header(ws: Worksheet, row: int, columns) -> None:
         cell = ws.cell(row=row, column=idx, value=title)
         cell.font = FONT_HEADER
         cell.fill = FILL_HEADER
+        cell.border = BORDER_ROW
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         ws.column_dimensions[get_column_letter(idx)].width = width
     ws.row_dimensions[row].height = 28
@@ -156,6 +157,7 @@ def _write_total_row(ws: Worksheet, row: int, columns, label: str, totals: dict,
         cell = ws.cell(row=row, column=col_idx)
         cell.fill = fill
         cell.font = font
+        cell.border = BORDER_ROW
     ws.cell(row=row, column=1, value=label)
 
     for idx, (_title, key, _width, fmt) in enumerate(columns, start=1):
@@ -164,6 +166,7 @@ def _write_total_row(ws: Worksheet, row: int, columns, label: str, totals: dict,
         cell = ws.cell(row=row, column=idx, value=totals[key])
         cell.font = font
         cell.fill = fill
+        cell.border = BORDER_ROW
         if fmt:
             cell.number_format = fmt
     ws.row_dimensions[row].height = 20
@@ -188,7 +191,8 @@ def _build_detail_sheet(wb: Workbook, df: pd.DataFrame, meta: dict) -> None:
 
     _write_total_row(ws, row, DETAIL_COLUMNS, "ИТОГО ЗА ПЕРИОД", _sum_metrics(df), grand=True)
 
-    ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
+    freeze_col = len(DETAIL_COLUMNS) - len(METRIC_COLUMNS) + 1
+    ws.freeze_panes = f"{get_column_letter(freeze_col)}{header_row + 1}"
     if row > header_row:
         ws.auto_filter.ref = f"A{header_row}:{get_column_letter(len(DETAIL_COLUMNS))}{row - 1}"
 
@@ -226,8 +230,11 @@ def _build_grouped_sheet(
         gcell = ws.cell(row=row, column=1, value=f"{group_value}  ({len(group_df)} поз.)")
         gcell.font = FONT_GROUP
         gcell.fill = FILL_GROUP
+        gcell.border = BORDER_ROW
         for col_idx in range(1, len(columns) + 1):
-            ws.cell(row=row, column=col_idx).fill = FILL_GROUP
+            gc = ws.cell(row=row, column=col_idx)
+            gc.fill = FILL_GROUP
+            gc.border = BORDER_ROW
         ws.row_dimensions[row].height = 20
         row += 1
 
@@ -240,7 +247,8 @@ def _build_grouped_sheet(
 
     _write_total_row(ws, row, columns, "ОБЩИЙ ИТОГ", _sum_metrics(df), grand=True)
 
-    ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
+    freeze_col = len(columns) - len(METRIC_COLUMNS) + 1
+    ws.freeze_panes = f"{get_column_letter(freeze_col)}{header_row + 1}"
 
 
 def _build_empty_workbook(meta: dict) -> Workbook:

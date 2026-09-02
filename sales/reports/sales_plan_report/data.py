@@ -1,6 +1,6 @@
 # sales/reports/sales_plan_report/data.py
 
-from calendar import monthrange
+from calendar import monthrange, isleap
 from decimal import Decimal, ROUND_HALF_UP
 
 from dateutil.relativedelta import relativedelta
@@ -334,6 +334,275 @@ def get_sales_plan_data(report_date):
                 else "watch" if total_projected_month_fact >= total_plan
                 else "bad"
             ),
+            "stores_count": len(rows),
+            "stores_with_plan_count": len([r for r in rows if r["has_plan"]]),
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# YTD (год к дате) — накопительный план/факт по кэшу с начала года.
+#
+# Переиспользует те же кирпичи, что и месячный расчёт выше
+# (get_cash_fact_by_store, StoreSalesPlan, normalize_store_name/to_decimal/
+# fmt_money/fmt_pct/safe_div) — никакой новой методологии подсчёта кэша,
+# только другой горизонт агрегации: с 1 января по report_date включительно.
+#
+# "План с начала года" считается накопительно и с той же логикой, что и
+# темп месяца в get_sales_plan_data: полностью прошедшие месяцы года берутся
+# целиком, а текущий (ещё не закончившийся) месяц — пропорционально доле
+# прошедших в нём дней. Это даёт корректное "план на сегодня" в любой день
+# года, а не только на конец месяца. Отдельно считается "план на год" —
+# сумма всех строк StoreSalesPlan за календарный год (включая ещё не
+# наступившие месяцы, если они уже заведены) — для контекста "% от
+# годового плана", который не является метрикой темпа.
+# ---------------------------------------------------------------------------
+
+_MONTHS_RU_SHORT = [
+    "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
+    "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
+]
+
+
+def _build_ytd_monthly_series(report_date, year_plans):
+    """
+    Помесячный ряд план/факт с начала года (месяцы 1..report_date.month
+    включительно) — для тренд-графика на странице YTD. year_plans — уже
+    материализованный список StoreSalesPlan за календарный год (чтобы не
+    дёргать БД ещё раз поверх того, что уже выбрано в get_cash_ytd_data).
+    """
+    plan_by_month = {}
+    for plan in year_plans:
+        m = plan.plan_month.month
+        plan_by_month[m] = plan_by_month.get(m, Decimal("0")) + to_decimal(plan.amount)
+
+    months = []
+    for m in range(1, report_date.month + 1):
+        month_start = report_date.replace(month=m, day=1)
+        if m == report_date.month:
+            month_end = report_date
+        else:
+            month_end = report_date.replace(month=m, day=monthrange(report_date.year, m)[1])
+
+        fact_map = get_cash_fact_by_store(month_start, month_end)
+        fact = sum(fact_map.values(), Decimal("0"))
+
+        prev_year_month_start = month_start - relativedelta(years=1)
+        prev_year_month_end = month_end - relativedelta(years=1)
+        prev_fact_map = get_cash_fact_by_store(prev_year_month_start, prev_year_month_end)
+        prev_fact = sum(prev_fact_map.values(), Decimal("0"))
+
+        plan = plan_by_month.get(m, Decimal("0"))
+
+        months.append({
+            "month": m,
+            "month_name": _MONTHS_RU_SHORT[m - 1],
+            "is_current": m == report_date.month,
+            "plan": plan,
+            "fact": fact,
+            "fact_prev_year": prev_fact,
+            "plan_fmt": fmt_money(plan) if plan > 0 else "—",
+            "fact_fmt": fmt_money(fact),
+            "fact_prev_year_fmt": fmt_money(prev_fact),
+        })
+
+    return months
+
+
+def get_cash_ytd_data(report_date):
+    """
+    Накопительный план/факт по кэшу с начала года по report_date.year по
+    report_date включительно, по компании и по магазинам, плюс сравнение с
+    аналогичным периодом прошлого года (АППГ) и помесячный ряд для графика.
+    """
+    year_start = report_date.replace(month=1, day=1)
+    days_in_year = 366 if isleap(report_date.year) else 365
+    days_passed_year = (report_date - year_start).days + 1
+
+    prev_year_report_date = report_date - relativedelta(years=1)
+    prev_year_start = prev_year_report_date.replace(month=1, day=1)
+
+    fact_map = get_cash_fact_by_store(year_start, report_date)
+    fact_map = {k: v for k, v in fact_map.items() if k and isinstance(k, str)}
+
+    prev_year_fact_map = get_cash_fact_by_store(prev_year_start, prev_year_report_date)
+    prev_year_fact_map = {k: v for k, v in prev_year_fact_map.items() if k and isinstance(k, str)}
+
+    days_in_month = monthrange(report_date.year, report_date.month)[1]
+    month_fraction = to_decimal(report_date.day) / to_decimal(days_in_month)
+
+    year_plans = list(
+        StoreSalesPlan.objects
+        .filter(plan_month__year=report_date.year)
+        .select_related("store", "store__gr")
+    )
+
+    plan_to_date_map = {}
+    plan_year_full_map = {}
+    store_obj_map = {}
+
+    for plan in year_plans:
+        store_key = normalize_store_name(str(plan.store).strip())
+        store_obj_map.setdefault(store_key, plan.store)
+        amt = to_decimal(plan.amount)
+
+        plan_year_full_map[store_key] = plan_year_full_map.get(store_key, Decimal("0")) + amt
+
+        if plan.plan_month.month < report_date.month:
+            plan_to_date_map[store_key] = plan_to_date_map.get(store_key, Decimal("0")) + amt
+        elif plan.plan_month.month == report_date.month:
+            prorated = amt * month_fraction
+            plan_to_date_map[store_key] = plan_to_date_map.get(store_key, Decimal("0")) + prorated
+        # месяцы позже report_date.month в "план на сегодня" не входят —
+        # только в "план на год"
+
+    all_stores = set(fact_map) | set(plan_to_date_map) | set(plan_year_full_map)
+
+    rows = []
+    total_plan_to_date = Decimal("0")
+    total_plan_year_full = Decimal("0")
+    total_fact = Decimal("0")
+    total_prev_year_fact = Decimal("0")
+
+    for store_key in all_stores:
+        fact = fact_map.get(store_key, Decimal("0"))
+        prev_year_fact = prev_year_fact_map.get(store_key, Decimal("0"))
+        plan_to_date = plan_to_date_map.get(store_key, Decimal("0"))
+        plan_year_full = plan_year_full_map.get(store_key, Decimal("0"))
+        store_obj = store_obj_map.get(store_key)
+
+        has_plan = plan_to_date > 0 or plan_year_full > 0
+
+        exec_pct = safe_div(fact, plan_to_date) * Decimal("100") if plan_to_date > 0 else Decimal("0")
+        year_pct = safe_div(fact, plan_year_full) * Decimal("100") if plan_year_full > 0 else Decimal("0")
+
+        yoy_diff = fact - prev_year_fact
+        yoy_pct = safe_div(yoy_diff, prev_year_fact) * Decimal("100")
+
+        # Прогноз на конец года по этому магазину — тот же принцип, что и
+        # для компании целиком (среднедневной факт с начала года * дней в
+        # году), чтобы "в темпе ли магазин" не путать с "уже выполнил план
+        # на сегодня" (is_done) — ровно то же разделение, что и в месячном
+        # расчёте выше (is_done vs is_on_track).
+        avg_daily_fact = safe_div(fact, days_passed_year) if days_passed_year > 0 else Decimal("0")
+        projected_year_fact = avg_daily_fact * Decimal(days_in_year)
+
+        is_done = exec_pct >= 100 if plan_to_date > 0 else False
+        is_on_track = projected_year_fact >= plan_year_full if plan_year_full > 0 else False
+
+        if store_obj:
+            store_name = str(store_obj).strip()
+            group_name = str(store_obj.gr) if getattr(store_obj, "gr", None) else "—"
+        else:
+            store_name = store_key.title()
+            group_name = "—"
+
+        rows.append({
+            "store_name": store_name,
+            "group_name": group_name,
+            "has_plan": has_plan,
+
+            "plan_to_date": plan_to_date,
+            "plan_year_full": plan_year_full,
+            "fact": fact,
+            "exec_pct": exec_pct,
+            "year_pct": year_pct,
+            "projected_year_fact": projected_year_fact,
+
+            "prev_year_fact": prev_year_fact,
+            "yoy_diff": yoy_diff,
+            "yoy_pct": yoy_pct,
+
+            "plan_to_date_fmt": fmt_money(plan_to_date) if plan_to_date > 0 else "—",
+            "plan_year_full_fmt": fmt_money(plan_year_full) if plan_year_full > 0 else "—",
+            "fact_fmt": fmt_money(fact),
+            "exec_pct_fmt": fmt_pct(exec_pct) if plan_to_date > 0 else "нет плана",
+            "year_pct_fmt": fmt_pct(year_pct) if plan_year_full > 0 else "—",
+            "projected_year_fact_fmt": fmt_money(projected_year_fact),
+
+            "prev_year_fact_fmt": fmt_money(prev_year_fact),
+            "yoy_diff_fmt": fmt_money(abs(yoy_diff)),
+            "yoy_pct_fmt": fmt_pct(abs(yoy_pct)) if prev_year_fact > 0 else "—",
+
+            "is_done": is_done,
+            "is_on_track": is_on_track,
+            "status_tier": (
+                "good" if is_done
+                else "watch" if (plan_to_date > 0 and is_on_track)
+                else "bad" if has_plan
+                else "neutral"
+            ),
+        })
+
+        if plan_to_date > 0:
+            total_plan_to_date += plan_to_date
+        if plan_year_full > 0:
+            total_plan_year_full += plan_year_full
+        total_fact += fact
+        total_prev_year_fact += prev_year_fact
+
+    rows = sorted(
+        rows,
+        key=lambda r: (not r["has_plan"], -float(r["exec_pct"]) if r["has_plan"] else 0),
+    )
+
+    total_exec_pct = safe_div(total_fact, total_plan_to_date) * Decimal("100") if total_plan_to_date > 0 else Decimal("0")
+    total_year_pct = safe_div(total_fact, total_plan_year_full) * Decimal("100") if total_plan_year_full > 0 else Decimal("0")
+    total_yoy_diff = total_fact - total_prev_year_fact
+    total_yoy_pct = safe_div(total_yoy_diff, total_prev_year_fact) * Decimal("100")
+
+    avg_daily_fact = safe_div(total_fact, days_passed_year) if days_passed_year > 0 else Decimal("0")
+    projected_year_fact = avg_daily_fact * Decimal(days_in_year)
+    projected_year_diff = projected_year_fact - total_plan_year_full
+
+    monthly = _build_ytd_monthly_series(report_date, year_plans)
+
+    return {
+        "report_date": report_date,
+        "year_start": year_start,
+        "days_passed_year": days_passed_year,
+        "days_in_year": days_in_year,
+        "prev_year_start": prev_year_start,
+        "prev_year_report_date": prev_year_report_date,
+
+        "rows": rows,
+        "monthly": monthly,
+
+        "totals": {
+            "plan_to_date": total_plan_to_date,
+            "plan_year_full": total_plan_year_full,
+            "fact": total_fact,
+            "exec_pct": total_exec_pct,
+            "year_pct": total_year_pct,
+
+            "prev_year_fact": total_prev_year_fact,
+            "yoy_diff": total_yoy_diff,
+            "yoy_pct": total_yoy_pct,
+
+            "projected_year_fact": projected_year_fact,
+            "projected_year_diff": projected_year_diff,
+            "is_done": total_exec_pct >= 100 if total_plan_to_date > 0 else False,
+            "is_on_track": projected_year_fact >= total_plan_year_full if total_plan_year_full > 0 else False,
+            "status_tier": (
+                "good" if (total_plan_to_date > 0 and total_exec_pct >= 100)
+                else "watch" if (total_plan_year_full > 0 and projected_year_fact >= total_plan_year_full)
+                else "bad" if total_plan_to_date > 0
+                else "neutral"
+            ),
+
+            "plan_to_date_fmt": fmt_money(total_plan_to_date),
+            "plan_year_full_fmt": fmt_money(total_plan_year_full),
+            "fact_fmt": fmt_money(total_fact),
+            "exec_pct_fmt": fmt_pct(total_exec_pct),
+            "year_pct_fmt": fmt_pct(total_year_pct),
+
+            "prev_year_fact_fmt": fmt_money(total_prev_year_fact),
+            "yoy_diff_fmt": fmt_money(abs(total_yoy_diff)),
+            "yoy_pct_fmt": fmt_pct(abs(total_yoy_pct)) if total_prev_year_fact > 0 else "—",
+
+            "projected_year_fact_fmt": fmt_money(projected_year_fact),
+            "projected_year_diff_fmt": fmt_money(abs(projected_year_diff)),
+
             "stores_count": len(rows),
             "stores_with_plan_count": len([r for r in rows if r["has_plan"]]),
         },

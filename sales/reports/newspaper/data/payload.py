@@ -19,11 +19,18 @@
 from __future__ import annotations
 
 from ..analytics.cash import analyze_cash
+from ..analytics.cash_ytd import analyze_cash_ytd
 from ..analytics.insights import build_insights
-from ..analytics.narrative import build_cash_lead, build_returns_lead, build_stocks_lead
+from ..analytics.narrative import (
+    build_cash_lead,
+    build_cash_ytd_lead,
+    build_returns_lead,
+    build_stocks_lead,
+)
 from ..analytics.stocks import analyze_stocks
 from ..analytics.stores import build_store_sections
 from ..charts.cash import build_cash_pace_chart, build_cash_share_donut, build_store_pace_chart
+from ..charts.cash_ytd import build_cash_ytd_monthly_chart, build_cash_ytd_pace_chart
 from ..charts.stocks import build_stock_distribution_chart
 from ..config import (
     COMPANY_BRAND_NAME,
@@ -34,7 +41,7 @@ from ..config import (
     REPORT_TITLE,
 )
 from ..render.helpers import fmt_money_short, fmt_pct, fmt_qty, nbsp
-from .cash import get_cash_data
+from .cash import get_cash_data, get_cash_ytd_data
 from .stocks import UNASSIGNED_LABEL, get_stocks_data
 
 
@@ -58,6 +65,23 @@ def _nbsp_calendar(calendar: dict) -> dict:
             summary["week_plan_fmt"] = nbsp(summary.get("week_plan_fmt"))
             summary["week_plan_to_date_fmt"] = nbsp(summary.get("week_plan_to_date_fmt"))
     return calendar
+
+
+def _nbsp_ytd_rows(rows: list) -> list:
+    """
+    Неразрывные пробелы в уже готовых денежных строках YTD-таблицы по
+    магазинам — та же причина, что и в _nbsp_calendar/cash_data.rows: узкая
+    колонка не должна переносить "9 000 000" на "9" и "000 000".
+    """
+    return [
+        {
+            **row,
+            "plan_to_date_fmt": nbsp(row.get("plan_to_date_fmt")),
+            "fact_fmt": nbsp(row.get("fact_fmt")),
+            "prev_year_fact_fmt": nbsp(row.get("prev_year_fact_fmt")),
+        }
+        for row in rows
+    ]
 
 
 def _returns_payload(returns_data: dict) -> dict:
@@ -119,8 +143,12 @@ def build_report_payload(report_date) -> dict:
     stocks_analytics = analyze_stocks(stocks_data)
     store_sections = build_store_sections(cash_data, stocks_data)
 
+    ytd_data = get_cash_ytd_data(report_date)
+    ytd_analytics = analyze_cash_ytd(ytd_data)
+
     insights = build_insights(
         cash_data, cash_analytics, stocks_data, stocks_analytics, store_sections,
+        ytd_data=ytd_data, ytd_analytics=ytd_analytics,
     )
 
     charts = {
@@ -128,9 +156,12 @@ def build_report_payload(report_date) -> dict:
         "store_pace": build_store_pace_chart(cash_data),
         "cash_share": build_cash_share_donut(cash_data),
         "stock_distribution": build_stock_distribution_chart(stocks_data, UNASSIGNED_LABEL),
+        "cash_ytd_pace": build_cash_ytd_pace_chart(ytd_data),
+        "cash_ytd_monthly": build_cash_ytd_monthly_chart(ytd_data),
     }
 
     cash_lead = build_cash_lead(cash_data, cash_analytics)
+    cash_ytd_lead = build_cash_ytd_lead(ytd_data, ytd_analytics)
     stocks_lead = build_stocks_lead(stocks_data, stocks_analytics)
 
     # Возвраты и дизайнерское вознаграждение — это уже готовая аналитика из
@@ -210,6 +241,21 @@ def build_report_payload(report_date) -> dict:
             "exec_pct_fmt": fmt_pct(totals["exec_pct"]),
             "lead": cash_lead,
             "calendar": cash_data["cash_calendar"],
+        },
+        "cash_ytd": {
+            "totals": ytd_data["totals"],
+            "rows": _nbsp_ytd_rows([r for r in ytd_data["rows"] if r["has_plan"]]),
+            "monthly": ytd_data["monthly"],
+            "days_passed_year": ytd_data["days_passed_year"],
+            "days_in_year": ytd_data["days_in_year"],
+            "analytics": ytd_analytics,
+            "plan_to_date_fmt": fmt_money_short(ytd_data["totals"]["plan_to_date"]),
+            "plan_year_full_fmt": fmt_money_short(ytd_data["totals"]["plan_year_full"]),
+            "fact_fmt": fmt_money_short(ytd_data["totals"]["fact"]),
+            "forecast_fmt": fmt_money_short(ytd_data["totals"]["projected_year_fact"]),
+            "exec_pct_fmt": fmt_pct(ytd_data["totals"]["exec_pct"]),
+            "year_pct_fmt": fmt_pct(ytd_data["totals"]["year_pct"]),
+            "lead": cash_ytd_lead,
         },
         "stocks": {
             "company": company_stock,

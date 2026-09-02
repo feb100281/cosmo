@@ -168,6 +168,10 @@ html, body {
   break-before: page;
 }
 
+.ytd-section {
+  break-before: page;
+}
+
 .section-head {
   border-bottom: 0.6pt solid #d7ddd3;
   padding-bottom: 1.5mm;
@@ -671,4 +675,24 @@ html, body {
 
 .report-footer {
   display: none; /* содержимое футера выводится через @page (@bottom-*) */
+}
+
+
+/* ---------------------------------------------------------------------- */
+/* YTD (год к дате) — страница с накопительным план/факт по кэшу          */
+/* ---------------------------------------------------------------------- */
+
+.ytd-chart-block {
+  break-inside: avoid;
+  margin-bottom: 4mm;
+}
+
+.ytd-chart-block svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.ytd-store-table th.num, .ytd-store-table td.num {
+  text-align: right;
 }
