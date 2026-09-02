@@ -30,6 +30,7 @@ from sales.reports.sales_plan_report.exporter import build_sales_plan_pdf_respon
 from sales.reports.newspaper.render.pdf import build_newspaper_pdf_response
 from sales.reports.store_plan.render.pdf import build_store_plan_pdf_response
 from sales.reports.sales_digest.render.pdf import build_sales_digest_pdf_response
+from sales.reports.sku_breakdown.exporter import build_sku_breakdown_xlsx_response
 
 from .print_utils import (
     build_mtd_table,     
@@ -158,6 +159,7 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
         # "plan_report_link",
         'newspaper_link',
         'sales_digest_link',
+        'sku_breakdown_link',
     )
     search_fields = ("date",)
     # list_filter = ("date", )
@@ -221,6 +223,18 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
             url,
         )
 
+    @admin.display(description="SKU Excel")
+    def sku_breakdown_link(self, obj):
+        url = reverse(
+            f"admin:{MV_Daily_Sales._meta.app_label}_{MV_Daily_Sales._meta.model_name}_sku_breakdown",
+            args=[obj.pk.isoformat()],
+        )
+        return format_html(
+            '<a href="{}" title="Разбивка по номенклатуре и штрихкодам за период (Excel)" '
+            'style="text-decoration:none;font-size:14px;">📗</a>',
+            url,
+        )
+
     # --- Добавляем кастомный url /print/ ---
     def get_urls(self):
         urls = super().get_urls()
@@ -245,6 +259,11 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
                 "<slug:pk>/sales-digest/",
                 self.admin_site.admin_view(self.print_sales_digest),
                 name=f"{MV_Daily_Sales._meta.app_label}_{MV_Daily_Sales._meta.model_name}_sales_digest",
+            ),
+            path(
+                "<slug:pk>/sku-breakdown/",
+                self.admin_site.admin_view(self.print_sku_breakdown),
+                name=f"{MV_Daily_Sales._meta.app_label}_{MV_Daily_Sales._meta.model_name}_sku_breakdown",
             ),
         ]
         return my_urls + urls
@@ -299,6 +318,14 @@ class MVSalesDailyAdmin(admin.ModelAdmin):
             raise Http404("Invalid date format. Expected YYYY-MM-DD")
 
         return build_sales_digest_pdf_response(d, request=request)
+
+    def print_sku_breakdown(self, request, pk: str):
+        try:
+            d = date.fromisoformat(pk)
+        except ValueError:
+            raise Http404("Invalid date format. Expected YYYY-MM-DD")
+
+        return build_sku_breakdown_xlsx_response(d, request=request)
 
 
 
