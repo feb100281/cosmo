@@ -195,7 +195,7 @@ def build_cash_ytd_monthly_chart(ytd_data: dict) -> str:
     for i, (fact_v, color) in enumerate(zip(fact_values, colors)):
         ax.text(
             i, fact_v + max_v * 0.035, fmt_money_short(fact_v),
-            ha="center", va="bottom", fontsize=6.8, color=color, fontweight="bold",
+            ha="center", va="bottom", fontsize=6.0, color=color, fontweight="bold",
         )
 
     ax.set_ylim(0, max_v * 1.2)
@@ -219,7 +219,7 @@ def build_cash_ytd_monthly_chart(ytd_data: dict) -> str:
         text = f"{sign}{fmt_money_mln_or_rub(abs(diff))}\n{sign}{abs(diff_pct):.0f}%"
         ax.text(
             i, -0.22, text, transform=axis_transform,
-            ha="center", va="top", fontsize=5.2, color=fg, fontweight="bold",
+            ha="center", va="top", fontsize=4.2, color=fg, fontweight="bold",
             linespacing=1.35,
             bbox=dict(boxstyle="round,pad=0.25", facecolor=bg, edgecolor="none"),
         )
