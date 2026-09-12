@@ -38,6 +38,20 @@ def fmt_money_short(value) -> str:
     return f"{float(value):,.0f} ₽".replace(",", " ")
 
 
+def fmt_money_mln_or_rub(value) -> str:
+    """
+    Как fmt_money_short, но только два разряда: млн ₽ (>= 1 000 000) или
+    рубли как есть — без промежуточной "тыс." Для отклонений план/факта по
+    месяцам: единицы/сотни тысяч читаются нагляднее целиком в рублях, чем
+    сокращённо в тысячах.
+    """
+    value = to_decimal(value)
+
+    if abs(value) >= Decimal("1000000"):
+        return f"{float(value / Decimal('1000000')):.1f} млн ₽"
+    return f"{float(value):,.0f} ₽".replace(",", " ")
+
+
 def fmt_qty(value) -> str:
     """Целочисленное количество с разрядами: 128 430 шт."""
     try:

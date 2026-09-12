@@ -65,11 +65,22 @@ def build_cash_ytd_lead(ytd_data: dict, ytd_analytics: dict) -> str:
     sentences = []
 
     year = ytd_data["report_date"].year
-    sentences.append(
-        f"С начала {year} года компания собрала {fmt_money_short(totals['fact'])} "
-        f"кэша — это {fmt_pct(totals['exec_pct'])} от плана на сегодняшний день "
-        f"и {fmt_pct(totals['year_pct'])} от плана на весь год."
-    )
+    plan_year_complete = ytd_analytics["plan_year_complete"]
+
+    if plan_year_complete:
+        sentences.append(
+            f"С начала {year} года компания собрала {fmt_money_short(totals['fact'])} "
+            f"кэша — это {fmt_pct(totals['exec_pct'])} от плана на сегодняшний день "
+            f"и {fmt_pct(totals['year_pct'])} от плана на весь год."
+        )
+    else:
+        # План заведён не на весь год (например, только по текущий месяц) —
+        # "% от годового плана" в этом случае вводит в заблуждение, поэтому
+        # не упоминаем его вовсе, пока план не заведён на все 12 месяцев.
+        sentences.append(
+            f"С начала {year} года компания собрала {fmt_money_short(totals['fact'])} "
+            f"кэша — это {fmt_pct(totals['exec_pct'])} от плана на сегодняшний день."
+        )
 
     worst = ytd_analytics["worst_store"]
     best = ytd_analytics["best_store"]
@@ -80,17 +91,23 @@ def build_cash_ytd_lead(ytd_data: dict, ytd_analytics: dict) -> str:
             f"({fmt_pct(worst['exec_pct'])})."
         )
 
-    if totals["is_on_track"]:
+    if plan_year_complete:
+        if totals["is_on_track"]:
+            sentences.append(
+                f"При сохранении текущего среднедневного темпа по итогам года "
+                f"компания выйдет на {fmt_money_short(totals['projected_year_fact'])}, "
+                f"что покрывает годовой план ({fmt_money_short(totals['plan_year_full'])})."
+            )
+        elif totals["plan_year_full"] > 0:
+            sentences.append(
+                f"При сохранении текущего среднедневного темпа прогноз на конец года — "
+                f"{fmt_money_short(totals['projected_year_fact'])}, "
+                f"это ниже годового плана на {fmt_money_short(abs(totals['projected_year_diff']))}."
+            )
+    else:
         sentences.append(
-            f"При сохранении текущего среднедневного темпа по итогам года "
-            f"компания выйдет на {fmt_money_short(totals['projected_year_fact'])}, "
-            f"что покрывает годовой план ({fmt_money_short(totals['plan_year_full'])})."
-        )
-    elif totals["plan_year_full"] > 0:
-        sentences.append(
-            f"При сохранении текущего среднедневного темпа прогноз на конец года — "
-            f"{fmt_money_short(totals['projected_year_fact'])}, "
-            f"это ниже годового плана на {fmt_money_short(abs(totals['projected_year_diff']))}."
+            f"При сохранении текущего среднедневного темпа по итогам года ожидается "
+            f"около {fmt_money_short(totals['projected_year_fact'])}."
         )
 
     return " ".join(sentences)

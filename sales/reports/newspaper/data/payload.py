@@ -40,7 +40,14 @@ from ..config import (
     REPORT_SUBTITLE,
     REPORT_TITLE,
 )
-from ..render.helpers import fmt_money_short, fmt_pct, fmt_qty, nbsp
+from ..render.helpers import (
+    fmt_money,
+    fmt_money_mln_or_rub,
+    fmt_money_short,
+    fmt_pct,
+    fmt_qty,
+    nbsp,
+)
 from .cash import get_cash_data, get_cash_ytd_data
 from .stocks import UNASSIGNED_LABEL, get_stocks_data
 
@@ -256,6 +263,13 @@ def build_report_payload(report_date) -> dict:
             "exec_pct_fmt": fmt_pct(ytd_data["totals"]["exec_pct"]),
             "year_pct_fmt": fmt_pct(ytd_data["totals"]["year_pct"]),
             "lead": cash_ytd_lead,
+            # План на год заведён не на все 12 месяцев (см. data.cash /
+            # sales_plan_report.get_cash_ytd_data) — годовые метрики прячем
+            # в шаблоне, пока флаг не станет True.
+            "plan_year_complete": ytd_analytics["plan_year_complete"],
+            "has_plan_to_date": ytd_analytics["has_plan_to_date"],
+            "is_behind_amount": ytd_analytics["is_behind_amount"],
+            "diff_to_date_fmt": fmt_money_short(abs(ytd_analytics["diff_to_date"])),
         },
         "stocks": {
             "company": company_stock,

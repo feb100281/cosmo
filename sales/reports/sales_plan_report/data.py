@@ -437,6 +437,28 @@ def get_cash_ytd_data(report_date):
         .select_related("store", "store__gr")
     )
 
+    # "План на год" выше складывается из всех строк StoreSalesPlan за год,
+    # включая ещё не наступившие месяцы, ЕСЛИ они уже заведены. Если план
+    # заведён только по текущий месяц (декабрь ещё не внесён), эта сумма —
+    # не полный годовой план, а лишь то, что успели ввести. Помечаем это
+    # явно, чтобы потребители (например, Newspaper) не показывали "% от
+    # годового плана" и прогноз-vs-план как надёжную метрику, пока план не
+    # заведён на весь год.
+    # Важно: считаем месяц "заведённым" только если по нему есть реальная
+    # ненулевая сумма плана хотя бы по одному магазину, а не просто по
+    # факту существования строки StoreSalesPlan. На практике строки на
+    # будущие месяцы иногда создаются заранее пустыми (amount=0) как
+    # заготовка — такая строка не должна считаться "план на декабрь уже
+    # есть", иначе plan_year_complete station станет True раньше времени.
+    plan_amount_by_month = {}
+    for p in year_plans:
+        plan_amount_by_month[p.plan_month.month] = (
+            plan_amount_by_month.get(p.plan_month.month, Decimal("0")) + to_decimal(p.amount)
+        )
+    planned_months = {m for m, amt in plan_amount_by_month.items() if amt > 0}
+    plan_year_complete = bool(planned_months) and max(planned_months) >= 12
+    plan_year_last_month = max(planned_months) if planned_months else None
+
     plan_to_date_map = {}
     plan_year_full_map = {}
     store_obj_map = {}
@@ -571,6 +593,8 @@ def get_cash_ytd_data(report_date):
         "totals": {
             "plan_to_date": total_plan_to_date,
             "plan_year_full": total_plan_year_full,
+            "plan_year_complete": plan_year_complete,
+            "plan_year_last_month": plan_year_last_month,
             "fact": total_fact,
             "exec_pct": total_exec_pct,
             "year_pct": total_year_pct,

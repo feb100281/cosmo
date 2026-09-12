@@ -235,7 +235,26 @@ html, body {
 
 .kpi-positive { color: #1e6b4f; }
 .kpi-negative { color: #b8492f; }
-.kpi-neutral { color: #1c2321; }
+.kpi-neutral { color: #8c9188; }
+
+/* Верхняя риска плитки может отражать знак значения (напр. отставание/
+   опережение плана в рублях), а не всегда быть нейтрально-тёмной. */
+.kpi-border-positive { border-top-color: #1e6b4f; }
+.kpi-border-negative { border-top-color: #b8492f; }
+
+/* Раздел YTD может показывать пять плиток в ряду (когда план заведён на
+   весь год и появляется "Годовой план · выполнено") — на четырёх узкая
+   max-width из .kpi (55mm) не даёт им перенестись, а на пяти уже не
+   помещается по ширине альбомной A4. Сужаем и разрешаем перенос только
+   для этого раздела, не трогая остальные kpi-row отчёта. */
+.ytd-section .kpi-row {
+  flex-wrap: wrap;
+  row-gap: 3mm;
+}
+
+.ytd-section .kpi {
+  max-width: 48mm;
+}
 
 .pace-note {
   font-size: 7.8pt;
@@ -695,4 +714,18 @@ html, body {
 
 .ytd-store-table th.num, .ytd-store-table td.num {
   text-align: right;
+}
+
+/* Компактная строка отклонений по месяцам под графиком — одна-две строки
+   чипов, а не полноразмерная таблица (девять строк таблицы уводили
+   таблицу по магазинам на следующую страницу). */
+.month-dev-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5mm 2mm;
+  margin: 1.5mm 0 3mm 0;
+}
+
+.month-dev-row .badge {
+  font-size: 6.8pt;
 }

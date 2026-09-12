@@ -391,16 +391,26 @@
       <div class="kpi-label">Выполнение плана на сегодня</div>
       <div class="kpi-value kpi-{{ payload.cash_ytd.totals.is_done|yesno:'positive,negative' }}">{{ payload.cash_ytd.exec_pct_fmt }}</div>
     </div>
+    <div class="kpi {% if payload.cash_ytd.has_plan_to_date %}{% if payload.cash_ytd.is_behind_amount %}kpi-border-negative{% else %}kpi-border-positive{% endif %}{% endif %}">
+      <div class="kpi-label">{% if payload.cash_ytd.is_behind_amount %}Не выполнили план на сегодня{% else %}Опередили план на сегодня{% endif %}</div>
+      {% if payload.cash_ytd.has_plan_to_date %}
+      <div class="kpi-value kpi-{{ payload.cash_ytd.is_behind_amount|yesno:'negative,positive' }}">{% if payload.cash_ytd.is_behind_amount %}−{% else %}+{% endif %}{{ payload.cash_ytd.diff_to_date_fmt }}</div>
+      {% else %}
+      <div class="kpi-value kpi-neutral">—</div>
+      {% endif %}
+    </div>
+    {% if payload.cash_ytd.plan_year_complete %}
     <div class="kpi">
       <div class="kpi-label">Годовой план · выполнено</div>
       <div class="kpi-value">{{ payload.cash_ytd.year_pct_fmt }}</div>
     </div>
+    {% endif %}
   </div>
 
   <p class="lead-text">{{ payload.cash_ytd.lead }}</p>
 
   <div class="chart-block ytd-chart-block">
-    <div class="chart-caption chart-caption-left">Темп сбора кэша с начала года против плана на сегодня, годового плана и прогноза</div>
+    <div class="chart-caption chart-caption-left">{% if payload.cash_ytd.plan_year_complete %}Темп сбора кэша с начала года против плана на сегодня, годового плана и прогноза{% else %}Темп сбора кэша с начала года против плана на сегодня и прогноза на конец года{% endif %}</div>
     {{ payload.charts.cash_ytd_pace|safe }}
     <div class="pace-note">
       Пройдено {{ payload.cash_ytd.days_passed_year }} из {{ payload.cash_ytd.days_in_year }} дней года.
@@ -426,14 +436,18 @@
       <div class="highlight-label">Прогноз на конец года</div>
       <div class="highlight-value">{{ payload.cash_ytd.forecast_fmt }}</div>
       <div class="highlight-sub">
-        {% if payload.cash_ytd.totals.projected_year_diff < 0 %}ниже плана на {{ payload.cash_ytd.totals.projected_year_diff_fmt }} ₽
-        {% else %}выше плана на {{ payload.cash_ytd.totals.projected_year_diff_fmt }} ₽{% endif %}
+        {% if payload.cash_ytd.plan_year_complete %}
+          {% if payload.cash_ytd.totals.projected_year_diff < 0 %}ниже плана на {{ payload.cash_ytd.totals.projected_year_diff_fmt }} ₽
+          {% else %}выше плана на {{ payload.cash_ytd.totals.projected_year_diff_fmt }} ₽{% endif %}
+        {% else %}
+          по текущему темпу с начала года
+        {% endif %}
       </div>
     </div>
   </div>
 
   <div class="chart-block ytd-chart-block">
-    <div class="chart-caption chart-caption-left">Факт по месяцам, {{ payload.meta.report_date.year|stringformat:"d" }}</div>
+    <div class="chart-caption chart-caption-left">Факт по месяцам на фоне плана, {{ payload.meta.report_date.year|stringformat:"d" }} — цифры над столбцами: факт; светлый фон: план месяца; зелёный/красный: план выполнен/не выполнен; со штриховкой: месяц ещё не закончен; бейдж внизу — отклонение факта от плана в рублях и в процентах</div>
     {{ payload.charts.cash_ytd_monthly|safe }}
   </div>
 
