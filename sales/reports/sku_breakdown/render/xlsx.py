@@ -1,16 +1,10 @@
 # sales/reports/sku_breakdown/render/xlsx.py
 """
-Рендер отчёта "Разбивка по номенклатуре и штрихкодам" в .xlsx.
-
-Три листа:
-  - "Детализация"       — плоская таблица, всё как есть, сортировка по сумме;
-  - "По категориям"     — та же детализация, сгруппированная по категориям,
-                           с подытогом по каждой категории;
-  - "По производителям" — то же самое, но сгруппировано по производителям.
-
-Палитра — тот же бренд-язык COSMORELAX, что в newspaper/sales_digest
-(sales.reports.newspaper.config), просто перенесённый на Excel вместо
-HTML/CSS, чтобы отчёт не выглядел инородным среди остальных.
+Отчёт «Разбивка по номенклатуре и штрихкодам» (.xlsx):
+  - Оглавление      — итоги периода и ссылки на листы;
+  - Детализация     — все позиции, по убыванию выручки;
+  - По категориям   — позиции внутри категорий с подытогами (группы сворачиваются);
+  - По производителям — то же по производителям.
 """
 
 from __future__ import annotations
@@ -19,271 +13,225 @@ from datetime import date, datetime
 
 import pandas as pd
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles import Alignment, Border
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.worksheet import Worksheet
 
-from sales.reports.newspaper.config import (
-    COLOR_ACCENT,
-    COLOR_ACCENT_SOFT,
-    COLOR_BRAND_DEEP,
-    COLOR_INK,
-    COLOR_INK_SOFT,
-    COLOR_PAPER,
-    COLOR_RULE,
-    COMPANY_BRAND_NAME,
+from sales.reports.xl_brand import (
+    EXPENSE,
+    FMT_MONEY,
+    FMT_QTY,
+    MUTED,
+    NAVY,
+    NAVY_3,
+    SURFACE_3,
+    SURFACE_4,
+    TOTAL_ROW,
+    ZEBRA_ROW,
+    build_toc,
+    fill,
+    finalize,
+    font,
+    page_setup,
+    side,
+    toc_button,
 )
 
-
-def _hex(c: str) -> str:
-    """openpyxl хочет ARGB/RGB без '#'."""
-    return c.lstrip("#").upper()
-
-
-FILL_HEADER = PatternFill("solid", fgColor=_hex(COLOR_BRAND_DEEP))
-FILL_GROUP = PatternFill("solid", fgColor=_hex(COLOR_ACCENT_SOFT))
-FILL_TOTAL = PatternFill("solid", fgColor=_hex(COLOR_PAPER))
-FILL_GRAND_TOTAL = PatternFill("solid", fgColor=_hex(COLOR_ACCENT))
-
-FONT_TITLE = Font(name="Calibri", size=15, bold=True, color=_hex(COLOR_BRAND_DEEP))
-FONT_SUBTITLE = Font(name="Calibri", size=10, italic=True, color=_hex(COLOR_INK_SOFT))
-FONT_HEADER = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
-FONT_GROUP = Font(name="Calibri", size=10.5, bold=True, color=_hex(COLOR_INK))
-FONT_TOTAL = Font(name="Calibri", size=10, bold=True, color=_hex(COLOR_INK))
-FONT_GRAND_TOTAL = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-FONT_CELL = Font(name="Calibri", size=10, color=_hex(COLOR_INK))
-
-THIN = Side(style="thin", color=_hex(COLOR_RULE))
-BORDER_ROW = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
-
-MONEY_FMT = "#,##0.00"
-QTY_FMT = "#,##0.###"
-
-# (заголовок, ключ в DataFrame, ширина колонки, числовой формат)
+# (заголовок, ключ, ширина, формат)
 METRIC_COLUMNS = [
-    ("Продажи, сумма", "sales_amount", 15, MONEY_FMT),
-    ("Продажи, кол-во", "sales_qty", 13, QTY_FMT),
-    ("Возвраты, сумма", "returns_amount", 15, MONEY_FMT),
-    ("Возвраты, кол-во", "returns_qty", 13, QTY_FMT),
-    ("Итого, сумма", "net_amount", 15, MONEY_FMT),
-    ("Итого, кол-во", "net_qty", 13, QTY_FMT),
+    ("Продажи, ₽", "sales_amount", 14, FMT_MONEY),
+    ("Продажи, шт.", "sales_qty", 11, FMT_QTY),
+    ("Возвраты, ₽", "returns_amount", 14, FMT_MONEY),
+    ("Возвраты, шт.", "returns_qty", 11, FMT_QTY),
+    ("Итого, ₽", "net_amount", 15, FMT_MONEY),
+    ("Итого, шт.", "net_qty", 11, FMT_QTY),
 ]
-
-DETAIL_COLUMNS = [
-    ("Категория", "cat_name", 24, None),
+TEXT_COLUMNS = [
+    ("Номенклатура", "fullname", 46, None),
+    ("Артикул", "article", 14, None),
+    ("Штрихкод", "barcode", 16, "@"),
+    ("Категория", "cat_name", 22, None),
     ("Подкатегория", "subcat_name", 22, None),
     ("Производитель", "manufacturer_name", 22, None),
-    ("Артикул", "article", 14, None),
-    ("Номенклатура", "fullname", 46, None),
-    ("Штрихкод", "barcode", 16, None),
-] + METRIC_COLUMNS
+]
+DETAIL_COLUMNS = TEXT_COLUMNS + METRIC_COLUMNS
+RETURN_KEYS = {"returns_amount", "returns_qty"}
+KEY_HEADER = "net_amount"
 
 _REPORT_TYPE_LABEL = {"daily": "день", "weekly": "неделя", "monthly": "месяц"}
+HEADER_ROW = 5
 
 
-def _period_title(meta: dict) -> str:
+def _period_text(meta: dict) -> str:
     kind = _REPORT_TYPE_LABEL.get(meta["report_type"], meta["report_type"])
     s, e = meta["start"], meta["end"]
-    if s == e:
-        rng = s.strftime("%d.%m.%Y")
-    else:
-        rng = f'{s.strftime("%d.%m.%Y")} — {e.strftime("%d.%m.%Y")}'
-    return f"Период: {kind}, {rng}"
+    rng = f"{s:%d.%m.%Y}" if s == e else f"{s:%d.%m.%Y} — {e:%d.%m.%Y}"
+    return f"{kind.capitalize()}: {rng}"
 
 
-def _write_title_block(ws: Worksheet, n_cols: int, subtitle: str, meta: dict) -> int:
-    """Пишет строку заголовка + подзаголовок с периодом, возвращает номер
-    строки, в которую нужно писать шапку таблицы (1-based)."""
-    n_cols = max(n_cols, 1)
-
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=n_cols)
-    title_cell = ws.cell(
-        row=1, column=1,
-        value=f"{COMPANY_BRAND_NAME} — Разбивка по номенклатуре и штрихкодам",
-    )
-    title_cell.font = FONT_TITLE
-    ws.row_dimensions[1].height = 22
-
-    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=n_cols)
-    subtitle_text = (
-        f"{subtitle}   ·   {_period_title(meta)}   ·   "
-        f"сформировано {meta['generated_at'].strftime('%d.%m.%Y %H:%M')}"
-    )
-    sub_cell = ws.cell(row=2, column=1, value=subtitle_text)
-    sub_cell.font = FONT_SUBTITLE
-
-    return 4
+def _params(meta: dict) -> str:
+    return f"Рубли и штуки · {_period_text(meta)} · сформировано {meta['generated_at']:%d.%m.%Y %H:%M}"
 
 
-def _write_header(ws: Worksheet, row: int, columns) -> None:
-    for idx, (title, _key, width, _fmt) in enumerate(columns, start=1):
-        cell = ws.cell(row=row, column=idx, value=title)
-        cell.font = FONT_HEADER
-        cell.fill = FILL_HEADER
-        cell.border = BORDER_ROW
-        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        ws.column_dimensions[get_column_letter(idx)].width = width
-    ws.row_dimensions[row].height = 28
+def _sheet_top(ws, n_cols: int, title: str, meta: dict) -> None:
+    page_setup(ws)
+    toc_button(ws, 1, n_cols)
+    ws.cell(row=2, column=1, value=title.upper()).font = font(14, True)
+    ws.row_dimensions[2].height = 24
+    ws.cell(row=3, column=1, value=_params(meta)).font = font(9, color=MUTED)
+    for c in range(1, n_cols + 1):
+        ws.cell(row=4, column=c).border = Border(bottom=side(NAVY, "medium"))
+    ws.row_dimensions[4].height = 6
 
 
-def _write_data_row(ws: Worksheet, row: int, columns, record: dict) -> None:
-    for idx, (_title, key, _width, fmt) in enumerate(columns, start=1):
-        value = record.get(key, "")
-        if key == "barcode" and value is not None:
-            value = str(value)
-        cell = ws.cell(row=row, column=idx, value=value)
-        cell.font = FONT_CELL
-        cell.border = BORDER_ROW
-        if key == "barcode":
-            cell.number_format = "@"
-        elif fmt:
-            cell.number_format = fmt
-        if key == "fullname":
-            cell.alignment = Alignment(vertical="center")
+def _header(ws, columns) -> None:
+    for j, (title, key, width, _fmt) in enumerate(columns, start=1):
+        c = ws.cell(row=HEADER_ROW, column=j, value=title)
+        c.font = font(10, True, "FFFFFF")
+        c.fill = fill(NAVY_3 if key == KEY_HEADER else NAVY)
+        c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        c.border = Border(left=side(), right=side(), top=side(), bottom=side())
+        ws.column_dimensions[get_column_letter(j)].width = width
+    ws.row_dimensions[HEADER_ROW].height = 30
 
 
-def _sum_metrics(df: pd.DataFrame) -> dict:
+def _data_row(ws, r: int, columns, rec: dict, zebra: bool) -> None:
+    n = len(columns)
+    for j, (_t, key, _w, fmt) in enumerate(columns, start=1):
+        v = rec.get(key)
+        if key == "barcode" and v is not None:
+            v = str(v)
+        if isinstance(v, float) and pd.isna(v):
+            v = None
+        c = ws.cell(row=r, column=j, value=v)
+        c.font = font(10, color=EXPENSE if key in RETURN_KEYS and v else "1F1F1F")
+        c.border = Border(bottom=side(), right=side() if j < n else None)
+        if fmt:
+            c.number_format = fmt
+        if fmt and fmt != "@":
+            c.alignment = Alignment(horizontal="right", vertical="center")
+        else:
+            c.alignment = Alignment(horizontal="left", vertical="center")
+        if key == KEY_HEADER:
+            c.fill = fill(SURFACE_3)
+        elif zebra:
+            c.fill = fill(ZEBRA_ROW)
+
+
+def _sums(df: pd.DataFrame) -> dict:
     return {key: float(df[key].sum()) for _t, key, _w, _f in METRIC_COLUMNS}
 
 
-def _write_total_row(ws: Worksheet, row: int, columns, label: str, totals: dict, *, grand: bool = False) -> None:
-    fill = FILL_GRAND_TOTAL if grand else FILL_TOTAL
-    font = FONT_GRAND_TOTAL if grand else FONT_TOTAL
-
-    n_label_cols = max(len(columns) - len(METRIC_COLUMNS), 1)
-    if n_label_cols > 1:
-        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=n_label_cols)
-    for col_idx in range(1, n_label_cols + 1):
-        cell = ws.cell(row=row, column=col_idx)
-        cell.fill = fill
-        cell.font = font
-        cell.border = BORDER_ROW
-    ws.cell(row=row, column=1, value=label)
-
-    for idx, (_title, key, _width, fmt) in enumerate(columns, start=1):
-        if key not in totals:
-            continue
-        cell = ws.cell(row=row, column=idx, value=totals[key])
-        cell.font = font
-        cell.fill = fill
-        cell.border = BORDER_ROW
-        if fmt:
-            cell.number_format = fmt
-    ws.row_dimensions[row].height = 20
+def _total_row(ws, r: int, columns, label: str, totals: dict, *, level: str) -> None:
+    """level: group — подытог группы; grand — общий итог."""
+    n = len(columns)
+    bg = TOTAL_ROW if level == "grand" else SURFACE_3
+    for j, (_t, key, _w, fmt) in enumerate(columns, start=1):
+        v = label if j == 1 else totals.get(key)
+        c = ws.cell(row=r, column=j, value=v)
+        c.font = font(10, True, NAVY_3 if level == "grand" else "1F1F1F")
+        c.fill = fill(bg)
+        if level == "grand":
+            c.border = Border(top=side(NAVY, "medium"), bottom=side(NAVY, "double"))
+        else:
+            c.border = Border(top=side(), bottom=side(), right=side() if j < n else None)
+        if fmt and fmt != "@" and key in totals:
+            c.number_format = fmt
+            c.alignment = Alignment(horizontal="right", vertical="center")
+    ws.row_dimensions[r].height = 20
 
 
 def _build_detail_sheet(wb: Workbook, df: pd.DataFrame, meta: dict) -> None:
-    ws = wb.active
-    ws.title = "Детализация"
-    ws.sheet_view.showGridLines = False
-    ws.sheet_properties.tabColor = _hex(COLOR_BRAND_DEEP)
+    ws = wb.create_sheet("Детализация")
+    _sheet_top(ws, len(DETAIL_COLUMNS), "Детализация по номенклатуре и штрихкодам", meta)
+    _header(ws, DETAIL_COLUMNS)
 
-    header_row = _write_title_block(
-        ws, len(DETAIL_COLUMNS), "Полная детализация по номенклатуре и штрихкодам", meta,
-    )
-    _write_header(ws, header_row, DETAIL_COLUMNS)
+    r = HEADER_ROW + 1
+    for i, (_, rec) in enumerate(df.sort_values("net_amount", ascending=False).iterrows()):
+        _data_row(ws, r, DETAIL_COLUMNS, rec.to_dict(), zebra=i % 2 == 1)
+        r += 1
+    last = r - 1
+    _total_row(ws, r, DETAIL_COLUMNS, f"ИТОГО ЗА ПЕРИОД ({len(df)} поз.)", _sums(df), level="grand")
 
-    data = df.sort_values("net_amount", ascending=False)
-    row = header_row + 1
-    for _, rec in data.iterrows():
-        _write_data_row(ws, row, DETAIL_COLUMNS, rec.to_dict())
-        row += 1
-
-    _write_total_row(ws, row, DETAIL_COLUMNS, "ИТОГО ЗА ПЕРИОД", _sum_metrics(df), grand=True)
-
-    freeze_col = len(DETAIL_COLUMNS) - len(METRIC_COLUMNS) + 1
-    ws.freeze_panes = f"{get_column_letter(freeze_col)}{header_row + 1}"
-    if row > header_row:
-        ws.auto_filter.ref = f"A{header_row}:{get_column_letter(len(DETAIL_COLUMNS))}{row - 1}"
+    ws.freeze_panes = ws.cell(row=HEADER_ROW + 1, column=2)
+    if last > HEADER_ROW:
+        ws.auto_filter.ref = f"A{HEADER_ROW}:{get_column_letter(len(DETAIL_COLUMNS))}{last}"
 
 
-def _build_grouped_sheet(
-    wb: Workbook,
-    df: pd.DataFrame,
-    meta: dict,
-    *,
-    group_col: str,
-    sheet_title: str,
-    subtitle: str,
-) -> None:
+def _build_grouped_sheet(wb: Workbook, df: pd.DataFrame, meta: dict, *, group_col: str,
+                         sheet_title: str, title: str) -> None:
     columns = [c for c in DETAIL_COLUMNS if c[1] != group_col]
+    n = len(columns)
     ws = wb.create_sheet(sheet_title)
-    ws.sheet_view.showGridLines = False
-    ws.sheet_properties.tabColor = _hex(COLOR_ACCENT)
+    _sheet_top(ws, n, title, meta)
+    _header(ws, columns)
+    ws.sheet_properties.outlinePr.summaryBelow = False
 
-    header_row = _write_title_block(ws, len(columns), subtitle, meta)
+    order = df.groupby(group_col, dropna=False)["net_amount"].sum().sort_values(ascending=False)
+    r = HEADER_ROW + 1
+    for group_value in order.index.tolist():
+        g = df[df[group_col] == group_value].sort_values("net_amount", ascending=False)
+        sums = _sums(g)
+        for j, (_t, key, _w, fmt) in enumerate(columns, start=1):
+            v = f"{group_value}  ·  {len(g)} поз." if j == 1 else sums.get(key)
+            c = ws.cell(row=r, column=j, value=v)
+            c.font = font(10, True, NAVY_3)
+            c.fill = fill(SURFACE_4)
+            c.border = Border(top=side(NAVY, "thin"), bottom=side(), right=side() if j < n else None)
+            if fmt and fmt != "@" and key in sums:
+                c.number_format = fmt
+                c.alignment = Alignment(horizontal="right", vertical="center")
+        ws.row_dimensions[r].height = 20
+        r += 1
+        for i, (_, rec) in enumerate(g.iterrows()):
+            _data_row(ws, r, columns, rec.to_dict(), zebra=i % 2 == 1)
+            ws.row_dimensions[r].outlineLevel = 1
+            r += 1
 
-    group_totals = (
-        df.groupby(group_col, dropna=False)["net_amount"]
-        .sum()
-        .sort_values(ascending=False)
-    )
-
-    row = header_row
-    _write_header(ws, row, columns)
-    row += 1
-
-    for group_value in group_totals.index.tolist():
-        group_df = df[df[group_col] == group_value].sort_values("net_amount", ascending=False)
-
-        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=len(columns))
-        gcell = ws.cell(row=row, column=1, value=f"{group_value}  ({len(group_df)} поз.)")
-        gcell.font = FONT_GROUP
-        gcell.fill = FILL_GROUP
-        gcell.border = BORDER_ROW
-        for col_idx in range(1, len(columns) + 1):
-            gc = ws.cell(row=row, column=col_idx)
-            gc.fill = FILL_GROUP
-            gc.border = BORDER_ROW
-        ws.row_dimensions[row].height = 20
-        row += 1
-
-        for _, rec in group_df.iterrows():
-            _write_data_row(ws, row, columns, rec.to_dict())
-            row += 1
-
-        _write_total_row(ws, row, columns, f"Итого: {group_value}", _sum_metrics(group_df))
-        row += 1
-
-    _write_total_row(ws, row, columns, "ОБЩИЙ ИТОГ", _sum_metrics(df), grand=True)
-
-    freeze_col = len(columns) - len(METRIC_COLUMNS) + 1
-    ws.freeze_panes = f"{get_column_letter(freeze_col)}{header_row + 1}"
+    _total_row(ws, r, columns, f"ОБЩИЙ ИТОГ ({len(df)} поз.)", _sums(df), level="grand")
+    ws.freeze_panes = ws.cell(row=HEADER_ROW + 1, column=2)
 
 
-def _build_empty_workbook(meta: dict) -> Workbook:
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Детализация"
-    ws.cell(row=1, column=1, value=f"{COMPANY_BRAND_NAME} — Разбивка по номенклатуре и штрихкодам").font = FONT_TITLE
-    ws.cell(row=2, column=1, value=f"{_period_title(meta)} — за этот период продаж нет").font = FONT_SUBTITLE
-    ws.column_dimensions["A"].width = 60
-    return wb
+def _meta(report_type, start, end) -> dict:
+    return {"report_type": report_type, "start": start, "end": end, "generated_at": datetime.now()}
 
 
 def build_workbook(df: pd.DataFrame, *, report_type: str, start: date, end: date) -> Workbook:
-    """Собирает готовую книгу Excel по данным из data.get_sku_barcode_breakdown."""
-    meta = {
-        "report_type": report_type,
-        "start": start,
-        "end": end,
-        "generated_at": datetime.now(),
-    }
+    meta = _meta(report_type, start, end)
+    wb = Workbook()
+    wb.remove(wb.active)
 
     if df.empty:
-        return _build_empty_workbook(meta)
+        ws = wb.create_sheet("Детализация")
+        _sheet_top(ws, 6, "Детализация по номенклатуре и штрихкодам", meta)
+        ws.cell(row=6, column=1, value="За этот период продаж нет.").font = font(10, color=MUTED)
+        ws.column_dimensions["A"].width = 60
+        cards = []
+    else:
+        _build_detail_sheet(wb, df, meta)
+        _build_grouped_sheet(wb, df, meta, group_col="cat_name", sheet_title="По категориям",
+                             title="Продажи по категориям")
+        _build_grouped_sheet(wb, df, meta, group_col="manufacturer_name", sheet_title="По производителям",
+                             title="Продажи по производителям")
+        t = _sums(df)
+        ret_share = t["returns_amount"] / t["sales_amount"] if t["sales_amount"] else 0.0
+        cards = [
+            ("ВЫРУЧКА (ИТОГО), ₽", t["net_amount"], FMT_MONEY, _period_text(meta)),
+            ("ПРОДАНО, ШТ.", t["net_qty"], FMT_QTY, "за вычетом возвратов"),
+            ("ВОЗВРАТЫ, ₽", t["returns_amount"], FMT_MONEY, f"{ret_share:.1%} от продаж".replace(".", ",")),
+            ("ПОЗИЦИЙ", len(df), FMT_QTY, f"{df['item_id'].nunique()} SKU · {df['barcode'].nunique()} штрихкодов"),
+        ]
 
-    wb = Workbook()
-    _build_detail_sheet(wb, df, meta)
-    _build_grouped_sheet(
-        wb, df, meta,
-        group_col="cat_name", sheet_title="По категориям",
-        subtitle="Сгруппировано по категориям",
+    build_toc(
+        wb,
+        title="Продажи по номенклатуре",
+        subtitle="Разбивка по номенклатуре и штрихкодам",
+        params=_params(meta),
+        cards=cards,
+        sheets=[
+            ("Детализация", "Все позиции и штрихкоды по убыванию выручки"),
+            ("По категориям", "Позиции внутри категорий с подытогами; группы сворачиваются «−»"),
+            ("По производителям", "То же в разрезе производителей"),
+        ],
     )
-    _build_grouped_sheet(
-        wb, df, meta,
-        group_col="manufacturer_name", sheet_title="По производителям",
-        subtitle="Сгруппировано по производителям",
-    )
-    wb.active = 0
+    finalize(wb, ["Оглавление", "Детализация", "По категориям", "По производителям"])
     return wb

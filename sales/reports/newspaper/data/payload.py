@@ -50,6 +50,7 @@ from ..render.helpers import (
 )
 from .cash import get_cash_data, get_cash_ytd_data
 from .stocks import UNASSIGNED_LABEL, get_stocks_data
+from .turnover import get_turnover_data
 
 
 def _nbsp_calendar(calendar: dict) -> dict:
@@ -121,6 +122,34 @@ def _returns_payload(returns_data: dict) -> dict:
     }
 
 
+def _turnover_payload(t: dict) -> dict:
+    top = [
+        {
+            **row,
+            "qty_fmt": nbsp(fmt_qty(row["qty"])),
+            "turnover_days_fmt": nbsp(fmt_qty(row["turnover_days"])) if row["turnover_days"] else "—",
+            "days_since_fmt": nbsp(fmt_qty(row["days_since_receipt"])) if row["days_since_receipt"] is not None else "—",
+            "value_fmt": nbsp(fmt_money_short(row["value"])) if row["value"] is not None else "—",
+        }
+        for row in t["top"]
+    ]
+    days = t["company_turnover_days"]
+    return {
+        **t,
+        "top": top,
+        "company_turnover_days_fmt": nbsp(fmt_qty(days)) if days else "—",
+        "dead_units_fmt": nbsp(fmt_qty(t["dead_units"])),
+        "dead_share_fmt": f"{t['dead_share'] * 100:.0f}%",
+        "slow_units_fmt": nbsp(fmt_qty(t["slow_units"])),
+        "frozen_units_fmt": nbsp(fmt_qty(t["frozen_units"])),
+        "frozen_share_fmt": f"{t['frozen_share'] * 100:.0f}%",
+        "frozen_value_fmt": nbsp(fmt_money_short(t["frozen_value"])) if t["has_price"] else "",
+        "total_value_fmt": nbsp(fmt_money_short(t["total_value"])) if t["has_price"] else "",
+        "date_from_fmt": t["date_from"].strftime("%d.%m.%Y"),
+        "is_high_frozen": t["frozen_share"] >= 0.3,
+    }
+
+
 def build_report_payload(report_date) -> dict:
     cash_data = get_cash_data(report_date)
     # Важно: берём ВСЕ магазины из cash-отчёта, включая те, у которых нет
@@ -149,6 +178,8 @@ def build_report_payload(report_date) -> dict:
     cash_analytics = analyze_cash(cash_data)
     stocks_analytics = analyze_stocks(stocks_data)
     store_sections = build_store_sections(cash_data, stocks_data)
+
+    turnover = _turnover_payload(get_turnover_data(report_date))
 
     ytd_data = get_cash_ytd_data(report_date)
     ytd_analytics = analyze_cash_ytd(ytd_data)
@@ -284,6 +315,7 @@ def build_report_payload(report_date) -> dict:
             "analytics": stocks_analytics,
             "lead": stocks_lead,
         },
+        "turnover": turnover,
         "returns": returns_payload,
         "returns_lead": returns_lead,
         "stores": store_sections,

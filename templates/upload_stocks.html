@@ -37,6 +37,31 @@
     font-weight: 800;
   }
 
+  .stocks-message.error {
+    border-left-color: #a53a3a;
+    background: #fbf3f3;
+    color: #6d2424;
+  }
+
+  .stocks-message.error::before {
+    content: "!";
+    color: #a53a3a;
+  }
+
+  .stocks-card + .stocks-card {
+    margin-top: 26px;
+  }
+
+  .stocks-card__header--receipts {
+    background:
+      linear-gradient(
+        120deg,
+        #22303d 0%,
+        #2f4558 58%,
+        #3f5c73 100%
+      );
+  }
+
   /* ================================================================
      ОСНОВНОЙ БЛОК
      ================================================================ */
@@ -276,7 +301,7 @@
   {% if messages %}
     <div class="stocks-messages">
       {% for message in messages %}
-        <div class="stocks-message">
+        <div class="stocks-message {{ message.tags }}">
           {{ message }}
         </div>
       {% endfor %}
@@ -297,7 +322,7 @@
 
       <p class="stocks-card__description">
         Загрузите актуальный Excel-файл с остатками товаров.
-        
+        Приходы загружаются отдельно — в блоке ниже.
       </p>
     </div>
 
@@ -308,6 +333,7 @@
       class="stocks-form"
     >
       {% csrf_token %}
+      <input type="hidden" name="upload_kind" value="stocks">
 
       <label
         for="{{ form.stocks_file.id_for_label }}"
@@ -343,6 +369,73 @@
         >
           <span>↑</span>
           <span>Загрузить остатки</span>
+        </button>
+      </div>
+    </form>
+
+  </div>
+
+
+  <div class="stocks-card">
+
+    <div class="stocks-card__header stocks-card__header--receipts">
+      <div class="stocks-card__kicker">
+        Складской учёт
+      </div>
+
+      <h2 class="stocks-card__title">
+        Загрузка приходов товаров
+      </h2>
+
+      <p class="stocks-card__description">
+        Выгрузка приходов из 1С за любой период. Документы прихода
+        из файла заменяются целиком (по GUID прихода), поэтому
+        повторная загрузка и пересекающиеся периоды не дают дублей.
+      </p>
+    </div>
+
+    <form
+      method="post"
+      enctype="multipart/form-data"
+      class="stocks-form"
+    >
+      {% csrf_token %}
+      <input type="hidden" name="upload_kind" value="receipts">
+
+      <label
+        for="{{ receipts_form.receipts_file.id_for_label }}"
+        class="stocks-file-label"
+      >
+        Файл приходов
+      </label>
+
+      <span class="stocks-file-hint">
+        XLSX с колонками GUID_Прихода, Номенклатура, Склад, Номер прихода,
+        Дата прихода, Штрихкод, Приход. Колонка «Цена закупки» /
+        «Сумма закупки» подхватится автоматически, когда появится.
+      </span>
+
+      {{ receipts_form.receipts_file }}
+
+      {% if receipts_form.receipts_file.errors %}
+        <ul class="stocks-errors">
+          {% for error in receipts_form.receipts_file.errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      <div class="stocks-actions">
+        <p class="stocks-actions__note">
+          Приходы и остатки загружаются независимо друг от друга.
+        </p>
+
+        <button
+          type="submit"
+          class="stocks-submit"
+        >
+          <span>↑</span>
+          <span>Загрузить приходы</span>
         </button>
       </div>
     </form>

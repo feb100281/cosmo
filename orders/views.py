@@ -85,6 +85,7 @@ from .forms import (
     UploadForm,
     UploadAllOrdersForm,
     UploadStocksForm,
+    UploadReceiptsForm,
 )
 
 
@@ -180,59 +181,63 @@ def upload_cf_view(request):
 #     return render(request, "upload_all_orders.html", {"form": form})
 
 
+def _push_log(request, prefix, log):
+    for line in str(log or "").split(";"):
+        line = line.strip()
+        if line:
+            messages.success(request, f"{prefix}: {line}")
+
+
 def upload_all_orders_view(request):
+    """Файлы необязательны. Порядок: CF, продажи, заказы; витрина заказов — один раз в конце."""
     if request.method == "POST":
         form = UploadAllOrdersForm(request.POST, request.FILES)
 
         if form.is_valid():
-            orders_file = form.cleaned_data["orders_file"]
-            cf_file = form.cleaned_data["cf_file"]
-            sales_file = form.cleaned_data["sales_file"]
-
-            from utils.orders_updater import main as orders_main
-            from utils.orders_cf import main as cf_main
-            from utils.new_updater import main as sales_main
+            orders_file = form.cleaned_data.get("orders_file")
+            cf_file = form.cleaned_data.get("cf_file")
+            sales_file = form.cleaned_data.get("sales_file")
 
             has_error = False
+            loaded_any = False
 
-            # 1. Заказы
-            try:
-                orders_log = orders_main(orders_file)
-                if orders_log:
-                    for line in str(orders_log).split(";"):
-                        line = line.strip()
-                        if line:
-                            messages.success(request, f"Заказы: {line}")
-            except Exception as e:
-                has_error = True
-                messages.error(request, f"Ошибка загрузки заказов: {e}")
+            if cf_file:
+                from utils.orders_cf import main as cf_main
+                try:
+                    _push_log(request, "CF", cf_main(cf_file))
+                    loaded_any = True
+                except Exception as e:
+                    has_error = True
+                    messages.error(request, f"Ошибка загрузки CF: {e}")
 
-            # 2. CF
-            try:
-                cf_log = cf_main(cf_file)
-                if cf_log:
-                    for line in str(cf_log).split(";"):
-                        line = line.strip()
-                        if line:
-                            messages.success(request, f"CF: {line}")
-            except Exception as e:
-                has_error = True
-                messages.error(request, f"Ошибка загрузки CF: {e}")
+            if sales_file:
+                from utils.new_updater import main as sales_main
+                try:
+                    _push_log(request, "Продажи", sales_main(sales_file))
+                    loaded_any = True
+                except Exception as e:
+                    has_error = True
+                    messages.error(request, f"Ошибка загрузки продаж: {e}")
 
-            # 3. Продажи
-            try:
-                sales_log = sales_main(sales_file)
-                if sales_log:
-                    for line in str(sales_log).split(";"):
-                        line = line.strip()
-                        if line:
-                            messages.success(request, f"Продажи: {line}")
-            except Exception as e:
-                has_error = True
-                messages.error(request, f"Ошибка загрузки продаж: {e}")
+            if orders_file:
+                from utils.orders_updater import main as orders_main
+                try:
+                    _push_log(request, "Заказы", orders_main(orders_file, rebuild_mv=False))
+                    loaded_any = True
+                except Exception as e:
+                    has_error = True
+                    messages.error(request, f"Ошибка загрузки заказов: {e}")
+
+            if loaded_any:
+                from utils.orders_reporter import main as rebuild_orders_mv
+                try:
+                    _push_log(request, "Витрина заказов", rebuild_orders_mv())
+                except Exception as e:
+                    has_error = True
+                    messages.error(request, f"Ошибка пересборки витрины заказов: {e}")
 
             if not has_error:
-                messages.success(request, "Все файлы успешно обработаны.")
+                messages.success(request, "Все выбранные файлы успешно обработаны.")
 
             return redirect(request.path)
     else:
@@ -248,6 +253,31 @@ def upload_stocks_view(request):
     Загруженный Excel временно сохраняется на сервере,
     после чего запускается команда import_stocks.
     """
+
+    receipts_form = UploadReceiptsForm()
+
+    if request.method == "POST" and request.POST.get("upload_kind") == "receipts":
+        receipts_form = UploadReceiptsForm(request.POST, request.FILES)
+        if receipts_form.is_valid():
+            from utils.import_receipts import import_receipts
+
+            f = receipts_form.cleaned_data["receipts_file"]
+            try:
+                log = import_receipts(f)
+                for line in str(log).split(";"):
+                    line = line.strip()
+                    if line:
+                        messages.success(request, f"Приходы: {line}")
+                messages.success(request, f"Файл «{f.name}» обработан. Приходы загружены.")
+                return redirect(request.path)
+            except Exception as exc:
+                messages.error(request, f"Ошибка загрузки приходов: {exc}")
+
+        return render(
+            request,
+            "upload_stocks.html",
+            {"form": UploadStocksForm(), "receipts_form": receipts_form},
+        )
 
     if request.method == "POST":
         form = UploadStocksForm(
@@ -349,5 +379,6 @@ def upload_stocks_view(request):
         "upload_stocks.html",
         {
             "form": form,
+            "receipts_form": receipts_form,
         },
     )

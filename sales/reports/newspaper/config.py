@@ -89,3 +89,9 @@ PAGE_SIZE = "A4 landscape"
 PAGE_MARGIN = "10mm 12mm 14mm 12mm"
 
 MAX_INSIGHTS_ON_COVER = 4
+
+# Оборачиваемость остатков
+TURNOVER_WINDOW_DAYS = 180      # окно продаж для расчёта
+TURNOVER_NEW_RECEIPT_DAYS = 60  # партия моложе — не считается неликвидом
+TURNOVER_VERY_SLOW_DAYS = 365   # запаса больше чем на год
+TURNOVER_TOP_N = 5

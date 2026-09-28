@@ -2,7 +2,7 @@
 import pandas as pd
 import duckdb
 from duckdb import DuckDBPyConnection
-from .db_engine import get_duckdb_conn, get_mysql_conn, get_engine
+from .db_engine import column_collation, get_duckdb_conn, get_mysql_conn, get_engine
 from pprint import pprint
 from .orders_reporter import main as final_mv
 
@@ -134,14 +134,53 @@ def read_excel(file):
 
 
 
-def update_orders(conn: DuckDBPyConnection):
-    orders = conn.sql(
+# Загрузка за любой период: заказы из файла заменяются целиком по GUID_ЗК
+# (шапка, состав, raw_orders) в одной транзакции, остальные не меняются.
+
+RAW_ORDERS_COLUMNS = [
+    "order_id", "number", "date_from", "warehouse", "store", "manager",
+    "client", "oper_type", "fullname", "article", "barcode", "qty", "price",
+    "amount", "cancellation_reason", "update_at", "status",
+]
+
+
+def _df_rows(df: pd.DataFrame) -> list:
+    """NaN/NaT -> None."""
+    work = df.astype(object).where(pd.notna(df), None)
+    return [tuple(r) for r in work.itertuples(index=False, name=None)]
+
+
+def _refresh_dictionaries(conn: DuckDBPyConnection):
+    """Справочники после добавления новых товаров и штрихкодов."""
+    fullnames = conn.sql(
         """
-        SELECT DISTINCT
+        select min(id) as id, fullname
+        from mysql_db.djangodb.corporate_items
+        where fullname is not null
+        group by fullname
+        """
+    ).df()
+    conn.register("fullnames", fullnames)
+
+    barcodes = conn.sql(
+        """
+        select min(id) as id, barcode
+        from mysql_db.djangodb.corporate_barcode
+        where barcode is not null
+        group by barcode
+        """
+    ).df()
+    conn.register("barcodes", barcodes)
+
+
+def build_orders(conn: DuckDBPyConnection) -> pd.DataFrame:
+    return conn.sql(
+        """
+        SELECT
             "GUID_ЗК" AS id,
-            "Номер Заказа" || ' от ' || strftime("ДатаИВремяСоздания", '%d.%m.%Y')::TEXT AS fullname,
-            "Номер Заказа"::TEXT AS number,
-            "ДатаИВремяСоздания"::DATE AS date_from,
+            min("Номер Заказа") || ' от ' || strftime(min("ДатаИВремяСоздания"), '%d.%m.%Y')::TEXT AS fullname,
+            min("Номер Заказа")::TEXT AS number,
+            min("ДатаИВремяСоздания")::DATE AS date_from,
             MAX("Дата и время изменения")::DATE AS update_at,
             CASE
                 WHEN string_agg(DISTINCT "ПричинаОтмены", ', ' ORDER BY "ПричинаОтмены") IS NULL
@@ -156,51 +195,149 @@ def update_orders(conn: DuckDBPyConnection):
             string_agg(DISTINCT "Подразделение", ', ' ORDER BY "Подразделение") AS store
         FROM raw
         WHERE "GUID_ЗК" IS NOT NULL
-        GROUP BY
-            "GUID_ЗК",
-            "Номер Заказа",
-            "ДатаИВремяСоздания"
+        GROUP BY "GUID_ЗК"
         """
-    )
+    ).df()
 
-    rows = orders.fetchall()
-    conn.register("orders", orders)
 
-    if not rows:
-        return "No orders found"
+def build_orders_items(conn: DuckDBPyConnection) -> pd.DataFrame:
+    return conn.sql(
+        """
+        SELECT
+            COALESCE(t."Кол."::double,0) as qty,
+            COALESCE(t."Итоговая сумма"::double / NULLIF(t."Кол."::double, 0), 0) as price,
+            COALESCE(t."Итоговая сумма"::double,0) as amount,
+            i.id::bigint as item_id,
+            t."GUID_ЗК" as order_id,
+            b.id::bigint as barcode_id
+        from raw t
+        left join fullnames as i on i.fullname = t."РабочееНаименование"
+        left join barcodes as b on b.barcode = t."Штрихкод"
+        where t."GUID_ЗК" is not null
+        """
+    ).df()
+
+
+def build_raw_orders(conn: DuckDBPyConnection) -> pd.DataFrame:
+    return conn.sql("""
+        select
+            t."GUID_ЗК"::text as order_id,
+            t."Номер Заказа"::text as number,
+            t."ДатаИВремяСоздания"::date as date_from,
+            t."Склад"::text as warehouse,
+            t."Подразделение"::text as store,
+            COALESCE(t."Менеджер"::text,'Менеджер не указан') as manager,
+            COALESCE(t."Клиент"::text,'Клиент не указан') as client,
+            t."Тип операции"::text as oper_type,
+            COALESCE(t."РабочееНаименование"::text, 'Номенклатура не указана') as fullname,
+            COALESCE(t."Артикул"::text,'Нет арт.') as article,
+            COALESCE(t."Штрихкод"::text,'Нет ШК') as barcode,
+            COALESCE(t."Кол."::double,0) as qty,
+            COALESCE(
+                t."Итоговая сумма"::double / NULLIF(t."Кол."::double, 0),
+                0
+            ) as price,
+            COALESCE(t."Итоговая сумма"::double,0) as amount,
+            t."ПричинаОтмены"::text as cancellation_reason,
+            t."Дата и время изменения"::date as update_at,
+            t."Статус"::text as status
+        from raw t
+        where t."GUID_ЗК" is not null
+    """).df()[RAW_ORDERS_COLUMNS]
+
+
+def _table_exists(cur, table: str) -> bool:
+    cur.execute("SHOW TABLES LIKE %s", (table,))
+    return cur.fetchone() is not None
+
+
+def upsert_orders(conn: DuckDBPyConnection) -> str:
+    """Замена заказов из файла по GUID."""
+    orders = build_orders(conn)
+    if orders.empty:
+        return "В файле нет заказов с GUID_ЗК"
+
+    items = build_orders_items(conn)
+    raw_orders = build_raw_orders(conn)
+    order_ids = [(x,) for x in orders["id"].tolist()]
 
     mysql_conn = get_mysql_conn()
+    raw_orders_missing = False
 
     try:
         with mysql_conn.cursor() as cur:
-            cur.execute("SET FOREIGN_KEY_CHECKS = 0")
-            cur.execute("TRUNCATE TABLE orders_orderitem")
-            cur.execute("TRUNCATE TABLE orders_order")
-            cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+            cur.execute("DROP TEMPORARY TABLE IF EXISTS tmp_upload_order_ids")
+            cur.execute(
+                "CREATE TEMPORARY TABLE tmp_upload_order_ids "
+                "(id VARCHAR(36) NOT NULL PRIMARY KEY) "
+                "CHARACTER SET utf8mb4"
+            )
+            cur.executemany(
+                "INSERT IGNORE INTO tmp_upload_order_ids (id) VALUES (%s)",
+                order_ids,
+            )
+            c_order = column_collation(cur, "orders_order", "id")
+            c_item = column_collation(cur, "orders_orderitem", "order_id")
+
+            cur.execute(
+                "SELECT COUNT(*) FROM orders_order o "
+                f"JOIN tmp_upload_order_ids t ON t.id COLLATE {c_order} = o.id"
+            )
+            existed = cur.fetchone()[0]
+
+            cur.execute(
+                "DELETE oi FROM orders_orderitem oi "
+                f"JOIN tmp_upload_order_ids t ON t.id COLLATE {c_item} = oi.order_id"
+            )
+            cur.execute(
+                "DELETE o FROM orders_order o "
+                f"JOIN tmp_upload_order_ids t ON t.id COLLATE {c_order} = o.id"
+            )
+
+            if _table_exists(cur, "raw_orders"):
+                cur.execute(
+                    "DELETE r FROM raw_orders r "
+                    f"JOIN tmp_upload_order_ids t ON t.id COLLATE {column_collation(cur, 'raw_orders', 'order_id')} = r.order_id"
+                )
+            else:
+                raw_orders_missing = True
 
             cur.executemany(
                 """
                 INSERT INTO orders_order(
-                    id,
-                    fullname,
-                    number,
-                    date_from,
-                    update_at,
-                    is_cancelled,
-                    cancellation_reason,
-                    status,
-                    client,
-                    manager,
-                    oper_type,
-                    store
+                    id, fullname, number, date_from, update_at, is_cancelled,
+                    cancellation_reason, status, client, manager, oper_type, store
                 )
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """,
-                rows,
+                _df_rows(orders[[
+                    "id", "fullname", "number", "date_from", "update_at",
+                    "is_cancelled", "cancellation_reason", "status", "client",
+                    "manager", "oper_type", "store",
+                ]]),
             )
 
+            cur.executemany(
+                """
+                INSERT INTO orders_orderitem (
+                    qty, price, amount, item_id, order_id, barcode_id
+                )
+                VALUES (%s,%s,%s,%s,%s,%s)
+                """,
+                _df_rows(items[["qty", "price", "amount", "item_id", "order_id", "barcode_id"]]),
+            )
+
+            if not raw_orders_missing:
+                placeholders = ",".join(["%s"] * len(RAW_ORDERS_COLUMNS))
+                cur.executemany(
+                    f"INSERT INTO raw_orders ({','.join(RAW_ORDERS_COLUMNS)}) "
+                    f"VALUES ({placeholders})",
+                    _df_rows(raw_orders),
+                )
+
+            cur.execute("DROP TEMPORARY TABLE IF EXISTS tmp_upload_order_ids")
+
         mysql_conn.commit()
-        return "Orders перезаписаны"
 
     except Exception:
         mysql_conn.rollback()
@@ -208,6 +345,25 @@ def update_orders(conn: DuckDBPyConnection):
 
     finally:
         mysql_conn.close()
+
+    # первый запуск: raw_orders ещё нет
+    if raw_orders_missing:
+        engine = get_engine()
+        raw_orders.to_sql(
+            "raw_orders", con=engine, if_exists="append", index=False,
+            chunksize=5000, method="multi",
+        )
+
+    d_min = orders["date_from"].min()
+    d_max = orders["date_from"].max()
+    period = ""
+    if pd.notna(d_min) and pd.notna(d_max):
+        period = f" (даты создания {pd.Timestamp(d_min):%d.%m.%Y} – {pd.Timestamp(d_max):%d.%m.%Y})"
+
+    return (
+        f"Заказов в файле: {len(orders)}{period}: обновлено {existed}, новых {len(orders) - existed}; "
+        f"строк состава загружено: {len(items)}; остальные заказы в базе не тронуты"
+    )
 
 
 def update_items(conn: DuckDBPyConnection):
@@ -243,7 +399,6 @@ def update_items(conn: DuckDBPyConnection):
     if df.empty:
         return "Нет новых номенклатур для добавления"
 
-    mysql_conn = get_mysql_conn()
     rows = list(df.itertuples(index=False, name=None))
     l_items = ", ".join(df["fullname"].astype(str).tolist())
 
@@ -284,13 +439,13 @@ def update_barcodes(conn: DuckDBPyConnection):
     conn.register("barcodes", barcodes.df())
 
     new_barcodes = conn.sql(
-        """ 
-        select distinct 
-        "Штрихкод"::text as barcode             
+        """
+        select distinct
+        "Штрихкод"::text as barcode
         from raw
-        where "Штрихкод"::text not in (select barcode from barcodes) 
-        and "Штрихкод" is not null    
-        group by   barcode 
+        where "Штрихкод"::text not in (select barcode from barcodes)
+        and "Штрихкод" is not null
+        group by   barcode
         """
     )
 
@@ -299,55 +454,7 @@ def update_barcodes(conn: DuckDBPyConnection):
     if not rows:
         return "Нет новых баркодов для добавления"
 
-    else:
-        
-        rows = new_barcodes.fetchall()
-        l_stores = new_barcodes.df()
-        l_stores = l_stores["barcode"].tolist()
-        l_stores = ", ".join(l_stores)
-
-        mysql_conn = get_mysql_conn()
-
-        try:
-            with mysql_conn.cursor() as cur:
-                cur.executemany(
-                    """
-                    INSERT IGNORE INTO corporate_barcode (barcode)
-                    VALUES (%s)
-                    """,
-                    rows,
-                )
-
-            mysql_conn.commit()
-            return f"{len(rows)} баркодов было добавлено ({l_stores})"
-
-        except Exception:
-            mysql_conn.rollback()
-            raise
-
-        finally:
-            mysql_conn.close()
-
-
-def update_orders_items(conn: DuckDBPyConnection):
-
-    orders_items = conn.sql(
-        """ 
-        SELECT
-        COALESCE(t."Кол."::double,0) as qty,
-        COALESCE(t."Итоговая сумма"::double,0) / COALESCE(t."Кол."::double,1) as price,
-        COALESCE(t."Итоговая сумма"::double,0) as amount,
-        i.id::bigint as item_id,
-        t."GUID_ЗК" as order_id,
-        b.id::bigint as barcode_id
-        from raw t
-        left join fullnames as i on i.fullname = t."РабочееНаименование"
-        left join barcodes as b on b.barcode = t."Штрихкод"  
-        """
-    )
-    conn.register("orders_items", orders_items)
-
-    rows = orders_items.fetchall()
+    l_stores = ", ".join(new_barcodes.df()["barcode"].tolist())
 
     mysql_conn = get_mysql_conn()
 
@@ -355,21 +462,14 @@ def update_orders_items(conn: DuckDBPyConnection):
         with mysql_conn.cursor() as cur:
             cur.executemany(
                 """
-                INSERT INTO orders_orderitem (
-                    qty,
-                    price,
-                    amount,
-                    item_id,
-                    order_id,
-                    barcode_id                    
-                )
-                VALUES (%s,%s,%s,%s,%s,%s)
+                INSERT IGNORE INTO corporate_barcode (barcode)
+                VALUES (%s)
                 """,
                 rows,
             )
 
         mysql_conn.commit()
-        return "НОМЕНКЛАТУРЫ В ЗАКАЗАХ ОБНОВЛЕНЫ"
+        return f"{len(rows)} баркодов было добавлено ({l_stores})"
 
     except Exception:
         mysql_conn.rollback()
@@ -378,68 +478,20 @@ def update_orders_items(conn: DuckDBPyConnection):
     finally:
         mysql_conn.close()
 
-def create_raw_orders(conn: DuckDBPyConnection):
-    raw_orders = conn.sql(""" 
-        select
-            t."GUID_ЗК"::text as order_id,	
-            t."Номер Заказа"::text as number,
-            t."ДатаИВремяСоздания"::date as date_from,
-            t."Склад"::text as warehouse,
-            t."Подразделение"::text as store,
-            COALESCE(t."Менеджер"::text,'Менеджер не указан') as manager,
-            COALESCE(t."Клиент"::text,'Клиент не указан') as client,
-            t."Тип операции"::text as oper_type,
-            COALESCE(t."РабочееНаименование"::text, 'Номенклатура не указана') as fullname,
-            COALESCE(t."Артикул"::text,'Нет арт.') as article,
-            COALESCE(t."Штрихкод"::text,'Нет ШК') as barcode,
-            COALESCE(t."Кол."::double,0) as qty,	
-            COALESCE(
-                t."Итоговая сумма"::double / NULLIF(t."Кол."::double, 0),
-                0
-            ) as price,
-            COALESCE(t."Итоговая сумма"::double,0) as amount,  
-            t."ПричинаОтмены"::text as cancellation_reason,
-            t."Дата и время изменения"::date as update_at,
-            t."Статус"::text as status
-        from raw t
-    """).df()
 
-    engine = get_engine()
-
-    try:
-        raw_orders.to_sql(
-            "raw_orders",
-            con=engine,
-            if_exists="replace",
-            index=False,
-            chunksize=5000,
-            method="multi",
-        )
-        return "Таблица raw_orders обновлена"
-
-    finally:
-        engine.dispose()
-    
-def main(file):
+def main(file, rebuild_mv: bool = True):
     conn: DuckDBPyConnection = get_duckdb_conn()
     log = []
 
-    
     conn.register("raw", read_excel(file))
 
-    log.append(update_orders(conn))
     log.append(update_items(conn))
     log.append(update_barcodes(conn))
-    log.append(update_orders_items(conn))
-    create_raw_orders(conn)
+    _refresh_dictionaries(conn)
 
-    rep = final_mv()
-    a = "; \n".join(log)
+    log.append(upsert_orders(conn))
 
-    return a + rep
+    if rebuild_mv:
+        log.append(final_mv())
 
-    # finally:
-    #     conn.close()
-
-
-# print(main(file2))
+    return "; \n".join(log)

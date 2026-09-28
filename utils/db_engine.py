@@ -85,3 +85,14 @@ def get_engine():
     )
 
     return _ENGINE
+
+
+def column_collation(cur, table: str, column: str) -> str:
+    """Collation колонки; для сравнения с временной таблицей."""
+    cur.execute(
+        "SELECT COLLATION_NAME FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+        (table, column),
+    )
+    row = cur.fetchone()
+    return row[0] if row and row[0] else "utf8mb4_unicode_ci"

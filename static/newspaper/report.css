@@ -715,3 +715,11 @@ html, body {
 .ytd-store-table th.num, .ytd-store-table td.num {
   text-align: right;
 }
+
+
+/* Оборачиваемость (раздел остатков) */
+.turnover-block { margin-top: 6mm; padding-top: 4mm; border-top: 1px solid #d7ddd3; break-inside: avoid; }
+.subsection-title { font-size: 12pt; font-weight: 700; margin: 0 0 3mm; color: #1c2321; }
+.kpi-note { font-size: 7.5pt; color: #5b6b63; margin-top: 1mm; }
+.turnover-table { width: 100%; margin-top: 3mm; }
+.turnover-table .muted { color: #8c9188; font-size: 7.5pt; }

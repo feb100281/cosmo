@@ -337,6 +337,12 @@
       <div class="kpi-label">Активных SKU с остатком</div>
       <div class="kpi-value">{{ payload.stocks.sku_count_with_stock }}</div>
     </div>
+    {% if payload.turnover.has_price %}
+    <div class="kpi">
+      <div class="kpi-label">Остаток по закупке, без НДС</div>
+      <div class="kpi-value">{{ payload.turnover.total_value_fmt }}</div>
+    </div>
+    {% endif %}
   </div>
 
   <p class="lead-text">{{ payload.stocks.lead }}</p>
@@ -370,6 +376,67 @@
   <div class="table-caption table-caption-left">
     Активных SKU с остатком: {{ payload.stocks.sku_count_with_stock }}.
   </div>
+
+  {% with t=payload.turnover %}
+  <div class="turnover-block">
+    <h3 class="subsection-title">Оборачиваемость и неликвид</h3>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Оборачиваемость запаса</div>
+        <div class="kpi-value">{{ t.company_turnover_days_fmt }} дн.</div>
+      </div>
+      <div class="kpi kpi-border-negative">
+        <div class="kpi-label">Неликвид</div>
+        <div class="kpi-value kpi-negative">{{ t.dead_units_fmt }} шт.</div>
+        <div class="kpi-note">{{ t.dead_sku }} SKU · {{ t.dead_share_fmt }} остатка</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Запас больше чем на год</div>
+        <div class="kpi-value">{{ t.slow_units_fmt }} шт.</div>
+        <div class="kpi-note">{{ t.slow_sku }} SKU</div>
+      </div>
+      <div class="kpi {% if t.is_high_frozen %}kpi-border-negative{% endif %}">
+        <div class="kpi-label">«Заморожено» запаса</div>
+        <div class="kpi-value {% if t.is_high_frozen %}kpi-negative{% endif %}">{{ t.frozen_share_fmt }}</div>
+        <div class="kpi-note">{{ t.frozen_units_fmt }} шт.{% if t.has_price %} · {{ t.frozen_value_fmt }} по закупке{% endif %}</div>
+      </div>
+    </div>
+
+    {% if t.top %}
+    <table class="mini-table turnover-table">
+      <thead>
+        <tr>
+          <th>Топ-{{ t.top|length }} позиций, которые держат запас</th>
+          <th>Категория</th>
+          <th>Статус</th>
+          <th class="num">Остаток, шт.</th>
+          <th class="num">Дней с прихода</th>
+          {% if t.has_price %}<th class="num">По закупке</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in t.top %}
+        <tr>
+          <td>{{ row.name }}{% if row.article %} <span class="muted">· {{ row.article }}</span>{% endif %}</td>
+          <td>{{ row.cat_name }}</td>
+          <td class="{% if row.status == 'Неликвид' %}dev-negative{% endif %}">{{ row.status }}</td>
+          <td class="num">{{ row.qty_fmt }}</td>
+          <td class="num">{{ row.days_since_fmt }}</td>
+          {% if t.has_price %}<td class="num">{{ row.value_fmt }}</td>{% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    <div class="table-caption table-caption-left">
+      Продажи за {{ t.window_days }} дней с {{ t.date_from_fmt }}. Неликвид — остаток без продаж за этот срок
+      и последний приход старше 60 дней; «заморожено» — неликвид плюс запас больше чем на год.
+      {% if not t.has_receipts %}Приходы не загружены — дата прихода не учитывается.{% endif %}
+    </div>
+  </div>
+  {% endwith %}
 </section>
 
 <section class="section ytd-section">
