@@ -51,6 +51,7 @@ from ..render.helpers import (
 from .cash import get_cash_data, get_cash_ytd_data
 from .stocks import UNASSIGNED_LABEL, get_stocks_data
 from .turnover import get_turnover_data
+from ..config import SHOW_TURNOVER
 
 
 def _nbsp_calendar(calendar: dict) -> dict:
@@ -179,7 +180,10 @@ def build_report_payload(report_date) -> dict:
     stocks_analytics = analyze_stocks(stocks_data)
     store_sections = build_store_sections(cash_data, stocks_data)
 
-    turnover = _turnover_payload(get_turnover_data(report_date))
+    turnover = (
+        {**_turnover_payload(get_turnover_data(report_date)), "enabled": True}
+        if SHOW_TURNOVER else {"enabled": False, "has_price": False}
+    )
 
     ytd_data = get_cash_ytd_data(report_date)
     ytd_analytics = analyze_cash_ytd(ytd_data)

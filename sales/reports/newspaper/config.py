@@ -91,6 +91,7 @@ PAGE_MARGIN = "10mm 12mm 14mm 12mm"
 MAX_INSIGHTS_ON_COVER = 4
 
 # Оборачиваемость остатков
+SHOW_TURNOVER = False         # блок оборачиваемости в газете
 TURNOVER_WINDOW_DAYS = 180      # окно продаж для расчёта
 TURNOVER_NEW_RECEIPT_DAYS = 60  # партия моложе — не считается неликвидом
 TURNOVER_VERY_SLOW_DAYS = 365   # запаса больше чем на год

@@ -197,15 +197,14 @@ def read_receipts_file(file) -> pd.DataFrame:
 def assign_items(df: pd.DataFrame, cur) -> pd.DataFrame:
     from utils.import_stocks import normalize_key
 
-    cur.execute("SELECT id, fullname, guid FROM corporate_items")
+    from utils.item_match import item_map_from_rows
+
+    cur.execute("SELECT id, fullname, cat_id, manufacturer_id, guid FROM corporate_items")
     items = cur.fetchall()
 
-    by_name: dict[str, int] = {}
+    by_name = item_map_from_rows(r[:4] for r in items)
     by_guid: dict[str, int] = {}
-    for item_id, fullname, guid in items:
-        key = normalize_key(fullname)
-        if key and (key not in by_name or item_id < by_name[key]):
-            by_name[key] = item_id
+    for item_id, _, _, _, guid in items:
         if guid:
             g = str(guid).strip().lower()
             if g and (g not in by_guid or item_id < by_guid[g]):

@@ -377,6 +377,7 @@
     Активных SKU с остатком: {{ payload.stocks.sku_count_with_stock }}.
   </div>
 
+  {% if payload.turnover.enabled %}
   {% with t=payload.turnover %}
   <div class="turnover-block">
     <h3 class="subsection-title">Оборачиваемость и неликвид</h3>
@@ -437,6 +438,7 @@
     </div>
   </div>
   {% endwith %}
+  {% endif %}
 </section>
 
 <section class="section ytd-section">

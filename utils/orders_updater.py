@@ -266,39 +266,31 @@ def upsert_orders(conn: DuckDBPyConnection) -> str:
 
     try:
         with mysql_conn.cursor() as cur:
-            cur.execute("DROP TEMPORARY TABLE IF EXISTS tmp_upload_order_ids")
-            cur.execute(
-                "CREATE TEMPORARY TABLE tmp_upload_order_ids "
-                "(id VARCHAR(36) NOT NULL PRIMARY KEY) "
-                "CHARACTER SET utf8mb4"
-            )
-            cur.executemany(
-                "INSERT IGNORE INTO tmp_upload_order_ids (id) VALUES (%s)",
-                order_ids,
-            )
-            c_order = column_collation(cur, "orders_order", "id")
-            c_item = column_collation(cur, "orders_orderitem", "order_id")
+            # Для каждой таблицы — свой список GUID в её collation:
+            # сравнение без COLLATE, индексы используются с обеих сторон.
+            def ids_table(name: str, table: str, column: str) -> str:
+                coll = column_collation(cur, table, column)
+                cur.execute(f"DROP TEMPORARY TABLE IF EXISTS {name}")
+                cur.execute(
+                    f"CREATE TEMPORARY TABLE {name} (id VARCHAR(64) NOT NULL PRIMARY KEY) "
+                    f"CHARACTER SET {coll.split('_')[0]} COLLATE {coll}"
+                )
+                cur.executemany(f"INSERT IGNORE INTO {name} (id) VALUES (%s)", order_ids)
+                return name
 
-            cur.execute(
-                "SELECT COUNT(*) FROM orders_order o "
-                f"JOIN tmp_upload_order_ids t ON t.id COLLATE {c_order} = o.id"
-            )
+            t_order = ids_table("tmp_ids_order", "orders_order", "id")
+            t_item = ids_table("tmp_ids_orderitem", "orders_orderitem", "order_id")
+
+            cur.execute(f"SELECT COUNT(*) FROM {t_order} t JOIN orders_order o ON o.id = t.id")
             existed = cur.fetchone()[0]
 
-            cur.execute(
-                "DELETE oi FROM orders_orderitem oi "
-                f"JOIN tmp_upload_order_ids t ON t.id COLLATE {c_item} = oi.order_id"
-            )
-            cur.execute(
-                "DELETE o FROM orders_order o "
-                f"JOIN tmp_upload_order_ids t ON t.id COLLATE {c_order} = o.id"
-            )
+            cur.execute(f"DELETE oi FROM {t_item} t STRAIGHT_JOIN orders_orderitem oi ON oi.order_id = t.id")
+            cur.execute(f"DELETE o FROM {t_order} t STRAIGHT_JOIN orders_order o ON o.id = t.id")
 
             if _table_exists(cur, "raw_orders"):
-                cur.execute(
-                    "DELETE r FROM raw_orders r "
-                    f"JOIN tmp_upload_order_ids t ON t.id COLLATE {column_collation(cur, 'raw_orders', 'order_id')} = r.order_id"
-                )
+                # У raw_orders нет индекса по order_id: один проход по таблице с поиском по PK списка
+                t_raw = ids_table("tmp_ids_raw", "raw_orders", "order_id")
+                cur.execute(f"DELETE r FROM raw_orders r STRAIGHT_JOIN {t_raw} t ON t.id = r.order_id")
             else:
                 raw_orders_missing = True
 

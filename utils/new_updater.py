@@ -5,6 +5,7 @@ from duckdb import DuckDBPyConnection
 from .db_engine import get_duckdb_conn, get_mysql_conn
 from pprint import pprint
 from .orders_reporter import main as rebuild_orders_summary
+from .item_match import ITEMS_SQL, canonical_items, normalize_key
 
 
 file = '/Users/daria/Desktop/2026-04-15/Sales_2026-04-15.xlsx'
@@ -47,7 +48,21 @@ def read_excel(file):
     )
     df["Количество"] = df["Количество"].astype(float)
     df["Выручка"] = df["Выручка"].astype(float)
+    df["_key"] = df["Номенклатура"].map(normalize_key)
     return df
+
+
+def register_items(conn: DuckDBPyConnection) -> None:
+    """Актуальный справочник key → id в DuckDB (перечитывается после вставок)."""
+    mysql_conn = get_mysql_conn()
+    try:
+        with mysql_conn.cursor() as cur:
+            cur.execute(ITEMS_SQL)
+            rows = cur.fetchall()
+    finally:
+        mysql_conn.close()
+    items = pd.DataFrame(list(rows), columns=["id", "fullname", "cat_id", "manufacturer_id"])
+    conn.register("items", canonical_items(items))
 
 
 # # Обновление продаж
@@ -160,7 +175,7 @@ def update_sales(conn: DuckDBPyConnection):
         t."Характеристика"::text as spec,
         t."УИД"::text as order_guid
         FROM raw t
-        left join items as i on i.fullname = t."Номенклатура"
+        left join items as i on i.key = t._key
         left join stores as s on LOWER(s.name) = LOWER(t."Подразделение")
         left join agents as a on a.name = t."Агент"
         left join managers as m on m.name = t."Менеджер"
@@ -172,6 +187,17 @@ def update_sales(conn: DuckDBPyConnection):
     conn.register("sales", sales.df())
 
     rows = sales.fetchall()
+    unmatched = [
+        r[0]
+        for r in conn.sql(
+            """
+            select distinct t."Номенклатура"
+            from raw t
+            left join items i on i.key = t._key
+            where i.id is null and t."Номенклатура" is not null
+            """
+        ).fetchall()
+    ]
     mysql_conn = get_mysql_conn()
 
     try:
@@ -209,7 +235,10 @@ def update_sales(conn: DuckDBPyConnection):
             )
 
         mysql_conn.commit()
-        return f"добавлена реализация с {min_date} по {max_date}"
+        msg = f"добавлена реализация с {min_date} по {max_date}"
+        if unmatched:
+            msg += f"; не сопоставлено номенклатур: {len(unmatched)} ({', '.join(unmatched[:20])})"
+        return msg
 
     except Exception:
         mysql_conn.rollback()
@@ -221,14 +250,7 @@ def update_sales(conn: DuckDBPyConnection):
 
 # Обновление справочника номенклатур
 def update_items(conn: DuckDBPyConnection):
-    fullnames = conn.sql(
-        """
-        select distinct id, fullname
-        from mysql_db.djangodb.corporate_items
-    """
-    )
-
-    conn.register("items", fullnames.df())
+    register_items(conn)
 
     new_items = conn.sql(
         """
@@ -245,9 +267,8 @@ def update_items(conn: DuckDBPyConnection):
         from raw t
         left join brands as b on b.name = t."Марка (бренд)"
         left join manu as m on m.name = t."Производитель"
-        where t."Номенклатура" not in (
-            select distinct fullname from fullnames
-        )
+        where t._key not in (select key from items)
+          and t._key <> ''
           and t."Номенклатура" is not null
         group by
             t."Номенклатура",
@@ -262,6 +283,9 @@ def update_items(conn: DuckDBPyConnection):
     )
 
     df = new_items.df()
+    if not df.empty:
+        keys = df["fullname"].map(normalize_key)
+        df = df[~keys.duplicated()].reset_index(drop=True)
 
     if df.empty:
         return "Нет новых номенклатур для добавления"
@@ -401,6 +425,66 @@ def update_manufacturer(conn: DuckDBPyConnection):
             mysql_conn.close()
 
 
+def update_items_attrs(conn: DuckDBPyConnection):
+    """Дозаполняет пустые поля карточек, созданных без файла продаж (например, из остатков)."""
+    rows = conn.sql(
+        """
+        SELECT
+            any_value(t."ID товара")::text,
+            any_value(t."Группа номенклатуры")::text,
+            any_value(t."Вид номенклатуры")::text,
+            any_value(t."Артикул")::text,
+            any_value(b.id)::bigint,
+            i.id::bigint
+        FROM raw t
+        JOIN items i ON i.key = t._key
+        LEFT JOIN brands b ON b.name = t."Марка (бренд)"
+        GROUP BY i.id
+        """
+    ).fetchall()
+    if not rows:
+        return "Нет карточек для дозаполнения"
+
+    mysql_conn = get_mysql_conn()
+    try:
+        with mysql_conn.cursor() as cur:
+            # Пакетно через временную таблицу: один UPDATE вместо запроса на каждую карточку
+            cur.execute("DROP TEMPORARY TABLE IF EXISTS tmp_items_attrs")
+            cur.execute(
+                """
+                CREATE TEMPORARY TABLE tmp_items_attrs (
+                    im_id VARCHAR(200), onec_cat VARCHAR(200), onec_subcat VARCHAR(200),
+                    article VARCHAR(250), brend_id BIGINT, id BIGINT PRIMARY KEY
+                )
+                """
+            )
+            cur.executemany(
+                "INSERT IGNORE INTO tmp_items_attrs VALUES (%s,%s,%s,%s,%s,%s)",
+                rows,
+            )
+            cur.execute(
+                """
+                UPDATE corporate_items i
+                JOIN tmp_items_attrs t ON t.id = i.id
+                SET i.im_id = COALESCE(i.im_id, t.im_id),
+                    i.onec_cat = COALESCE(i.onec_cat, t.onec_cat),
+                    i.onec_subcat = COALESCE(i.onec_subcat, t.onec_subcat),
+                    i.article = COALESCE(i.article, t.article),
+                    i.brend_id = COALESCE(i.brend_id, t.brend_id)
+                WHERE i.im_id IS NULL OR i.onec_cat IS NULL OR i.onec_subcat IS NULL
+                   OR i.article IS NULL OR i.brend_id IS NULL
+                """
+            )
+            changed = cur.rowcount
+        mysql_conn.commit()
+        return f"Карточки дозаполнены: {changed}"
+    except Exception:
+        mysql_conn.rollback()
+        raise
+    finally:
+        mysql_conn.close()
+
+
 def update_items_manufacturer(conn: DuckDBPyConnection):
     # обновляем список производителей уже после INSERT новых производителей
     manu = conn.sql(
@@ -418,7 +502,7 @@ def update_items_manufacturer(conn: DuckDBPyConnection):
             m.id::bigint as manufacturer_id
         FROM raw t
         JOIN items i 
-            ON i.fullname = t."Номенклатура"
+            ON i.key = t._key
         JOIN manu m 
             ON m.name = t."Производитель"
         WHERE t."Производитель" IS NOT NULL
@@ -433,14 +517,18 @@ def update_items_manufacturer(conn: DuckDBPyConnection):
 
     try:
         with mysql_conn.cursor() as cur:
-            cur.executemany(
+            cur.execute("DROP TEMPORARY TABLE IF EXISTS tmp_items_manu")
+            cur.execute(
+                "CREATE TEMPORARY TABLE tmp_items_manu (id BIGINT PRIMARY KEY, manufacturer_id BIGINT)"
+            )
+            cur.executemany("INSERT IGNORE INTO tmp_items_manu VALUES (%s,%s)", rows)
+            cur.execute(
                 """
-                UPDATE corporate_items
-                SET manufacturer_id = %s
-                WHERE id = %s
-                  AND manufacturer_id IS NULL
-                """,
-                [(manufacturer_id, item_id) for item_id, manufacturer_id in rows],
+                UPDATE corporate_items i
+                JOIN tmp_items_manu t ON t.id = i.id
+                SET i.manufacturer_id = t.manufacturer_id
+                WHERE i.manufacturer_id IS NULL
+                """
             )
 
         mysql_conn.commit()
@@ -732,7 +820,7 @@ def m2m_update(conn: DuckDBPyConnection):
         i.id as items_id,
         c.id as itemcollections_id
         from raw t
-        join items as i on i.fullname = t."Номенклатура"
+        join items as i on i.key = t._key
         join collections as c on c.name = t."Коллекция"
                 
         """
@@ -1070,39 +1158,60 @@ def update_sales_with_client_orders():
 
 
 # Запускаем халабуду
+import time as _time
+from datetime import datetime as _dt
+
+
+def _log(msg: str) -> None:
+    print(f"[sales {_dt.now():%H:%M:%S}] {msg}", flush=True)
+
+
+def _step(name, fn, *args):
+    """Выполняет шаг загрузки и печатает его длительность."""
+    _log(f"→ {name}")
+    t0 = _time.monotonic()
+    result = fn(*args)
+    _log(f"✓ {name} ({_time.monotonic() - t0:.1f} c)")
+    return result
+
+
 def main(file):
     conn: DuckDBPyConnection = get_duckdb_conn()
     log = []
 
     
+    _log(f"Чтение файла {file}")
     conn.register("raw", read_excel(file))
+    _log(f"Строк в файле: {conn.sql('select count(*) from raw').fetchone()[0]}")
 
-    log.append(update_brand(conn))
-    log.append(update_manufacturer(conn))
-    log.append(update_collections(conn))
-    log.append(update_managers(conn))
-    log.append(update_agents(conn))
-    log.append(update_stores(conn))
-    log.append(update_barcodes(conn))
-    log.append(update_items(conn))
-    log.append(update_items_manufacturer(conn))
+    log.append(_step("update_brand", update_brand, conn))
+    log.append(_step("update_manufacturer", update_manufacturer, conn))
+    log.append(_step("update_collections", update_collections, conn))
+    log.append(_step("update_managers", update_managers, conn))
+    log.append(_step("update_agents", update_agents, conn))
+    log.append(_step("update_stores", update_stores, conn))
+    log.append(_step("update_barcodes", update_barcodes, conn))
+    log.append(_step("update_items", update_items, conn))
+    _step("register_items", register_items, conn)
+    log.append(_step("update_items_manufacturer", update_items_manufacturer, conn))
+    log.append(_step("update_items_attrs", update_items_attrs, conn))
 
     # 2. Основная загрузка продаж
-    log.append(update_sales(conn))
-    log.append(m2m_update(conn))
+    log.append(_step("update_sales", update_sales, conn))
+    log.append(_step("m2m_update", m2m_update, conn))
 
     # 3. Обновление заказов
     print("Продажи загружены. Обновляем заказы...")
-    log.append(update_sales_with_client_orders())
-    log.append(update_salesorders())
+    log.append(_step("update_sales_with_client_orders", update_sales_with_client_orders))
+    log.append(_step("update_salesorders", update_salesorders))
 
     # 4. Перестройка витрин
     print("Заказы обновлены. Перестраиваем витрины...")
-    log.append(refresh_mv_daily_sales())
-    log.append(update_mv_orders())
+    log.append(_step("refresh_mv_daily_sales", refresh_mv_daily_sales))
+    log.append(_step("update_mv_orders", update_mv_orders))
 
     print("Перестраиваем mv_orders_summary_table...")
-    log.append(rebuild_orders_summary())
+    log.append(_step("rebuild_orders_summary", rebuild_orders_summary))
 
     return "; \n".join(log)
 

@@ -735,6 +735,11 @@ from sqlalchemy.types import BigInteger, Date, Text
 
 from conns import get_engine
 
+try:
+    from utils.item_match import item_map
+except ImportError:
+    from item_match import item_map
+
 
 load_dotenv()
 
@@ -801,7 +806,9 @@ def get_items() -> pd.DataFrame:
         """
         SELECT
             id,
-            fullname
+            fullname,
+            cat_id,
+            manufacturer_id
         FROM corporate_items
         """,
         engine,
@@ -809,31 +816,8 @@ def get_items() -> pd.DataFrame:
 
 
 def build_item_map(items: pd.DataFrame) -> dict[str, int]:
-    """
-    normalized fullname -> item_id.
-
-    Если исторически есть несколько ID для одного нормализованного fullname,
-    используем минимальный ID — самый старый товар.
-    """
-    if items.empty:
-        return {}
-
-    work = items[["id", "fullname"]].copy()
-
-    work["_key"] = work["fullname"].map(normalize_key)
-    work["id"] = pd.to_numeric(work["id"], errors="coerce")
-
-    work = work.dropna(subset=["id"])
-    work = work[work["_key"] != ""].copy()
-
-    work["id"] = work["id"].astype(int)
-
-    mapping = (
-        work.groupby("_key", as_index=False)
-        .agg(id=("id", "min"))
-    )
-
-    return dict(zip(mapping["_key"], mapping["id"]))
+    """normalized fullname -> item_id (общее правило из utils.item_match)."""
+    return item_map(items)
 
 
 def assign_item_ids(df: pd.DataFrame) -> pd.DataFrame:
