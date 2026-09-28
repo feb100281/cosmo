@@ -540,7 +540,24 @@ class SubCategoryInline(admin.StackedInline):
 
 
 class AssignCategoryForm(forms.Form):
-    category = forms.ModelChoiceField(queryset=CatTree.objects.all(), label="Категория")
+    category = forms.ModelChoiceField(
+        queryset=CatTree.objects.filter(parent__isnull=False).order_by("name"),
+        label="Категория",
+    )
+    subcat = forms.ModelChoiceField(
+        queryset=SubCategory.objects.select_related("category").order_by("name"),
+        label="Подкатегория",
+        required=False,
+        empty_label="— без подкатегории —",
+    )
+
+    def clean(self):
+        data = super().clean()
+        cat, sub = data.get("category"), data.get("subcat")
+        if cat and sub and sub.category_id != cat.id:
+            self.add_error("subcat", "Подкатегория не относится к выбранной категории")
+        return data
+
     class Media:
         css = {"all": ("css/admin_overrides.css",)}
 
@@ -712,21 +729,47 @@ class ItemsAdmin(admin.ModelAdmin):
         if 'apply' in request.POST:
             form = AssignCategoryForm(request.POST)
             if form.is_valid():
-                category = form.cleaned_data['category']
-                updated = queryset.update(cat=category)
-                self.message_user(request, f"Категория '{category}' назначена для {updated} объектов.")
+                category = form.cleaned_data["category"]
+                subcat = form.cleaned_data.get("subcat")
+                updated = queryset.update(cat=category, subcat=subcat)
+                msg = f"Категория «{category}»"
+                msg += f", подкатегория «{subcat}»" if subcat else ", без подкатегории"
+                self.message_user(request, f"{msg} назначены для {updated} номенклатур.")
                 return redirect(request.get_full_path())
         else:
             form = AssignCategoryForm()
 
-        return render(request, 'admin/corporate/items/assign_category.html', context={
-            'items': queryset,
-            'form': form,
-            'title': 'Назначить категорию',
-            'action_checkbox_name': admin.helpers.ACTION_CHECKBOX_NAME,
+        # Подкатегории по категориям — для фильтрации списка в форме
+        subcats = defaultdict(list)
+        for sc in SubCategory.objects.order_by("name").values("id", "name", "category_id"):
+            subcats[str(sc["category_id"])].append({"id": sc["id"], "name": sc["name"]})
+
+        # Категории, сгруппированные по группе верхнего уровня
+        groups = defaultdict(list)
+        for c in CatTree.objects.filter(parent__isnull=False).select_related("parent").order_by("name"):
+            root = c.parent.name if c.parent else "Прочее"
+            groups[root].append({"id": c.id, "name": c.name, "subs": len(subcats.get(str(c.id), []))})
+        cat_groups = [{"root": k, "cats": v} for k, v in sorted(groups.items())]
+
+        post_cat = request.POST.get("category") or ""
+        post_sub = request.POST.get("subcat") or ""
+
+        return render(request, "admin/corporate/items/assign_category.html", context={
+            **self.admin_site.each_context(request),
+            "items": queryset,
+            "items_count": queryset.count(),
+            "items_preview": queryset.select_related("cat", "subcat")[:50],
+            "cat_groups": cat_groups,
+            "post_cat": post_cat,
+            "post_sub": post_sub,
+            "form": form,
+            "subcats_map": dict(subcats),
+            "title": "Назначить категорию и подкатегорию",
+            "opts": self.model._meta,
+            "action_checkbox_name": admin.helpers.ACTION_CHECKBOX_NAME,
         })
 
-    assign_category.short_description = "Назначить категорию"
+    assign_category.short_description = "Назначить категорию и подкатегорию"
 
     
     def get_urls(self):

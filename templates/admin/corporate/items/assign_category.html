@@ -1,15 +1,222 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
+{% load i18n l10n %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:corporate_items_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
 
 {% block content %}
-  <h1>{{ title }}</h1>
-  <form method="post">{% csrf_token %}
-    {{ form.as_p }}
+<style>
+  .ac { --ac-accent: #2F6656; --ac-accent-2: #3D7A67; --ac-soft: #E7F1ED;
+        --ac-border: var(--hairline-color, #e3e3e3); --ac-muted: var(--body-quiet-color, #7a7a7a);
+        --ac-bg: var(--body-bg, #fff); --ac-bg-2: var(--darkened-bg, #f7f7f7); --ac-text: var(--body-fg, #1f1f1f);
+        max-width: 1180px; color: var(--ac-text); }
+  @media (prefers-color-scheme: dark) { .ac { --ac-soft: rgba(61,122,103,.22); } }
+  html[data-theme="dark"] .ac { --ac-soft: rgba(61,122,103,.22); }
+
+  .ac-head { display: flex; align-items: center; gap: 14px; margin: 4px 0 18px; }
+  .ac-head h1 { margin: 0; font-size: 22px; font-weight: 700; }
+  .ac-badge { background: var(--ac-accent); color: #fff; padding: 4px 10px; font-size: 12px; font-weight: 600; }
+  .ac-sub { color: var(--ac-muted); font-size: 13px; margin-top: 2px; }
+
+  .ac-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 18px; }
+  @media (max-width: 1000px) { .ac-grid { grid-template-columns: 1fr; } }
+
+  .ac-card { border: 1px solid var(--ac-border); border-top: 3px solid var(--ac-accent); background: var(--ac-bg); padding: 16px 18px; }
+  .ac-step { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+  .ac-step b { display: inline-grid; place-items: center; width: 22px; height: 22px; background: var(--ac-accent);
+               color: #fff; font-size: 12px; border-radius: 50%; }
+  .ac-step span { font-weight: 700; font-size: 14px; }
+  .ac-step small { color: var(--ac-muted); margin-left: auto; font-size: 12px; }
+
+  .ac-search { width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--ac-border);
+               background: var(--ac-bg); color: var(--ac-text); font-size: 14px; margin-bottom: 10px; }
+  .ac-search:focus { outline: 2px solid var(--ac-accent-2); outline-offset: -1px; }
+
+  .ac-cats { max-height: 360px; overflow-y: auto; border: 1px solid var(--ac-border); }
+  .ac-group { padding: 8px 12px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+              color: var(--ac-muted); background: var(--ac-bg-2); position: sticky; top: 0; z-index: 1; }
+  .ac-cat { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer;
+            border-top: 1px solid var(--ac-border); font-size: 14px; }
+  .ac-cat:hover { background: var(--ac-soft); }
+  .ac-cat input { display: none; }
+  .ac-cat .dot { width: 14px; height: 14px; border: 2px solid var(--ac-border); border-radius: 50%; flex: none; }
+  .ac-cat .cnt { margin-left: auto; color: var(--ac-muted); font-size: 12px; }
+  .ac-cat.is-on { background: var(--ac-soft); font-weight: 600; }
+  .ac-cat.is-on .dot { border-color: var(--ac-accent); background: radial-gradient(var(--ac-accent) 45%, transparent 50%); }
+  .ac-empty { padding: 14px; color: var(--ac-muted); font-size: 13px; }
+
+  .ac-chips { display: flex; flex-wrap: wrap; gap: 8px; min-height: 36px; }
+  .ac-chip { border: 1px solid var(--ac-border); padding: 7px 12px; cursor: pointer; font-size: 13px;
+             background: var(--ac-bg); color: var(--ac-text); user-select: none; }
+  .ac-chip:hover { border-color: var(--ac-accent-2); }
+  .ac-chip.is-on { background: var(--ac-accent); border-color: var(--ac-accent); color: #fff; }
+  .ac-chip.is-none { border-style: dashed; }
+  .ac-hint { color: var(--ac-muted); font-size: 13px; }
+
+  .ac-items { max-height: 470px; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+  .ac-items li { padding: 8px 0; border-top: 1px solid var(--ac-border); font-size: 13px; }
+  .ac-items li:first-child { border-top: 0; }
+  .ac-items .now { display: block; color: var(--ac-muted); font-size: 12px; margin-top: 2px; }
+  .ac-more { color: var(--ac-muted); font-size: 12px; padding-top: 8px; }
+
+  .ac-bar { position: sticky; bottom: 0; margin-top: 18px; padding: 12px 18px; display: flex; align-items: center; gap: 14px;
+            border: 1px solid var(--ac-border); border-left: 4px solid var(--ac-accent); background: var(--ac-bg);
+            box-shadow: 0 -4px 14px rgba(0,0,0,.06); }
+  .ac-result { font-size: 14px; }
+  .ac-result .lbl { color: var(--ac-muted); margin-right: 6px; }
+  .ac-result .path { font-weight: 700; color: var(--ac-accent); }
+  .ac-bar .spacer { flex: 1; }
+  .ac-btn { background: var(--ac-accent); color: #fff; border: 0; padding: 10px 22px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .ac-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .ac-btn:not(:disabled):hover { background: var(--ac-accent-2); }
+  .ac-cancel { color: var(--ac-muted); text-decoration: none; font-size: 14px; }
+  .ac-err { color: #ba2121; font-size: 13px; margin: 0 0 12px; }
+</style>
+
+<div class="ac">
+  <div class="ac-head">
+    <div>
+      <h1>{{ title }}</h1>
+      <div class="ac-sub">Выберите категорию, затем подкатегорию из её списка. Подкатегория у выбранных номенклатур будет перезаписана.</div>
+    </div>
+    <span class="ac-badge">{{ items_count }} ном.</span>
+  </div>
+
+  {% if form.errors %}
+    <div class="ac-err">
+      {% for field, errs in form.errors.items %}{% for e in errs %}{{ e }}<br>{% endfor %}{% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" id="ac-form">{% csrf_token %}
+    <div class="ac-grid">
+      <div style="display:flex; flex-direction:column; gap:18px;">
+        <div class="ac-card">
+          <div class="ac-step"><b>1</b><span>Категория</span><small id="ac-cat-count"></small></div>
+          <input type="search" class="ac-search" id="ac-search" placeholder="Поиск категории…" autocomplete="off">
+          <div class="ac-cats" id="ac-cats">
+            {% for g in cat_groups %}
+              <div class="ac-group" data-group>{{ g.root }}</div>
+              {% for c in g.cats %}
+                <label class="ac-cat" data-name="{{ c.name|lower }} {{ g.root|lower }}">
+                  <input type="radio" name="category" value="{{ c.id|unlocalize }}" {% if post_cat == c.id|unlocalize|stringformat:"s" %}checked{% endif %}>
+                  <span class="dot"></span>
+                  <span>{{ c.name }}</span>
+                  <span class="cnt">{% if c.subs %}{{ c.subs }} подкат.{% else %}—{% endif %}</span>
+                </label>
+              {% endfor %}
+            {% endfor %}
+            <div class="ac-empty" id="ac-empty" hidden>Ничего не найдено</div>
+          </div>
+        </div>
+
+        <div class="ac-card">
+          <div class="ac-step"><b>2</b><span>Подкатегория</span></div>
+          <input type="hidden" name="subcat" id="ac-subcat" value="{{ post_sub }}">
+          <div class="ac-chips" id="ac-chips"><span class="ac-hint">Сначала выберите категорию</span></div>
+        </div>
+      </div>
+
+      <div class="ac-card">
+        <div class="ac-step"><b>✓</b><span>Выбранные номенклатуры</span><small>{{ items_count }}</small></div>
+        <ul class="ac-items">
+          {% for obj in items_preview %}
+            <li>{{ obj.fullname }}
+              <span class="now">сейчас: {{ obj.cat.name|default:"без категории" }}{% if obj.subcat %} › {{ obj.subcat.name }}{% endif %}</span>
+            </li>
+          {% endfor %}
+        </ul>
+        {% if items_count > 50 %}<div class="ac-more">… и ещё {{ items_count|add:"-50" }}</div>{% endif %}
+      </div>
+    </div>
+
     {% for obj in items %}
-      <input type="hidden" name="_selected_action" value="{{ obj.pk }}">
+      <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk|unlocalize }}">
     {% endfor %}
     <input type="hidden" name="action" value="assign_category">
     <input type="hidden" name="apply" value="1">
-    <button type="submit" class="default">Применить</button>
+
+    <div class="ac-bar">
+      <div class="ac-result"><span class="lbl">Будет назначено:</span><span class="path" id="ac-path">—</span></div>
+      <div class="spacer"></div>
+      <a href="{% url 'admin:corporate_items_changelist' %}" class="ac-cancel">Отмена</a>
+      <button type="submit" class="ac-btn" id="ac-apply" disabled>Применить к {{ items_count }}</button>
+    </div>
   </form>
+</div>
+
+{{ subcats_map|json_script:"subcats-map" }}
+<script>
+(function () {
+  const map = JSON.parse(document.getElementById("subcats-map").textContent);
+  const cats = Array.from(document.querySelectorAll(".ac-cat"));
+  const groups = Array.from(document.querySelectorAll("[data-group]"));
+  const search = document.getElementById("ac-search");
+  const chips = document.getElementById("ac-chips");
+  const subInput = document.getElementById("ac-subcat");
+  const path = document.getElementById("ac-path");
+  const apply = document.getElementById("ac-apply");
+  const empty = document.getElementById("ac-empty");
+  document.getElementById("ac-cat-count").textContent = cats.length + " категорий";
+
+  const checked = () => cats.find(l => l.querySelector("input").checked);
+
+  function renderChips() {
+    const cur = checked();
+    chips.innerHTML = "";
+    if (!cur) { chips.innerHTML = '<span class="ac-hint">Сначала выберите категорию</span>'; update(); return; }
+    const list = map[cur.querySelector("input").value] || [];
+    if (!list.some(s => String(s.id) === subInput.value)) subInput.value = "";
+    const add = (id, name, extra) => {
+      const b = document.createElement("span");
+      b.className = "ac-chip" + (extra || "") + (String(id) === subInput.value ? " is-on" : "");
+      b.textContent = name;
+      b.onclick = () => { subInput.value = String(id); renderChips(); };
+      chips.appendChild(b);
+    };
+    add("", "Без подкатегории", " is-none");
+    list.forEach(s => add(s.id, s.name));
+    if (!list.length) {
+      const h = document.createElement("span");
+      h.className = "ac-hint"; h.textContent = "У этой категории нет подкатегорий";
+      chips.appendChild(h);
+    }
+    update();
+  }
+
+  function update() {
+    cats.forEach(l => l.classList.toggle("is-on", l.querySelector("input").checked));
+    const cur = checked();
+    if (!cur) { path.textContent = "—"; apply.disabled = true; return; }
+    const catName = cur.querySelector("span:nth-of-type(2)").textContent;
+    const on = chips.querySelector(".ac-chip.is-on");
+    path.textContent = catName + (subInput.value && on ? " › " + on.textContent : " (без подкатегории)");
+    apply.disabled = false;
+  }
+
+  cats.forEach(l => l.querySelector("input").addEventListener("change", () => { subInput.value = ""; renderChips(); }));
+
+  // Поиск по категориям с сохранением заголовков групп
+  search.addEventListener("input", () => {
+    const q = search.value.trim().toLowerCase();
+    let shown = 0;
+    cats.forEach(l => { const ok = !q || l.dataset.name.includes(q); l.hidden = !ok; if (ok) shown++; });
+    groups.forEach(g => {
+      let n = g.nextElementSibling, any = false;
+      while (n && n.classList.contains("ac-cat")) { if (!n.hidden) any = true; n = n.nextElementSibling; }
+      g.hidden = !any;
+    });
+    empty.hidden = shown > 0;
+  });
+
+  renderChips();
+  const cur = checked();
+  if (cur) cur.scrollIntoView({ block: "center" });
+})();
+</script>
 {% endblock %}
