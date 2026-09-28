@@ -39,7 +39,10 @@ REGISTERED_COLUMNS = [
 
 # Чтение исходных данных из excel
 def read_excel(file):
-    df = pd.read_excel(file, dtype=str, skipfooter=1)
+    df = pd.read_excel(file, dtype=str)
+    # Последняя строка — итог отчёта, только если у неё нет даты документа
+    if not df.empty and pd.isna(pd.to_datetime(df.iloc[-1]["Дата документа"], dayfirst=True, errors="coerce")):
+        df = df.iloc[:-1]
     df["Дата документа"] = pd.to_datetime(
         df["Дата документа"], dayfirst=True, errors="coerce"
     )
@@ -187,6 +190,25 @@ def update_sales(conn: DuckDBPyConnection):
     conn.register("sales", sales.df())
 
     rows = sales.fetchall()
+    recon = conn.sql(
+        """
+        select
+            sum(coalesce(t."Выручка", 0)) as file_total,
+            sum(case when t."Номенклатура" is null then coalesce(t."Выручка", 0) else 0 end) as no_name,
+            sum(case when t."Номенклатура" is not null and i.id is null then coalesce(t."Выручка", 0) else 0 end) as unmatched,
+            count(*) filter (where t."Номенклатура" is null) as no_name_rows,
+            count(*) filter (where t."Номенклатура" is not null and i.id is null) as unmatched_rows
+        from raw t
+        left join items i on i.key = t._key
+        """
+    ).fetchone()
+    loaded_total = conn.sql("select sum(dt) - sum(cr) from sales").fetchone()[0] or 0
+    file_total, no_name, unmatched_sum, no_name_rows, unmatched_rows = [x or 0 for x in recon]
+    _log(f"Сверка: в файле {file_total:,.2f} ₽, к загрузке {loaded_total:,.2f} ₽, разница {file_total - loaded_total:,.2f} ₽".replace(",", " "))
+    if no_name_rows:
+        _log(f"  строк без номенклатуры: {no_name_rows} на {no_name:,.2f} ₽ (не загружены)".replace(",", " "))
+    if unmatched_rows:
+        _log(f"  строк с несопоставленной номенклатурой: {unmatched_rows} на {unmatched_sum:,.2f} ₽ (не загружены)".replace(",", " "))
     unmatched = [
         r[0]
         for r in conn.sql(
@@ -235,7 +257,10 @@ def update_sales(conn: DuckDBPyConnection):
             )
 
         mysql_conn.commit()
-        msg = f"добавлена реализация с {min_date} по {max_date}"
+        msg = (f"добавлена реализация с {min_date} по {max_date}; "
+               f"сумма в файле {file_total:,.2f}, загружено {loaded_total:,.2f}".replace(",", " "))
+        if no_name_rows:
+            msg += f"; без номенклатуры: {no_name_rows} строк на {no_name:,.2f}".replace(",", " ")
         if unmatched:
             msg += f"; не сопоставлено номенклатур: {len(unmatched)} ({', '.join(unmatched[:20])})"
         return msg
