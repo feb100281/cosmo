@@ -673,7 +673,7 @@ class ItemsAdmin(admin.ModelAdmin):
 
 
 
-    actions = ["export_items_csv", "print_items_action", "assign_category"]
+    actions = ["export_items_xlsx", "export_items_csv", "print_items_action", "assign_category"]
 
     # -------- красивые колонки --------
     @admin.display(description="Номенклатура", ordering="fullname")
@@ -723,6 +723,19 @@ class ItemsAdmin(admin.ModelAdmin):
 
 
 
+
+    @admin.action(description="📊 Скачать в Excel")
+    def export_items_xlsx(self, request, queryset):
+        from corporate.reports.items_xlsx import build_items_excel_bytes
+
+        data = build_items_excel_bytes(queryset)
+        resp = HttpResponse(
+            data,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        stamp = datetime.now().strftime("%Y%m%d_%H%M")
+        resp["Content-Disposition"] = f'attachment; filename="nomenclature_{stamp}.xlsx"'
+        return resp
 
     # --------  action назначить категорию --------
     def assign_category(self, request, queryset):
