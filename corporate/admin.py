@@ -14,7 +14,7 @@ from .models import (Companies,
                      ItemManufacturer,
                      ItemMaterial,
                      ItemZones,SubCategory,
-                     Managers,Agents)
+                     Managers,Agents,StockReceipt)
 from mptt.admin import DraggableMPTTAdmin # type: ignore
 from django.utils.html import format_html
 from django import forms
@@ -1643,11 +1643,138 @@ admin.site.register(Managers, ManagersAdmin)
 # admin.site.register(Agents)
 
 
+# ---------------------------------------------------------------------------
+# Приходы товаров
+# ---------------------------------------------------------------------------
+
+class ReceiptLinkedFilter(admin.SimpleListFilter):
+    title = "Был в продажах или остатках"
+    parameter_name = "linked"
+
+    def lookups(self, request, model_admin):
+        return [("1", "Да"), ("0", "Нет, только приход")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "1":
+            return queryset.filter(item__isnull=False)
+        if self.value() == "0":
+            return queryset.filter(item__isnull=True)
+        return queryset
 
 
+@admin.register(StockReceipt)
+class StockReceiptAdmin(admin.ModelAdmin):
+    change_list_template = "admin/corporate/stockreceipt/change_list.html"
+    list_display = ("date_fmt", "number_fmt", "item_fmt", "warehouse_fmt",
+                    "barcode_fmt", "qty_fmt", "price_fmt", "amount_fmt", "linked")
+    list_display_links = None
+    date_hierarchy = "receipt_date"
+    list_filter = ("warehouse", ReceiptLinkedFilter)
+    search_fields = ("fullname", "receipt_number", "barcode", "characteristic")
+    ordering = ("-receipt_date", "receipt_number", "fullname")
+    list_per_page = 100
+    actions = ["export_receipts_xlsx"]
 
+    def has_add_permission(self, request):
+        return False
 
+    def has_change_permission(self, request, obj=None):
+        return False
 
+    def has_delete_permission(self, request, obj=None):
+        return False
 
+    @staticmethod
+    def _num(value, digits=0):
+        if value is None:
+            return "—"
+        return f"{value:,.{digits}f}".replace(",", " ")
 
+    def lookup_allowed(self, lookup, value, request=None):
+        if lookup == "receipt_guid":
+            return True
+        try:
+            return super().lookup_allowed(lookup, value, request)
+        except TypeError:
+            return super().lookup_allowed(lookup, value)
 
+    @admin.display(description="Дата", ordering="receipt_date")
+    def date_fmt(self, obj):
+        return format_html('<span class="rc-date">{}</span>',
+                           obj.receipt_date.strftime("%d.%m.%Y") if obj.receipt_date else "—")
+
+    @admin.display(description="№ прихода", ordering="receipt_number")
+    def number_fmt(self, obj):
+        return format_html('<a class="rc-doc" href="?receipt_guid={}">{}</a>',
+                           obj.receipt_guid, obj.receipt_number or "—")
+
+    @admin.display(description="Номенклатура", ordering="fullname")
+    def item_fmt(self, obj):
+        return format_html('<div class="rc-item">{}</div><div class="rc-char">{}</div>',
+                           obj.fullname or "—", (obj.characteristic or "").strip())
+
+    @admin.display(description="Склад", ordering="warehouse")
+    def warehouse_fmt(self, obj):
+        return format_html('<span class="rc-wh">{}</span>', obj.warehouse or "—")
+
+    @admin.display(description="Штрихкод", ordering="barcode")
+    def barcode_fmt(self, obj):
+        return format_html('<span class="rc-code">{}</span>', obj.barcode or "—")
+
+    @admin.display(description="Кол-во", ordering="qty")
+    def qty_fmt(self, obj):
+        return format_html('<span class="rc-num">{}</span>', self._num(obj.qty))
+
+    @admin.display(description="Цена без НДС", ordering="price_purchase")
+    def price_fmt(self, obj):
+        return format_html('<span class="rc-num">{}</span>', self._num(obj.price_purchase))
+
+    @admin.display(description="Сумма без НДС", ordering="amount_purchase")
+    def amount_fmt(self, obj):
+        return format_html('<span class="rc-num rc-strong">{}</span>', self._num(obj.amount_purchase))
+
+    @admin.display(description="В продажах / остатках", ordering="item")
+    def linked(self, obj):
+        if obj.item_id is not None:
+            return format_html('<span class="rc-tag rc-ok">да</span>')
+        return format_html('<span class="rc-tag rc-warn">только приход</span>')
+
+    def changelist_view(self, request, extra_context=None):
+        from django.db.models import Max, Min, Sum
+
+        agg = StockReceipt.objects.aggregate(
+            d_min=Min("receipt_date"), d_max=Max("receipt_date"), loaded=Max("loaded_at"),
+            docs=Count("receipt_guid", distinct=True), rows=Count("id"),
+            qty=Sum("qty"), amount=Sum("amount_purchase"),
+        )
+        last_docs = list(
+            StockReceipt.objects.values("receipt_guid", "receipt_number", "receipt_date", "warehouse")
+            .annotate(rows=Count("id"), qty=Sum("qty"), amount=Sum("amount_purchase"))
+            .order_by("-receipt_date", "-receipt_number")
+        )
+        for d in last_docs:
+            d["qty_fmt"] = self._num(d["qty"])
+            d["amount_fmt"] = self._num(d["amount"])
+        extra_context = {
+            **(extra_context or {}),
+            "rc": {
+                **agg,
+                "qty_fmt": self._num(agg["qty"]),
+                "amount_fmt": self._num(agg["amount"]),
+                "only_receipts": StockReceipt.objects.filter(item__isnull=True)
+                                 .values("fullname").distinct().count(),
+            },
+            "rc_last_docs": last_docs,
+        }
+        return super().changelist_view(request, extra_context=extra_context)
+
+    @admin.action(description="📊 Скачать выбранные приходы в Excel")
+    def export_receipts_xlsx(self, request, queryset):
+        from corporate.reports.receipts_xlsx import build_receipts_excel_bytes
+
+        resp = HttpResponse(
+            build_receipts_excel_bytes(queryset),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        resp["Content-Disposition"] = f'attachment; filename="receipts_{datetime.now():%Y%m%d_%H%M}.xlsx"'
+        return resp

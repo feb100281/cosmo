@@ -6,7 +6,8 @@
                   старше TURNOVER_NEW_RECEIPT_DAYS (или приходов нет).
 Очень медленные — остатка больше чем на TURNOVER_VERY_SLOW_DAYS при текущем темпе.
 Заморожено      — доля доступного остатка в неликвиде и очень медленных.
-Суммы по закупке — остаток × цена последнего прихода без НДС (если цена загружена).
+Суммы по закупке — по партиям: остаток состоит из самых свежих приходов,
+                  каждая часть оценивается по цене своего прихода без НДС.
 """
 from __future__ import annotations
 
@@ -85,11 +86,50 @@ def _receipts(report_date) -> dict:
     return {r["item_id"]: (r["receipt_date"], r["price_purchase"]) for r in rows}
 
 
+def _price_layers(report_date) -> dict:
+    """item_id -> приходы с ценой, от свежего к старому: [(количество, цена)]."""
+    try:
+        rows = _fetch("""
+            SELECT item_id, qty, price_purchase
+            FROM stock_receipts
+            WHERE item_id IS NOT NULL AND receipt_date <= %s AND price_purchase > 0 AND qty > 0
+            ORDER BY item_id, receipt_date DESC
+        """, [report_date])
+    except Exception:
+        return {}
+    layers: dict = {}
+    for r in rows:
+        layers.setdefault(r["item_id"], []).append((Decimal(str(r["qty"])), Decimal(str(r["price_purchase"]))))
+    return layers
+
+
+def layered_value(qty, layers):
+    """
+    Стоимость остатка по партиям. Возвращает (сумма, количество сверх известных приходов).
+    Остаток сверх приходов оценивается по цене самого старого прихода.
+    """
+    if qty <= 0 or not layers:
+        return None, Decimal("0")
+    left, value = Decimal(str(qty)), Decimal("0")
+    for lot_qty, price in layers:
+        take = min(left, lot_qty)
+        if take > 0:
+            value += take * price
+            left -= take
+        if left <= 0:
+            break
+    extra = max(left, Decimal("0"))
+    if extra > 0:
+        value += extra * layers[-1][1]
+    return value, extra
+
+
 def get_turnover_data(report_date) -> dict:
     date_from = report_date - timedelta(days=TURNOVER_WINDOW_DAYS - 1)
     stocks = _latest_stocks()
     sales = _sales(date_from, report_date)
     receipts = _receipts(report_date)
+    layers = _price_layers(report_date)
 
     total_units = 0.0
     total_daily = 0.0
@@ -97,23 +137,26 @@ def get_turnover_data(report_date) -> dict:
     dead_sku = slow_sku = 0
     total_value = frozen_value = Decimal("0")
     has_price = False
+    priced_units = 0.0
+    estimated_units = 0.0
     problem = []
 
     for row in stocks:
         qty = float(row["tot_available"] or 0)
         sold = max(sales.get(row["item_id"], 0.0), 0.0)
         daily = sold / TURNOVER_WINDOW_DAYS
-        last_date, price = receipts.get(row["item_id"], (None, None))
+        last_date, _ = receipts.get(row["item_id"], (None, None))
         days_since = (report_date - last_date).days if last_date else None
 
         total_units += qty
         total_daily += daily
 
-        value = None
-        if price:
+        value, extra = layered_value(qty, layers.get(row["item_id"], []))
+        if value is not None:
             has_price = True
-            value = Decimal(str(price)) * Decimal(str(qty))
             total_value += value
+            priced_units += qty
+            estimated_units += float(extra)
 
         status = None
         turnover_days = qty / daily if daily > 0 else None
@@ -157,6 +200,9 @@ def get_turnover_data(report_date) -> dict:
         "frozen_units": frozen_units,
         "frozen_share": frozen_units / total_units if total_units else 0.0,
         "has_price": has_price,
+        "priced_share": priced_units / total_units if total_units else 0.0,
+        "unpriced_units": total_units - priced_units,
+        "estimated_units": estimated_units,
         "total_value": total_value if has_price else None,
         "frozen_value": frozen_value if has_price else None,
         "top": problem[:TURNOVER_TOP_N],

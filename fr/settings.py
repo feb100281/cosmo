@@ -116,6 +116,7 @@ JAZZMIN_SETTINGS = {
         # {"name": "Upload cf", "url": "/upload-cf", "new_window": True},
          {"name": "Upload Form", "url": "/orders/upload-all-orders/"},
          {"name": "Остатки и приходы","url": "/orders/upload-stocks/",},
+         {"model": "corporate.StockReceipt"},
     ],
     
 

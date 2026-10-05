@@ -2,6 +2,7 @@
 
 # from django.shortcuts import render
 # from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
 # from django import forms
 
 
@@ -246,6 +247,72 @@ def upload_all_orders_view(request):
     return render(request, "upload_all_orders.html", {"form": form})
 
 
+def _push_receipts_check(request):
+    """Сверка приходов с остатками после загрузки любого из двух файлов."""
+    from utils.receipts_check import check_messages
+
+    for line in check_messages():
+        if line.startswith(("ВНИМАНИЕ", "Расхождения", "Приходы позже", "Продажи отстают", "Продажи без приходов", "Сверка приходов с остатками не")):
+            messages.warning(request, line)
+        else:
+            messages.success(request, line)
+
+
+@staff_member_required
+def download_receipts_check_view(request):
+    from datetime import datetime
+
+    from django.http import HttpResponse
+
+    from utils.receipts_check import build_check_excel_bytes
+
+    resp = HttpResponse(
+        build_check_excel_bytes(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    resp["Content-Disposition"] = (
+        f'attachment; filename="receipts_vs_stocks_{datetime.now():%Y%m%d_%H%M}.xlsx"'
+    )
+    return resp
+
+
+def _xlsx_response(data: bytes, name: str):
+    from datetime import datetime
+
+    from django.http import HttpResponse
+
+    resp = HttpResponse(
+        data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    resp["Content-Disposition"] = f'attachment; filename="{name}_{datetime.now():%Y%m%d_%H%M}.xlsx"'
+    return resp
+
+
+@staff_member_required
+def download_price_changes_view(request):
+    from utils.price_changes import build_price_excel_bytes
+
+    return _xlsx_response(build_price_excel_bytes(), "purchase_prices")
+
+
+@staff_member_required
+def download_receipts_view(request):
+    from corporate.models import StockReceipt
+    from corporate.reports.receipts_xlsx import build_receipts_excel_bytes
+
+    return _xlsx_response(build_receipts_excel_bytes(StockReceipt.objects.all()), "receipts")
+
+
+def _push_price_changes(request):
+    from utils.price_changes import price_messages
+
+    for line in price_messages():
+        if line.startswith(("ВНИМАНИЕ", "Рост цены", "Сверка закупочных цен не")):
+            messages.warning(request, line)
+        else:
+            messages.success(request, line)
+
+
 def upload_stocks_view(request):
     """
     Отдельная загрузка остатков товаров.
@@ -269,6 +336,8 @@ def upload_stocks_view(request):
                     if line:
                         messages.success(request, f"Приходы: {line}")
                 messages.success(request, f"Файл «{f.name}» обработан. Приходы загружены.")
+                _push_receipts_check(request)
+                _push_price_changes(request)
                 return redirect(request.path)
             except Exception as exc:
                 messages.error(request, f"Ошибка загрузки приходов: {exc}")
@@ -351,6 +420,7 @@ def upload_stocks_view(request):
                         "успешно обработан. Остатки загружены."
                     ),
                 )
+                _push_receipts_check(request)
 
                 return redirect(request.path)
 

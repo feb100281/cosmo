@@ -1,0 +1,109 @@
+
+
+# ---------------------------------------------------------------------------
+# Приходы товаров
+# ---------------------------------------------------------------------------
+
+class ReceiptLinkedFilter(admin.SimpleListFilter):
+    title = "Был в продажах или остатках"
+    parameter_name = "linked"
+
+    def lookups(self, request, model_admin):
+        return [("1", "Да"), ("0", "Нет, только приход")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "1":
+            return queryset.filter(item__isnull=False)
+        if self.value() == "0":
+            return queryset.filter(item__isnull=True)
+        return queryset
+
+
+@admin.register(StockReceipt)
+class StockReceiptAdmin(admin.ModelAdmin):
+    change_list_template = "admin/corporate/stockreceipt/change_list.html"
+    list_display = ("receipt_date", "receipt_number", "fullname", "characteristic_short", "warehouse",
+                    "barcode", "qty_fmt", "price_fmt", "amount_fmt", "linked")
+    list_display_links = None
+    date_hierarchy = "receipt_date"
+    list_filter = ("warehouse", ReceiptLinkedFilter)
+    search_fields = ("fullname", "receipt_number", "barcode", "characteristic")
+    ordering = ("-receipt_date", "receipt_number", "fullname")
+    list_per_page = 100
+    actions = ["export_receipts_xlsx"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @staticmethod
+    def _num(value, digits=0):
+        if value is None:
+            return "—"
+        return f"{value:,.{digits}f}".replace(",", " ")
+
+    @admin.display(description="Характеристика")
+    def characteristic_short(self, obj):
+        text = (obj.characteristic or "").strip()
+        return text if len(text) <= 60 else text[:57] + "…"
+
+    @admin.display(description="Кол-во", ordering="qty")
+    def qty_fmt(self, obj):
+        return self._num(obj.qty)
+
+    @admin.display(description="Цена без НДС", ordering="price_purchase")
+    def price_fmt(self, obj):
+        return self._num(obj.price_purchase)
+
+    @admin.display(description="Сумма без НДС", ordering="amount_purchase")
+    def amount_fmt(self, obj):
+        return self._num(obj.amount_purchase)
+
+    @admin.display(description="В продажах/остатках", boolean=True, ordering="item")
+    def linked(self, obj):
+        return obj.item_id is not None
+
+    def changelist_view(self, request, extra_context=None):
+        from django.db.models import Max, Min, Sum
+
+        agg = StockReceipt.objects.aggregate(
+            d_min=Min("receipt_date"), d_max=Max("receipt_date"), loaded=Max("loaded_at"),
+            docs=Count("receipt_guid", distinct=True), rows=Count("id"),
+            qty=Sum("qty"), amount=Sum("amount_purchase"),
+        )
+        last_docs = list(
+            StockReceipt.objects.values("receipt_number", "receipt_date", "warehouse")
+            .annotate(rows=Count("id"), qty=Sum("qty"), amount=Sum("amount_purchase"))
+            .order_by("-receipt_date", "-receipt_number")[:8]
+        )
+        for d in last_docs:
+            d["qty_fmt"] = self._num(d["qty"])
+            d["amount_fmt"] = self._num(d["amount"])
+        extra_context = {
+            **(extra_context or {}),
+            "rc": {
+                **agg,
+                "qty_fmt": self._num(agg["qty"]),
+                "amount_fmt": self._num(agg["amount"]),
+                "only_receipts": StockReceipt.objects.filter(item__isnull=True)
+                                 .values("fullname").distinct().count(),
+            },
+            "rc_last_docs": last_docs,
+        }
+        return super().changelist_view(request, extra_context=extra_context)
+
+    @admin.action(description="📊 Скачать выбранные приходы в Excel")
+    def export_receipts_xlsx(self, request, queryset):
+        from corporate.reports.receipts_xlsx import build_receipts_excel_bytes
+
+        resp = HttpResponse(
+            build_receipts_excel_bytes(queryset),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        resp["Content-Disposition"] = f'attachment; filename="receipts_{datetime.now():%Y%m%d_%H%M}.xlsx"'
+        return resp

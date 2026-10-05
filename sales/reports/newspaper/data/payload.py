@@ -146,6 +146,11 @@ def _turnover_payload(t: dict) -> dict:
         "frozen_share_fmt": f"{t['frozen_share'] * 100:.0f}%",
         "frozen_value_fmt": nbsp(fmt_money_short(t["frozen_value"])) if t["has_price"] else "",
         "total_value_fmt": nbsp(fmt_money_short(t["total_value"])) if t["has_price"] else "",
+        "priced_share_fmt": f"{t['priced_share'] * 100:.0f}%",
+        "unpriced_units_fmt": nbsp(fmt_qty(t["unpriced_units"])),
+        "is_fully_priced": t["priced_share"] >= 0.995,
+        "estimated_units_fmt": nbsp(fmt_qty(t["estimated_units"])),
+        "has_estimated": t["estimated_units"] > 0,
         "date_from_fmt": t["date_from"].strftime("%d.%m.%Y"),
         "is_high_frozen": t["frozen_share"] >= 0.3,
     }
@@ -180,10 +185,8 @@ def build_report_payload(report_date) -> dict:
     stocks_analytics = analyze_stocks(stocks_data)
     store_sections = build_store_sections(cash_data, stocks_data)
 
-    turnover = (
-        {**_turnover_payload(get_turnover_data(report_date)), "enabled": True}
-        if SHOW_TURNOVER else {"enabled": False, "has_price": False}
-    )
+    # Стоимость остатка по закупке нужна всегда; блок оборачиваемости — по флагу
+    turnover = {**_turnover_payload(get_turnover_data(report_date)), "enabled": SHOW_TURNOVER}
 
     ytd_data = get_cash_ytd_data(report_date)
     ytd_analytics = analyze_cash_ytd(ytd_data)

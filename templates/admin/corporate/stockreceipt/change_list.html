@@ -1,0 +1,155 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block content %}
+<style>
+  .rc { --rc-accent: #2F6656; --rc-soft: #E7F1ED; --rc-border: var(--hairline-color, #e3e3e3);
+        --rc-muted: var(--body-quiet-color, #7a7a7a); margin-bottom: 16px; }
+  html[data-theme="dark"] .rc { --rc-soft: rgba(61,122,103,.22); }
+  .rc-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 1100px) { .rc-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .rc-card { border: 1px solid var(--rc-border); border-top: 3px solid var(--rc-accent); padding: 10px 14px; }
+  .rc-card.is-main { background: var(--rc-soft); }
+  .rc-lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--rc-muted); }
+  .rc-val { font-size: 20px; font-weight: 700; color: var(--rc-accent); margin: 2px 0; }
+  .rc-note { font-size: 12px; color: var(--rc-muted); }
+  .rc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .rc-btn { border: 1px solid var(--rc-accent); color: var(--rc-accent); padding: 8px 14px; font-weight: 600;
+            text-decoration: none; font-size: 13px; }
+  .rc-btn:hover { background: var(--rc-soft); }
+  .rc-btn.is-primary { background: var(--rc-accent); color: #fff; }
+  .rc-docs { border: 1px solid var(--rc-border); }
+  .rc-docs-head { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--rc-border); }
+  .rc-docs-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  .rc-docs-head small { color: var(--rc-muted); }
+  .rc-docs-head input { margin-left: auto; padding: 6px 10px; border: 1px solid var(--rc-border); min-width: 260px;
+                        background: var(--body-bg, #fff); color: var(--body-fg, #1f1f1f); }
+  .rc-docs-body { max-height: 300px; overflow-y: auto; }
+  .rc-docs table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .rc-docs th { position: sticky; top: 0; background: var(--rc-accent); color: #fff; font-weight: 600;
+                padding: 7px 12px; text-align: left; z-index: 1; }
+  .rc-docs td { padding: 6px 12px; border-top: 1px solid var(--rc-border); }
+  .rc-docs tbody tr:nth-child(even) { background: var(--darkened-bg, #f7f7f7); }
+  .rc-docs tbody tr:hover { background: var(--rc-soft); }
+  .rc-docs .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .rc-docs a { color: var(--rc-accent); font-weight: 600; text-decoration: none; }
+  .rc-docs a:hover { text-decoration: underline; }
+  .rc-filter-note { margin: 10px 0 0; padding: 8px 14px; border-left: 3px solid var(--rc-accent);
+                    background: var(--rc-soft); font-size: 13px; }
+  .rc-filter-note a { color: var(--rc-accent); font-weight: 600; margin-left: 8px; }
+
+  /* таблица строк приходов */
+  #result_list { border-collapse: collapse; width: 100%; border: 1px solid var(--rc-border); }
+  #result_list thead th { background: #2F6656; color: #fff; padding: 9px 12px; border: 0;
+                          font-size: 12px; font-weight: 600; white-space: nowrap; vertical-align: middle; }
+  #result_list thead th a, #result_list thead th .text a, #result_list thead th span { color: #fff !important; }
+  #result_list thead th .sortoptions a { opacity: .8; }
+  #result_list tbody td, #result_list tbody th { padding: 8px 12px; border: 0; border-top: 1px solid var(--rc-border);
+                                                 vertical-align: top; font-size: 13px; background: transparent; }
+  #result_list tbody tr:nth-child(even) { background: var(--darkened-bg, #f7f7f7); }
+  #result_list tbody tr:hover { background: var(--rc-soft, #E7F1ED); }
+  #result_list .rc-date, #result_list .rc-wh, #result_list .rc-code { white-space: nowrap; }
+  #result_list .rc-code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--rc-muted, #7a7a7a); }
+  #result_list .rc-doc { color: #2F6656; font-weight: 600; white-space: nowrap; text-decoration: none; }
+  #result_list .rc-doc:hover { text-decoration: underline; }
+  #result_list .rc-item { font-weight: 600; }
+  #result_list .rc-char { font-size: 12px; color: var(--body-quiet-color, #7a7a7a); margin-top: 2px; max-width: 520px; }
+  #result_list .rc-num { display: block; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #result_list .rc-strong { font-weight: 700; }
+  #result_list .rc-tag { display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  #result_list .rc-ok { background: #E7F1ED; color: #1F5E4E; }
+  #result_list .rc-warn { background: #FDF3DE; color: #9A6100; }
+  #result_list th.column-qty_fmt, #result_list th.column-price_fmt, #result_list th.column-amount_fmt { text-align: right; }
+</style>
+
+<div class="rc">
+  <div class="rc-cards">
+    <div class="rc-card is-main">
+      <div class="rc-lbl">Приходы в базе по</div>
+      <div class="rc-val">{{ rc.d_max|date:"d.m.Y"|default:"—" }}</div>
+      <div class="rc-note">с {{ rc.d_min|date:"d.m.Y"|default:"—" }}</div>
+    </div>
+    <div class="rc-card">
+      <div class="rc-lbl">Документов</div>
+      <div class="rc-val">{{ rc.docs }}</div>
+      <div class="rc-note">строк: {{ rc.rows }}</div>
+    </div>
+    <div class="rc-card">
+      <div class="rc-lbl">Пришло, шт.</div>
+      <div class="rc-val">{{ rc.qty_fmt }}</div>
+      <div class="rc-note">за всю историю</div>
+    </div>
+    <div class="rc-card">
+      <div class="rc-lbl">Сумма без НДС, ₽</div>
+      <div class="rc-val">{{ rc.amount_fmt }}</div>
+      <div class="rc-note">без доставки и ГТД</div>
+    </div>
+    <div class="rc-card">
+      <div class="rc-lbl">Файл загружен</div>
+      <div class="rc-val">{{ rc.loaded|date:"d.m.Y"|default:"—" }}</div>
+      <div class="rc-note">{{ rc.loaded|date:"H:i" }} · только в приходах: {{ rc.only_receipts }} поз.</div>
+    </div>
+  </div>
+
+  <div class="rc-actions">
+    <a class="rc-btn is-primary" href="{% url 'upload_stocks' %}">Загрузить приходы и остатки</a>
+    <a class="rc-btn" href="{% url 'receipts_export' %}">Все приходы (Excel)</a>
+    <a class="rc-btn" href="{% url 'receipts_check' %}">Сверка приходов и остатков (Excel)</a>
+    <a class="rc-btn" href="{% url 'price_changes' %}">Изменение закупочных цен (Excel)</a>
+  </div>
+
+  {% if rc_last_docs %}
+  <div class="rc-docs">
+    <div class="rc-docs-head">
+      <h3>Все документы прихода</h3>
+      <small id="rc-docs-count">{{ rc_last_docs|length }}</small>
+      <input type="search" id="rc-docs-search" placeholder="Поиск по номеру, дате или складу…" autocomplete="off">
+    </div>
+    <div class="rc-docs-body">
+      <table>
+        <thead>
+          <tr><th>Дата</th><th>№ прихода</th><th>Склад</th><th class="num">Строк</th><th class="num">Кол-во, шт.</th><th class="num">Сумма без НДС, ₽</th></tr>
+        </thead>
+        <tbody id="rc-docs-rows">
+          {% for d in rc_last_docs %}
+          <tr data-s="{{ d.receipt_date|date:"d.m.Y" }} {{ d.receipt_number|lower }} {{ d.warehouse|lower }}">
+            <td>{{ d.receipt_date|date:"d.m.Y" }}</td>
+            <td><a href="?receipt_guid={{ d.receipt_guid }}" title="Показать строки документа">{{ d.receipt_number }}</a></td>
+            <td>{{ d.warehouse }}</td>
+            <td class="num">{{ d.rows }}</td><td class="num">{{ d.qty_fmt }}</td><td class="num">{{ d.amount_fmt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if request.GET.receipt_guid %}
+  <div class="rc-filter-note">
+    Показаны строки одного документа прихода.
+    <a href="{% url 'admin:corporate_stockreceipt_changelist' %}">Показать все приходы</a>
+  </div>
+  {% endif %}
+</div>
+
+{{ block.super }}
+<script>
+(function () {
+  const input = document.getElementById("rc-docs-search");
+  if (!input) return;
+  const rows = Array.from(document.querySelectorAll("#rc-docs-rows tr"));
+  const count = document.getElementById("rc-docs-count");
+  input.addEventListener("input", () => {
+    const words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    let shown = 0;
+    rows.forEach(r => {
+      const ok = words.every(w => r.dataset.s.includes(w));
+      r.hidden = !ok;
+      if (ok) shown++;
+    });
+    count.textContent = shown + (shown === rows.length ? "" : " из " + rows.length);
+  });
+})();
+</script>
+{% endblock %}

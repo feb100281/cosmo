@@ -341,6 +341,7 @@
     <div class="kpi">
       <div class="kpi-label">Остаток по закупке, без НДС</div>
       <div class="kpi-value">{{ payload.turnover.total_value_fmt }}</div>
+      <div class="kpi-note">по партиям приходов{% if not payload.turnover.is_fully_priced %}; оценено {{ payload.turnover.priced_share_fmt }} остатка, без приходов {{ payload.turnover.unpriced_units_fmt }} шт.{% endif %}</div>
     </div>
     {% endif %}
   </div>

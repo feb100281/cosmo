@@ -21,6 +21,9 @@ from .views import (
     upload_sales_view,
     upload_all_orders_view,
     upload_stocks_view,
+    download_receipts_check_view,
+    download_price_changes_view,
+    download_receipts_view,
 )
 
 
@@ -48,5 +51,20 @@ urlpatterns = [
         "upload-stocks/",
         upload_stocks_view,
         name="upload_stocks",
+    ),
+    path(
+        "receipts-check/",
+        download_receipts_check_view,
+        name="receipts_check",
+    ),
+    path(
+        "price-changes/",
+        download_price_changes_view,
+        name="price_changes",
+    ),
+    path(
+        "receipts-export/",
+        download_receipts_view,
+        name="receipts_export",
     ),
 ]

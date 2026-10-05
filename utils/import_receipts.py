@@ -218,7 +218,28 @@ def assign_items(df: pd.DataFrame, cur) -> pd.DataFrame:
 
     df = df.copy()
     df["item_id"] = df.apply(match, axis=1) if not df.empty else None
+    _save_item_guids(df, cur, {r[0] for r in items if r[4]})
     return df
+
+
+def _save_item_guids(df: pd.DataFrame, cur, has_guid: set) -> None:
+    """Запоминает GUID номенклатуры из 1С в карточке: при переименовании товар найдётся по GUID."""
+    if df.empty or "item_guid" not in df.columns:
+        return
+    pairs = df.dropna(subset=["item_id", "item_guid"])[["item_id", "item_guid"]].drop_duplicates()
+    # только однозначные пары: одна карточка — один GUID
+    pairs = pairs[~pairs["item_id"].duplicated(keep=False) & ~pairs["item_guid"].duplicated(keep=False)]
+    rows = [(int(i), str(g).strip().lower()) for i, g in zip(pairs["item_id"], pairs["item_guid"])
+            if int(i) not in has_guid and str(g).strip()]
+    if not rows:
+        return
+    cur.execute("DROP TEMPORARY TABLE IF EXISTS tmp_item_guids")
+    cur.execute("CREATE TEMPORARY TABLE tmp_item_guids (id BIGINT PRIMARY KEY, guid VARCHAR(64))")
+    cur.executemany("INSERT IGNORE INTO tmp_item_guids VALUES (%s, %s)", rows)
+    cur.execute(
+        "UPDATE corporate_items i JOIN tmp_item_guids t ON t.id = i.id "
+        "SET i.guid = t.guid WHERE i.guid IS NULL OR i.guid = ''"
+    )
 
 
 def _rows(df: pd.DataFrame) -> list[tuple]:
@@ -242,20 +263,14 @@ def import_receipts(file) -> str:
 
             df = assign_items(df, cur)
 
-            cur.execute("DROP TEMPORARY TABLE IF EXISTS tmp_upload_receipts")
-            cur.execute("CREATE TEMPORARY TABLE tmp_upload_receipts (guid VARCHAR(64) NOT NULL PRIMARY KEY)")
-            cur.executemany("INSERT IGNORE INTO tmp_upload_receipts (guid) VALUES (%s)", [(g,) for g in guids])
-            coll = column_collation(cur, TABLE, "receipt_guid")
+            # Файл — полная история приходов: таблица заменяется целиком в одной транзакции.
+            # Документы, которых в файле больше нет (удалены или перепроведены в 1С), уходят.
+            cur.execute(f"SELECT DISTINCT receipt_guid FROM {TABLE}")
+            old_guids = {str(r[0]) for r in cur.fetchall()}
+            existed = len(old_guids & set(guids))
+            removed_docs = len(old_guids - set(guids))
 
-            cur.execute(
-                f"SELECT COUNT(DISTINCT r.receipt_guid) FROM {TABLE} r "
-                f"JOIN tmp_upload_receipts t ON t.guid COLLATE {coll} = r.receipt_guid"
-            )
-            existed = cur.fetchone()[0]
-
-            cur.execute(
-                f"DELETE r FROM {TABLE} r JOIN tmp_upload_receipts t ON t.guid COLLATE {coll} = r.receipt_guid"
-            )
+            cur.execute(f"DELETE FROM {TABLE}")
             deleted = cur.rowcount
 
             placeholders = ",".join(["%s"] * len(COLUMNS))
@@ -263,7 +278,6 @@ def import_receipts(file) -> str:
                 f"INSERT INTO {TABLE} ({','.join(COLUMNS)}) VALUES ({placeholders})",
                 _rows(df),
             )
-            cur.execute("DROP TEMPORARY TABLE IF EXISTS tmp_upload_receipts")
         conn.commit()
     except Exception:
         conn.rollback()
@@ -276,13 +290,17 @@ def import_receipts(file) -> str:
     log = [
         f"Период приходов в файле: {d_min:%d.%m.%Y} – {d_max:%d.%m.%Y}" if d_min else "Даты приходов не распознаны",
         f"Документов прихода: {len(guids)} (обновлено {existed}, новых {len(guids) - existed})",
-        f"Строк загружено: {len(df)} (заменено старых строк: {deleted}), штук: {df['qty'].sum():,.0f}".replace(",", " "),
+        f"Таблица приходов очищена и заполнена заново: было строк {deleted}, стало {len(df)}, "
+        f"штук: {df['qty'].sum():,.0f}".replace(",", " "),
     ]
+    if removed_docs:
+        log.append(f"Удалено документов, которых нет в файле: {removed_docs}")
     if df["price_purchase"].notna().any():
         log.append(f"Закупочная цена без НДС есть у {int(df['price_purchase'].notna().sum())} строк")
     else:
         log.append("Закупочной цены в файле нет — загружены только количества")
     if not unmatched.empty:
         names = ", ".join(unmatched["fullname"].dropna().unique()[:10])
-        log.append(f"Не сопоставлено с номенклатурой: {unmatched['fullname'].nunique()} поз. ({names}…)")
+        log.append(f"Есть только в приходах (не было ни в продажах, ни в остатках): "
+                   f"{unmatched['fullname'].nunique()} поз. ({names}…)")
     return "; ".join(log)

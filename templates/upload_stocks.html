@@ -48,6 +48,31 @@
     color: #a53a3a;
   }
 
+  .stocks-message.warning {
+    border-left-color: #9a6100;
+    background: #fdf3de;
+    color: #5c3a00;
+  }
+
+  .stocks-message.warning::before {
+    content: "!";
+    color: #9a6100;
+  }
+
+  .stocks-check-link {
+    display: inline-block;
+    margin: 4px 0 18px;
+    padding: 9px 16px;
+    border: 1px solid #2f6656;
+    color: #2f6656;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .stocks-check-link:hover {
+    background: #e7f1ed;
+  }
+
   .stocks-card + .stocks-card {
     margin-top: 26px;
   }
@@ -308,6 +333,16 @@
     </div>
   {% endif %}
 
+  <a class="stocks-check-link" href="{% url 'receipts_check' %}">
+    Скачать сверку приходов и остатков (Excel)
+  </a>
+  <a class="stocks-check-link" href="{% url 'price_changes' %}">
+    Скачать изменение закупочных цен (Excel)
+  </a>
+  <a class="stocks-check-link" href="{% url 'admin:corporate_stockreceipt_changelist' %}">
+    Список приходов
+  </a>
+
 
   <div class="stocks-card">
 
@@ -388,9 +423,9 @@
       </h2>
 
       <p class="stocks-card__description">
-        Выгрузка приходов из 1С за любой период. Документы прихода
-        из файла заменяются целиком (по GUID прихода), поэтому
-        повторная загрузка и пересекающиеся периоды не дают дублей.
+        Выгрузка приходов из 1С за всю историю. При загрузке таблица
+        приходов очищается и заполняется заново из файла, поэтому
+        загружайте полный файл, а не отдельный период.
       </p>
     </div>
 

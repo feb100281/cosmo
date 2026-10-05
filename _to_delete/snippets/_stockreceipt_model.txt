@@ -1,0 +1,32 @@
+
+
+class StockReceipt(models.Model):
+    """Строка прихода из 1С. Таблицу заполняет загрузчик приходов."""
+    id = models.BigAutoField(primary_key=True)
+    receipt_guid = models.CharField(max_length=64, verbose_name="GUID прихода")
+    receipt_number = models.CharField(max_length=100, null=True, blank=True, verbose_name="№ прихода")
+    receipt_date = models.DateField(null=True, blank=True, verbose_name="Дата прихода")
+    item = models.ForeignKey(
+        "Items", null=True, blank=True, on_delete=models.DO_NOTHING, db_column="item_id",
+        db_constraint=False, related_name="+", verbose_name="Товар",
+    )
+    item_guid = models.CharField(max_length=64, null=True, blank=True)
+    char_guid = models.CharField(max_length=64, null=True, blank=True)
+    warehouse_guid = models.CharField(max_length=64, null=True, blank=True)
+    fullname = models.CharField(max_length=500, null=True, blank=True, verbose_name="Номенклатура")
+    characteristic = models.TextField(null=True, blank=True, verbose_name="Характеристика")
+    warehouse = models.CharField(max_length=255, null=True, blank=True, verbose_name="Склад")
+    barcode = models.CharField(max_length=100, null=True, blank=True, verbose_name="Штрихкод")
+    qty = models.DecimalField(max_digits=14, decimal_places=3, verbose_name="Кол-во")
+    price_purchase = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, verbose_name="Цена без НДС")
+    amount_purchase = models.DecimalField(max_digits=16, decimal_places=2, null=True, blank=True, verbose_name="Сумма без НДС")
+    loaded_at = models.DateTimeField(verbose_name="Загружено")
+
+    class Meta:
+        managed = False
+        db_table = "stock_receipts"
+        verbose_name = "Приход"
+        verbose_name_plural = "Приходы"
+
+    def __str__(self):
+        return f"{self.receipt_number} от {self.receipt_date:%d.%m.%Y} — {self.fullname}"
