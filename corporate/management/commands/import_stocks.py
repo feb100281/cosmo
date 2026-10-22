@@ -757,7 +757,7 @@
 
 from django.core.management.base import BaseCommand, CommandError
 
-from utils.import_stocks import get_file_data
+from utils.import_stocks import LAST_ATTR_LOG, get_file_data
 
 
 class Command(BaseCommand):
@@ -819,6 +819,7 @@ class Command(BaseCommand):
                         f"Ordered: {ordered}",
                         f"Total: {total}",
                         f"NULL item_id: {null_ids}",
+                        *LAST_ATTR_LOG,
                     ]
                 )
             )

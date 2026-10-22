@@ -641,22 +641,22 @@ class ManagerProfile:
         row += 1
         
         # Оплачено (с мини-гистограммой)
-        self._draw_metric_row(row, 2, "Оплачено", 
+        self._draw_metric_row(row, 2, "Оплачено (% от суммы заказов)", 
                              mtd_data.get('paid_amount', 0), 
                              secondary_value=mtd_data.get('paid_percent', 0),
                              is_currency=True, mini_bar=True)
-        self._draw_metric_row(row, 5, "Оплачено", 
+        self._draw_metric_row(row, 5, "Оплачено (% от суммы заказов)", 
                              ytd_data.get('paid_amount', 0), 
                              secondary_value=ytd_data.get('paid_percent', 0),
                              is_currency=True, mini_bar=True)
         row += 3
         
         # Отгружено (с мини-гистограммой)
-        self._draw_metric_row(row, 2, "Отгружено", 
+        self._draw_metric_row(row, 2, "Отгружено (% от суммы заказов)", 
                              mtd_data.get('shipped_amount', 0), 
                              secondary_value=mtd_data.get('shipped_percent', 0),
                              is_currency=True, mini_bar=True)
-        self._draw_metric_row(row, 5, "Отгружено", 
+        self._draw_metric_row(row, 5, "Отгружено (% от суммы заказов)", 
                              ytd_data.get('shipped_amount', 0), 
                              secondary_value=ytd_data.get('shipped_percent', 0),
                              is_currency=True, mini_bar=True)
@@ -665,7 +665,7 @@ class ManagerProfile:
         # Осталось отгрузить (только для MTD)
         remaining_to_ship = mtd_data.get('remaining_to_ship', 0)
         if remaining_to_ship > 0:
-            self._draw_metric_row(row, 2, "Осталось отгрузить", 
+            self._draw_metric_row(row, 2, "Осталось отгрузить (активные заказы)", 
                                  remaining_to_ship, 
                                  is_currency=True)
             row += 3
@@ -689,27 +689,38 @@ class ManagerProfile:
         self.ws.row_dimensions[row].height = 4
         row += 1
         
-        # Долг (с предупреждением)
+        # Долг по отгрузке: отгружено, но не оплачено
         mtd_debt = mtd_data.get('debt_amount', 0)
-        mtd_total = mtd_data.get('total_amount', 1)
-        mtd_debt_warning = (mtd_debt / mtd_total) > 0.1 if mtd_total > 0 else False
-        
+        mtd_ship = mtd_data.get('shipped_amount', 0)
+        mtd_debt_pct = (mtd_debt / mtd_ship * 100) if mtd_ship > 0 else 0
+
         ytd_debt = ytd_data.get('debt_amount', 0)
-        ytd_total = ytd_data.get('total_amount', 1)
-        ytd_debt_warning = (ytd_debt / ytd_total) > 0.1 if ytd_total > 0 else False
-        
-        self._draw_metric_row(row, 2, "Долг", 
-                             mtd_debt, 
+        ytd_ship = ytd_data.get('shipped_amount', 0)
+        ytd_debt_pct = (ytd_debt / ytd_ship * 100) if ytd_ship > 0 else 0
+
+        self._draw_metric_row(row, 2, "Долг по отгрузке (% от отгруженного)",
+                             mtd_debt,
+                             secondary_value=mtd_debt_pct,
                              is_currency=True,
                              highlight_negative=True,
-                             debt_warning=mtd_debt_warning)
-        self._draw_metric_row(row, 5, "Долг", 
-                             ytd_debt, 
+                             debt_warning=mtd_debt_pct > 10)
+        self._draw_metric_row(row, 5, "Долг по отгрузке (% от отгруженного)",
+                             ytd_debt,
+                             secondary_value=ytd_debt_pct,
                              is_currency=True,
                              highlight_negative=True,
-                             debt_warning=ytd_debt_warning)
+                             debt_warning=ytd_debt_pct > 10)
         row += 3
-        
+
+        # Не оплачено по заказам, которые ещё не отгружены
+        self._draw_metric_row(row, 2, "Не оплачено по неотгруженным",
+                             mtd_data.get('open_unpaid', 0),
+                             is_currency=True)
+        self._draw_metric_row(row, 5, "Не оплачено по неотгруженным",
+                             ytd_data.get('open_unpaid', 0),
+                             is_currency=True)
+        row += 3
+
         # Доставка
         self._draw_metric_row(row, 2, "Доставка", 
                              mtd_data.get('delivery_amount', 0), 

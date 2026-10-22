@@ -180,7 +180,7 @@ class OrdersDetailSheet(BaseSheet):
             subtitle="Операционная таблица по заказам в работе: К выполнению / В резерве / На согласовании",
             date_text=f"Сформировано: {datetime.now().strftime('%d.%m.%Y %H:%M')}",
             start_col=2,
-            end_col=16
+            end_col=17
         )
 
         row += 1
@@ -237,14 +237,15 @@ class OrdersDetailSheet(BaseSheet):
             {
                 'title': 'ОПЛАЧЕНО',
                 'value': self._format_currency(total_paid),
-                'subtitle': 'получено оплат',
+                'subtitle': f"{(total_paid / total_amount * 100) if total_amount else 0:.0f}% от суммы активных",
                 'color': COLORS["dark_green"],
                 'width': 1
             },
             {
                 'title': 'ОТГРУЖЕНО',
                 'value': self._format_currency(total_shipped),
-                'subtitle': 'на сумму',
+                'subtitle': "долг по отгрузке: " + self._format_currency(
+                    sum(self._safe_float(o.get('ship_debt', 0)) for o in orders_data)),
                 'color': COLORS["blue"]
             },
             {
@@ -264,7 +265,7 @@ class OrdersDetailSheet(BaseSheet):
         # ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ
         # ============================================================
         # Аккуратно выводим количество уникальных клиентов
-        row = self.header.draw(row, "ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ", start_col=2, end_col=16)
+        row = self.header.draw(row, "ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ", start_col=2, end_col=17)
 
         # Создаем аккуратную строку с уникальными клиентами
         clients_text = f"Уникальных клиентов в активных заказах: {self._format_number(unique_clients)}"
@@ -275,7 +276,7 @@ class OrdersDetailSheet(BaseSheet):
         cell.fill = PatternFill("solid", fgColor=COLORS.get("light_gray", "F8F9FA"))
 
         # Объединяем ячейки для красоты
-        self.ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=16)
+        self.ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=17)
         self.ws.row_dimensions[row].height = 30
 
         row += 1  # Один отступ после дополнительной информации вместо 2
@@ -283,7 +284,7 @@ class OrdersDetailSheet(BaseSheet):
         # ============================================================
         # ЗАГОЛОВОК ТАБЛИЦЫ
         # ============================================================
-        row = self.header.draw(row, "ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО ЗАКАЗАМ", start_col=2, end_col=16)
+        row = self.header.draw(row, "ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО ЗАКАЗАМ", start_col=2, end_col=17)
         row += 1
 
         # ============================================================
@@ -303,7 +304,8 @@ class OrdersDetailSheet(BaseSheet):
                 "В Т.Ч.\nУСЛУГИ",
                 "ОТГРУЖЕНО\nРУБ",
                 "ОПЛАЧЕНО",
-                "К ОПЛАТЕ",
+                "ДОЛГ ПО\nОТГРУЗКЕ",
+                "НЕ ОПЛАЧЕНО\nПО НЕОТГРУЖ.",
                 "ДАТЫ ОПЛАТ",
             ]
 
@@ -348,7 +350,8 @@ class OrdersDetailSheet(BaseSheet):
                     self._safe_float(order.get('amount_delivery')),  # В Т.Ч. УСЛУГИ (доставка)
                     self._safe_float(order.get('total_shiped_amount')),  # ОТГРУЖЕНО РУБ
                     self._safe_float(order.get('cash_pmts')),  # ОПЛАЧЕНО
-                    self._safe_float(order.get('remaining_amount', 0)),  # К ОПЛАТЕ
+                    self._safe_float(order.get('ship_debt', 0)),  # ДОЛГ ПО ОТГРУЗКЕ
+                    self._safe_float(order.get('open_unpaid', 0)),  # НЕ ОПЛАЧЕНО ПО НЕОТГРУЖЕННЫМ
                     self._format_payment_dates(order.get('payment_dates')),  # ДАТЫ ОПЛАТ
                 ]
             # Записываем значения в ячейки
@@ -364,7 +367,7 @@ class OrdersDetailSheet(BaseSheet):
                     cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
                 elif col_idx in [1, 2, 3, 4]:  # ДАТЫ и СТАТУСЫ
                     cell.alignment = Alignment(horizontal="center", vertical="center")
-                elif col_idx == 14:  # ДАТЫ ОПЛАТ - включаем перенос текста
+                elif col_idx == 15:  # ДАТЫ ОПЛАТ - включаем перенос текста
                     cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
                     cell.font = Font(name="Roboto", size=8)  # Можно чуть меньше шрифт
                 else:  # Числовые колонки
@@ -391,7 +394,8 @@ class OrdersDetailSheet(BaseSheet):
         total_delivery_sum = sum(self._safe_float(o.get('amount_delivery')) for o in orders_data)
         total_shipped_sum = sum(self._safe_float(o.get('total_shiped_amount')) for o in orders_data)
         total_paid_sum = sum(self._safe_float(o.get('cash_pmts')) for o in orders_data)
-        total_remaining_sum = sum(self._safe_float(o.get('remaining_amount', 0)) for o in orders_data)
+        total_ship_debt = sum(self._safe_float(o.get('ship_debt', 0)) for o in orders_data)
+        total_open_unpaid = sum(self._safe_float(o.get('open_unpaid', 0)) for o in orders_data)
 
         total_row = [
             "ИТОГО:",
@@ -407,7 +411,8 @@ class OrdersDetailSheet(BaseSheet):
             total_delivery_sum,
             total_shipped_sum,
             total_paid_sum,
-            total_remaining_sum,
+            total_ship_debt,
+            total_open_unpaid,
             "",
         ]
 
@@ -420,7 +425,7 @@ class OrdersDetailSheet(BaseSheet):
 
             if col_idx == 0:
                 cell.alignment = Alignment(horizontal="right", vertical="center")
-            elif col_idx >= 8 and col_idx <= 13:
+            elif col_idx >= 8 and col_idx <= 14:
                 cell.alignment = Alignment(horizontal="right", vertical="center")
                 if isinstance(value, (int, float)):
                     cell.number_format = '#,##0'
@@ -436,7 +441,9 @@ class OrdersDetailSheet(BaseSheet):
         footnote = Footnote(self.ws)
         footnote.draw(
             row=row,
-            text="* Статусы: К выполнению / В резерве - зеленым, На согласовании - оранжевым"
+            text="* Статусы: К выполнению / В резерве - зеленым, На согласовании - оранжевым. "
+                 "Долг по отгрузке = отгружено − оплачено. "
+                 "Не оплачено по неотгруж. = сумма заказа − max(отгружено, оплачено): заказ ещё не отгружен, это не долг"
         )
 
         # ============================================================
@@ -456,15 +463,16 @@ class OrdersDetailSheet(BaseSheet):
         self.ws.column_dimensions["L"].width = 14  # В Т.Ч. УСЛУГИ
         self.ws.column_dimensions["M"].width = 14  # ОТГРУЖЕНО РУБ
         self.ws.column_dimensions["N"].width = 14  # ОПЛАЧЕНО
-        self.ws.column_dimensions["O"].width = 14  # К ОПЛАТЕ
-        self.ws.column_dimensions["P"].width = 22  # ДАТЫ ОПЛАТ
+        self.ws.column_dimensions["O"].width = 14  # ДОЛГ ПО ОТГРУЗКЕ
+        self.ws.column_dimensions["P"].width = 16  # НЕ ОПЛАЧЕНО ПО НЕОТГРУЖЕННЫМ
+        self.ws.column_dimensions["Q"].width = 22  # ДАТЫ ОПЛАТ
 
         # Заморозка панелей: замораживаем до колонки СТАТУС (колонка E)
         # Замораживаем строку заголовка + 1, и колонки до E
         self.ws.freeze_panes = f'E{table_start_row + 1}'
         
         # Автофильтр
-        self.ws.auto_filter.ref = f'B{table_start_row}:P{row - 2}'
+        self.ws.auto_filter.ref = f'B{table_start_row}:Q{row - 2}'
         
         # Скрываем сетку
         self.ws.sheet_view.showGridLines = False

@@ -510,6 +510,21 @@ def update_items_attrs(conn: DuckDBPyConnection):
         mysql_conn.close()
 
 
+def update_items_from_1c(conn: DuckDBPyConnection):
+    """Производитель и артикул из файла: заполняет пустые и «Нет производителя»/«нет арт.» в карточках."""
+    from utils.item_attrs import fill_item_attrs
+
+    rows = conn.sql(
+        """
+        SELECT DISTINCT i.id::bigint, t."Производитель"::text, t."Артикул"::text
+        FROM raw t
+        JOIN items i ON i.key = t._key
+        WHERE t."Производитель" IS NOT NULL OR t."Артикул" IS NOT NULL
+        """
+    ).fetchall()
+    return fill_item_attrs(rows)
+
+
 def update_items_manufacturer(conn: DuckDBPyConnection):
     # обновляем список производителей уже после INSERT новых производителей
     manu = conn.sql(
@@ -1220,6 +1235,7 @@ def main(file):
     _step("register_items", register_items, conn)
     log.append(_step("update_items_manufacturer", update_items_manufacturer, conn))
     log.append(_step("update_items_attrs", update_items_attrs, conn))
+    log.append(_step("update_items_from_1c", update_items_from_1c, conn))
 
     # 2. Основная загрузка продаж
     log.append(_step("update_sales", update_sales, conn))

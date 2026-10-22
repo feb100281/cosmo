@@ -1558,6 +1558,77 @@ def prepare_for_mysql(df: pd.DataFrame) -> pd.DataFrame:
 # Основная функция
 # ============================================================================
 
+def read_item_attrs(file: str) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Атрибуты товара из файла остатков: штрихкод (колонка P) и, если в файле есть,
+    колонки «Производитель» и «Артикул» (ищутся по заголовку).
+    """
+    import openpyxl
+
+    wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+    ws = wb.worksheets[0]
+    rows = list(ws.iter_rows(values_only=True))
+    wb.close()
+
+    found = {}
+    for row in rows[:5]:
+        for idx, val in enumerate(row or ()):
+            text_val = normalize_text(val).casefold()
+            if "manu" not in found and text_val.startswith("производител"):
+                found["manu"] = idx
+            elif "article" not in found and text_val.startswith("артикул"):
+                found["article"] = idx
+
+    fullname_idx, barcode_idx = 7, 15  # колонки H и P
+    records = []
+    for row in rows[2:]:
+        if not row or len(row) <= fullname_idx:
+            continue
+        fullname = normalize_text(row[fullname_idx])
+        if not fullname:
+            continue
+        rec = {
+            "_fullname_key": normalize_key(fullname),
+            "barcode": normalize_text(row[barcode_idx]) if len(row) > barcode_idx else "",
+        }
+        for key, idx in found.items():
+            rec[key] = normalize_text(row[idx]) if len(row) > idx else ""
+        records.append(rec)
+
+    df = pd.DataFrame(records)
+    for key in ("manu", "article"):
+        if key not in df.columns:
+            df[key] = None
+    return df, sorted(found)
+
+
+LAST_ATTR_LOG: list[str] = []
+
+
+def sync_item_attrs(file: str, df: pd.DataFrame) -> list[str]:
+    """Привязывает штрихкоды и дозаполняет производителя/артикул у карточек из файла остатков."""
+    from utils.item_attrs import fill_item_attrs, link_barcodes
+
+    attrs, found = read_item_attrs(file)
+    if attrs.empty:
+        return []
+    ids = (df.dropna(subset=["item_id"])
+           .drop_duplicates("_fullname_key")
+           .set_index("_fullname_key")["item_id"])
+    attrs["item_id"] = attrs["_fullname_key"].map(ids)
+    attrs = attrs.dropna(subset=["item_id"])
+
+    log = [link_barcodes(attrs[["item_id", "barcode"]].itertuples(index=False, name=None))]
+    if found:
+        log.append(fill_item_attrs(attrs[["item_id", "manu", "article"]].itertuples(index=False, name=None)))
+    names = {"manu": "Производитель", "article": "Артикул"}
+    absent = [v for k, v in names.items() if k not in found]
+    if absent:
+        log.append("В файле остатков нет колонок: " + ", ".join(absent)
+                   + " — эти поля дозаполняются только из продаж")
+    return log
+
+
 def get_file_data(file: str) -> pd.DataFrame:
     # ------------------------------------------------------------------
     # 1. Excel
@@ -1585,6 +1656,12 @@ def get_file_data(file: str) -> pd.DataFrame:
     # ------------------------------------------------------------------
 
     df = assign_item_ids(df)
+
+    LAST_ATTR_LOG.clear()
+    try:
+        LAST_ATTR_LOG.extend(sync_item_attrs(file, df))
+    except Exception as exc:
+        LAST_ATTR_LOG.append(f"Атрибуты товаров не обновлены: {exc}")
 
     # ------------------------------------------------------------------
     # 5. Проверка качества

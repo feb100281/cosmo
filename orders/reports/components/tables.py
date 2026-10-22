@@ -17,7 +17,7 @@ class TableComponent:
             cell = self.ws.cell(row=row, column=start_col + col_idx, value=header)
             cell.font = Font(name="Roboto", size=10, bold=True, color=COLORS["white"])
             cell.fill = FILLS["header"]
-            cell.alignment = ALIGNMENTS["center"]
+            cell.alignment = ALIGNMENTS["center_wrap"]
             cell.border = BORDERS["thin"]
         row += 1
         

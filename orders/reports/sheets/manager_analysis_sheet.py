@@ -402,7 +402,8 @@ class ManagerAnalysisSheet(BaseSheet):
                 mtd_delivery = self._safe_float(manager.get('mtd_delivery', 0))
                 
                 mtd_avg_check = mtd_amount / mtd_orders if mtd_orders > 0 else 0
-                mtd_debt = max(0, mtd_amount - mtd_paid)
+                mtd_debt = self._safe_float(manager.get('mtd_ship_debt', 0))
+                mtd_open_unpaid = self._safe_float(manager.get('mtd_open_unpaid', 0))
                 mtd_delivery_percent = (mtd_delivery / mtd_amount * 100) if mtd_amount > 0 else 0
                 mtd_paid_percent = (mtd_paid / mtd_amount * 100) if mtd_amount > 0 else 0
                 mtd_shipped_percent = (mtd_shipped / mtd_amount * 100) if mtd_amount > 0 else 0
@@ -420,6 +421,7 @@ class ManagerAnalysisSheet(BaseSheet):
                     'paid_amount': mtd_paid,
                     'shipped_amount': mtd_shipped,
                     'debt_amount': mtd_debt,
+                    'open_unpaid': mtd_open_unpaid,
                     'delivery_amount': mtd_delivery,
                     'delivery_percent': mtd_delivery_percent,
                     'paid_percent': mtd_paid_percent,
@@ -437,7 +439,8 @@ class ManagerAnalysisSheet(BaseSheet):
                 ytd_delivery = self._safe_float(manager.get('ytd_delivery', 0))
                 
                 ytd_avg_check = ytd_amount / ytd_orders if ytd_orders > 0 else 0
-                ytd_debt = max(0, ytd_amount - ytd_paid)
+                ytd_debt = self._safe_float(manager.get('ytd_ship_debt', 0))
+                ytd_open_unpaid = self._safe_float(manager.get('ytd_open_unpaid', 0))
                 ytd_delivery_percent = (ytd_delivery / ytd_amount * 100) if ytd_amount > 0 else 0
                 ytd_paid_percent = (ytd_paid / ytd_amount * 100) if ytd_amount > 0 else 0
                 ytd_shipped_percent = (ytd_shipped / ytd_amount * 100) if ytd_amount > 0 else 0
@@ -450,6 +453,7 @@ class ManagerAnalysisSheet(BaseSheet):
                     'paid_amount': ytd_paid,
                     'shipped_amount': ytd_shipped,
                     'debt_amount': ytd_debt,
+                    'open_unpaid': ytd_open_unpaid,
                     'delivery_amount': ytd_delivery,
                     'delivery_percent': ytd_delivery_percent,
                     'paid_percent': ytd_paid_percent,

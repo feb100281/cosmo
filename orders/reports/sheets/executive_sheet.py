@@ -215,26 +215,27 @@ class ExecutiveSheet(BaseSheet):
         active_amount = self._safe_float(active_stats.get('total_active_amount'))
         active_paid = self._safe_float(active_stats.get('total_active_paid'))
         paid_pct = (active_paid / active_amount * 100) if active_amount > 0 else 0
-        active_remaining = max(0, active_amount - active_paid)
+        active_ship_debt = self._safe_float(active_stats.get('total_active_ship_debt'))
+        active_open_unpaid = self._safe_float(active_stats.get('total_active_open_unpaid'))
 
         row1_cards = [
             {
-                'title': 'СУММА АКТИВНЫХ',
+                'title': 'СУММА АКТИВНЫХ ЗАКАЗОВ',
                 'value': self._format_currency(active_amount),
-                'subtitle': 'по всем активным',
+                'subtitle': 'в работе и на согласовании',
                 'color': COLORS["blue"],
                 'width': 1
             },
             {
                 'title': 'ОПЛАЧЕНО',
                 'value': self._format_currency(active_paid),
-                'subtitle': f"{paid_pct:.0f}% от суммы",
+                'subtitle': f"{paid_pct:.0f}% от суммы активных",
                 'color': COLORS["dark_green"]
             },
             {
-                'title': 'К ОПЛАТЕ',
-                'value': self._format_currency(active_remaining),
-                'subtitle': 'остаток по активным',
+                'title': 'ДОЛГ ПО ОТГРУЗКЕ',
+                'value': self._format_currency(active_ship_debt),
+                'subtitle': f"не оплачено по неотгруженным: {self._format_currency(active_open_unpaid)}",
                 'color': COLORS.get("warning_red", "C62828")
             },
         ]
@@ -344,9 +345,10 @@ class ExecutiveSheet(BaseSheet):
         # ============================================================
         if active_stats:
             row = self.header.draw(
-                        row, "СТРУКТУРА АКТИВНЫХ ЗАКАЗОВ", start_col=2, end_col=6)
+                        row, "СТРУКТУРА АКТИВНЫХ ЗАКАЗОВ", start_col=2, end_col=8)
 
-            headers = ["СТАТУС", "ЗАКАЗОВ", "СУММА", "ОПЛАЧЕНО", "ОСТАТОК"]
+            headers = ["СТАТУС", "ЗАКАЗОВ", "СУММА\nЗАКАЗОВ", "ОТГРУЖЕНО", "ОПЛАЧЕНО",
+                       "ДОЛГ ПО\nОТГРУЗКЕ", "НЕ ОПЛАЧЕНО\nПО НЕОТГРУЖЕННЫМ"]
 
             to_do_count = self._safe_int(active_stats.get('to_do_count'))
             to_do_qty = self._safe_int(active_stats.get('to_do_qty'))
@@ -363,20 +365,28 @@ class ExecutiveSheet(BaseSheet):
                     "К выполнению / В резерве",
                     f"{self._format_number(to_do_count)} шт\n{self._format_number(to_do_qty)} тов.",
                     to_do_amount,
+                    self._safe_float(active_stats.get('to_do_shipped_amount')),
                     to_do_paid,
-                    max(0, to_do_amount - to_do_paid)
+                    self._safe_float(active_stats.get('to_do_ship_debt')),
+                    self._safe_float(active_stats.get('to_do_open_unpaid')),
                 ],
                 [
                     "На согласовании",
                     f"{self._format_number(pending_count)} шт\n{self._format_number(pending_qty)} тов.",
                     pending_amount,
+                    self._safe_float(active_stats.get('pending_shipped_amount')),
                     pending_paid,
-                    max(0, pending_amount - pending_paid)
+                    self._safe_float(active_stats.get('pending_ship_debt')),
+                    self._safe_float(active_stats.get('pending_open_unpaid')),
                 ],
             ]
 
             table_start_row = row
-            row = self.table.draw(row, headers, data_rows, highlight_cols=[4])
+            row = self.table.draw(row, headers, data_rows, highlight_cols=[5])
+            for c in range(2, 2 + len(headers)):
+                self.ws.cell(row=table_start_row, column=c).alignment = Alignment(
+                    horizontal="center", vertical="center", wrap_text=True)
+            self.ws.row_dimensions[table_start_row].height = 30
 
             # Немного увеличиваем высоту строк данных, потому что теперь в колонке "ЗАКАЗОВ" две строки
             for data_row_idx in range(table_start_row + 1, row):
@@ -386,14 +396,14 @@ class ExecutiveSheet(BaseSheet):
             total_qty = self._safe_int(active_stats.get('total_active_qty'))
             total_amount = self._safe_float(active_stats.get('total_active_amount'))
             total_paid = self._safe_float(active_stats.get('total_active_paid'))
-            total_remaining = max(0, total_amount - total_paid)
-
             total_row = [
                 "ИТОГО",
                 f"{self._format_number(total_count)} шт\n{self._format_number(total_qty)} тов.",
                 total_amount,
+                self._safe_float(active_stats.get('total_active_shipped_amount')),
                 total_paid,
-                total_remaining
+                self._safe_float(active_stats.get('total_active_ship_debt')),
+                self._safe_float(active_stats.get('total_active_open_unpaid')),
             ]
 
             fill = FILLS["total"]
@@ -413,9 +423,16 @@ class ExecutiveSheet(BaseSheet):
                         cell.number_format = '#,##0'
 
             self.ws.row_dimensions[row].height = 30
+            row += 1
+            row = Footnote(self.ws).draw(
+                row=row,
+                text="* Долг по отгрузке = отгружено − оплачено (товар у клиента, денег нет). "
+                     "Не оплачено по неотгруженным = сумма заказа − max(отгружено, оплачено) "
+                     "(заказ ещё в работе, это не долг)."
+            )
             row += 2
-            
-            
+
+
             # ============================================================
             # ССЫЛКА НА ДЕТАЛИЗАЦИЮ ЗАКАЗОВ
             # ============================================================
@@ -622,7 +639,7 @@ class ExecutiveSheet(BaseSheet):
             row = self.header.draw(row, "ПОКАЗАТЕЛИ МЕНЕДЖЕРОВ (MTD)")
             
             # 5 колонок: Менеджер | Заказов | Сумма | Средний чек | Отгрузка / Остаток
-            headers = ["МЕНЕДЖЕР", "ЗАКАЗОВ", "СУММА", "СР.ЧЕК", "ОТГР. / ОСТАТОК"]
+            headers = ["МЕНЕДЖЕР", "ЗАКАЗОВ", "СУММА ЗАКАЗОВ", "СР. ЧЕК", "ОТГРУЖЕНО /\nНЕ ОТГРУЖЕНО"]
             
             data_rows = []
             for manager in manager_summary[:10]:  # топ-10 за месяц
@@ -647,7 +664,7 @@ class ExecutiveSheet(BaseSheet):
             footnote = Footnote(self.ws)
             row = footnote.draw(
                     row=row,
-                    text="* Показаны ТОП-10 менеджеров"
+                    text="* Показаны ТОП-10 менеджеров. 📦 — отгружено, ⚡ — ещё не отгружено (сумма заказов − отгружено)"
                 )
             row += 2
             
@@ -679,7 +696,7 @@ class ExecutiveSheet(BaseSheet):
             footnote = Footnote(self.ws)
             row = footnote.draw(
                     row=row,
-                    text="* Показаны ТОП-10 менеджеров"
+                    text="* Показаны ТОП-10 менеджеров. 📦 — отгружено, ⚡ — ещё не отгружено (сумма заказов − отгружено)"
                 )
             row += 2
             

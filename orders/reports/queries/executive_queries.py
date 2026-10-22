@@ -135,6 +135,14 @@ class ExecutiveQueries:
             debt = queryset.aggregate(
                 debt=Sum(F('amount_active') - F('cash_pmts'))
             )['debt'] or 0
+            shipped_amount = ship_debt = open_unpaid = 0.0
+            for r in queryset.values('amount_active', 'cash_pmts', 'total_shiped_amount'):
+                amount = float(r['amount_active'] or 0)
+                paid = float(r['cash_pmts'] or 0)
+                shp = float(r['total_shiped_amount'] or 0)
+                shipped_amount += shp
+                ship_debt += max(0.0, shp - paid)
+                open_unpaid += max(0.0, amount - max(shp, paid))
             
             return {
                 'count': stats.get('count', 0) or 0,
@@ -143,6 +151,9 @@ class ExecutiveQueries:
                 'shipped': float(stats.get('shipped', 0) or 0),
                 'amount': float(stats.get('amount', 0) or 0),
                 'debt': float(debt),
+                'shipped_amount': shipped_amount,
+                'ship_debt': ship_debt,
+                'open_unpaid': open_unpaid,
                 'remaining_qty': float(
                     (stats.get('qty', 0) or 0) - (stats.get('shipped', 0) or 0)
                 ),
@@ -157,6 +168,9 @@ class ExecutiveQueries:
             'total_active_count': total['count'],
             'total_active_qty': total['qty'],
             'total_active_paid': total['paid'],
+            'total_active_shipped_amount': total['shipped_amount'],
+            'total_active_ship_debt': total['ship_debt'],
+            'total_active_open_unpaid': total['open_unpaid'],
             'total_active_shipped': total['shipped'],
             'total_active_amount': total['amount'],
             'total_active_remaining_qty': total['remaining_qty'],
@@ -166,6 +180,9 @@ class ExecutiveQueries:
             'to_do_count': to_do['count'],
             'to_do_qty': to_do['qty'],
             'to_do_paid': to_do['paid'],
+            'to_do_shipped_amount': to_do['shipped_amount'],
+            'to_do_ship_debt': to_do['ship_debt'],
+            'to_do_open_unpaid': to_do['open_unpaid'],
             'to_do_shipped': to_do['shipped'],
             'to_do_amount': to_do['amount'],
             'to_do_remaining_qty': to_do['remaining_qty'],
@@ -175,6 +192,9 @@ class ExecutiveQueries:
             'pending_count': pending['count'],
             'pending_qty': pending['qty'],
             'pending_paid': pending['paid'],
+            'pending_shipped_amount': pending['shipped_amount'],
+            'pending_ship_debt': pending['ship_debt'],
+            'pending_open_unpaid': pending['open_unpaid'],
             'pending_shipped': pending['shipped'],
             'pending_amount': pending['amount'],
             'pending_remaining_qty': pending['remaining_qty'],

@@ -96,7 +96,7 @@ class UnpaidShipmentsSheet(BaseSheet):
         row = self.sheet_title.draw(
             row=3,
             title="ОТГРУЗКИ БЕЗ ОПЛАТЫ / НЕПОЛНАЯ ОПЛАТА",
-            subtitle=f"Заказы с отгрузкой, но оплата меньше суммы отгрузки | Найдено: {summary_data['total_orders']} заказов | Общая сумма недоплаты: {self._format_currency(summary_data['total_underpayment'])}",
+            subtitle=f"Отгружено больше, чем оплачено | Найдено: {summary_data['total_orders']} заказов | Долг по отгрузке (отгружено − оплачено): {self._format_currency(summary_data['total_underpayment'])}",
             date_text=f"Сформировано: {datetime.now().strftime('%d.%m.%Y %H:%M')}",
             start_col=2,
             end_col=16
@@ -118,7 +118,7 @@ class UnpaidShipmentsSheet(BaseSheet):
             "СУММА\nЗАКАЗА",
             "ОТГРУЖЕНО\nВСЕГО",
             "ОПЛАЧЕНО",
-            "НЕДОПЛАТА",
+            "ДОЛГ ПО\nОТГРУЗКЕ",
             "%\nОПЛАТЫ",
             "РИСК",
             "ОПЛАТЫ\n(сводка)",

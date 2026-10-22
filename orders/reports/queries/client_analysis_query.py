@@ -78,6 +78,29 @@ class ClientAnalysisQueries:
             },
         }
     
+    def _debt_parts(self, start_date, keys=("client",)):
+        """
+        Деньги по клиентам с разбивкой по заказам:
+        долг по отгрузке = отгружено − оплачено (по каждому заказу, не меньше 0);
+        не оплачено по неотгруженным = сумма заказа − max(отгружено, оплачено).
+        """
+        rows = (
+            self._base_queryset()
+            .filter(date_from__gte=start_date)
+            .values(*keys, "amount_active", "cash_pmts", "total_shiped_amount")
+        )
+        out = {}
+        for r in rows:
+            amount = float(r["amount_active"] or 0)
+            paid = float(r["cash_pmts"] or 0)
+            shipped = float(r["total_shiped_amount"] or 0)
+            k = tuple(r[x] for x in keys)
+            acc = out.setdefault(k, {"shipped": 0.0, "ship_debt": 0.0, "open_unpaid": 0.0})
+            acc["shipped"] += shipped
+            acc["ship_debt"] += max(0.0, shipped - paid)
+            acc["open_unpaid"] += max(0.0, amount - max(shipped, paid))
+        return out
+
     def get_top_clients_by_amount(self, limit=10, period='ytd'):
         """
         Топ клиентов по сумме заказов
@@ -102,18 +125,20 @@ class ClientAnalysisQueries:
             .order_by('-total_amount')[:limit]
         )
         
+        parts = self._debt_parts(start_date)
         result = []
         for c in clients:
-            debt = max(0, c['total_amount'] - c['paid_amount'])
+            p = parts.get((c['client'],), {"shipped": 0.0, "ship_debt": 0.0, "open_unpaid": 0.0})
             result.append({
                 'client': c['client'],
                 'total_amount': c['total_amount'],
                 'orders_count': c['orders_count'],
                 'avg_check': c['total_amount'] / c['orders_count'] if c['orders_count'] > 0 else 0,
                 'paid_amount': c['paid_amount'],
-                'shipped_amount': c['shipped_amount'],
-                'debt': debt,
-                'debt_percent': (debt / c['total_amount'] * 100) if c['total_amount'] > 0 else 0,
+                'shipped_amount': p['shipped'],
+                'debt': p['ship_debt'],
+                'open_unpaid': p['open_unpaid'],
+                'debt_percent': (p['ship_debt'] / p['shipped'] * 100) if p['shipped'] > 0 else 0,
             })
         
         return result
@@ -237,16 +262,20 @@ class ClientAnalysisQueries:
             .order_by('-total_amount')
         )
         
+        # Риск считается по долгу за уже отгруженный товар
+        parts = self._debt_parts(first_day_of_year, keys=("client", "manager"))
         result = []
         for c in clients:
-            debt = max(0, c['total_amount'] - c['paid_amount'])
-            debt_percent = (debt / c['total_amount'] * 100) if c['total_amount'] > 0 else 0
+            p = parts.get((c['client'], c['manager']), {"shipped": 0.0, "ship_debt": 0.0, "open_unpaid": 0.0})
+            debt = p['ship_debt']
+            debt_percent = (debt / p['shipped'] * 100) if p['shipped'] > 0 else 0
             
             if debt_percent >= debt_threshold_percent and debt > 0:
                 result.append({
                     'client': c['client'],
                     'manager': c['manager'],
                     'total_amount': c['total_amount'],
+                    'shipped_amount': p['shipped'],
                     'paid_amount': c['paid_amount'],
                     'debt': debt,
                     'debt_percent': debt_percent,

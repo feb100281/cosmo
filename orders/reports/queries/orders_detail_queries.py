@@ -73,6 +73,8 @@ class OrdersDetailQueries:
             # Рассчитываем остатки
             remaining_qty = max(0, order_qty - shiped_qty)
             remaining_amount = max(0, amount_active - cash_pmts)
+            ship_debt = max(0, total_shiped_amount - cash_pmts)
+            open_unpaid = max(0, amount_active - max(total_shiped_amount, cash_pmts))
 
             result.append({
                 # Основная информация
@@ -105,6 +107,8 @@ class OrdersDetailQueries:
                 'cash_returned': cash_returned,  # Деньги возвращенные
                 'cash_pmts': cash_pmts,  # Итого оплачено
                 'remaining_amount': remaining_amount,  # К оплате
+                'ship_debt': ship_debt,  # Отгружено, но не оплачено
+                'open_unpaid': open_unpaid,  # Не оплачено по неотгруженной части
                 'payment_dates': order.get('payment_dates'),  # Даты оплат
                 
                 # Отгрузки

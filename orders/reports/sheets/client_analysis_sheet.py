@@ -249,9 +249,10 @@ class ClientAnalysisSheet(BaseSheet):
         # ТОП КЛИЕНТОВ ПО СУММЕ ЗАКАЗОВ (YTD)
         # ============================================================
         if top_by_amount_ytd:
-            row = self.header.draw(row, "ТОП-15 КЛИЕНТОВ ПО СУММЕ ЗАКАЗОВ (YTD)", end_col=7)
+            row = self.header.draw(row, "ТОП-15 КЛИЕНТОВ ПО СУММЕ ЗАКАЗОВ (YTD)", end_col=8)
             
-            headers = ["КЛИЕНТ", "СУММА ЗАКАЗОВ", "ЗАКАЗОВ", "СР. ЧЕК", "ОПЛАЧЕНО", "ДОЛГ"]
+            headers = ["КЛИЕНТ", "СУММА ЗАКАЗОВ", "ЗАКАЗОВ", "ОТГРУЖЕНО", "ОПЛАЧЕНО",
+                       "ДОЛГ ПО ОТГРУЗКЕ", "НЕ ОПЛАЧЕНО ПО НЕОТГРУЖЕННЫМ"]
             
             # Рисуем заголовки таблицы
             for col_idx, header in enumerate(headers, start=2):
@@ -281,8 +282,8 @@ class ClientAnalysisSheet(BaseSheet):
                 cell_orders.number_format = '#,##0'
                 cell_orders.alignment = Alignment(horizontal="right")
                 
-                # СР. ЧЕК (число + формат валюты)
-                cell_avg = self.ws.cell(row=row, column=5, value=c['avg_check'])
+                # ОТГРУЖЕНО
+                cell_avg = self.ws.cell(row=row, column=5, value=c['shipped_amount'])
                 cell_avg.font = Font(name="Roboto", size=9, color=COLORS["text_dark"])
                 cell_avg.number_format = '#,##0 ₽'
                 cell_avg.alignment = Alignment(horizontal="right")
@@ -293,11 +294,17 @@ class ClientAnalysisSheet(BaseSheet):
                 cell_paid.number_format = '#,##0 ₽'
                 cell_paid.alignment = Alignment(horizontal="right")
                 
-                # ДОЛГ (число + формат валюты)
+                # ДОЛГ ПО ОТГРУЗКЕ: отгружено − оплачено
                 cell_debt = self.ws.cell(row=row, column=7, value=c['debt'])
                 cell_debt.font = Font(name="Roboto", size=9, color=COLORS["text_dark"])
                 cell_debt.number_format = '#,##0 ₽'
                 cell_debt.alignment = Alignment(horizontal="right")
+                
+                # НЕ ОПЛАЧЕНО ПО НЕОТГРУЖЕННЫМ: открытые заказы
+                cell_open = self.ws.cell(row=row, column=8, value=c['open_unpaid'])
+                cell_open.font = Font(name="Roboto", size=9, color=COLORS["text_dark"])
+                cell_open.number_format = '#,##0 ₽'
+                cell_open.alignment = Alignment(horizontal="right")
                 
                 row += 1
             
@@ -325,7 +332,7 @@ class ClientAnalysisSheet(BaseSheet):
             )
             
             # Применяем границы таблицы и шрифт для всех данных
-            for col in range(2, 8):
+            for col in range(2, 9):
                 for r in range(start_data_row, end_data_row + 1):
                     self.ws.cell(row=r, column=col).border = BORDERS["thin"]
             
@@ -463,9 +470,9 @@ class ClientAnalysisSheet(BaseSheet):
         # КЛИЕНТЫ С ВЫСОКИМ РИСКОМ (БОЛЬШОЙ ДОЛГ)
         # ============================================================
         if high_risk_clients:
-            row = self.header.draw(row, "КЛИЕНТЫ С ВЫСОКИМ РИСКОМ (ДОЛГ >30% ОТ СУММЫ) - данные за YTD", end_col=7)
+            row = self.header.draw(row, "КЛИЕНТЫ С ВЫСОКИМ РИСКОМ (ДОЛГ ПО ОТГРУЗКЕ >30% ОТ ОТГРУЖЕННОГО) - данные за YTD", end_col=7)
             
-            headers = ["КЛИЕНТ", "МЕНЕДЖЕР", "СУММА ЗАКАЗОВ", "ДОЛГ", "% ДОЛГА", "ЗАКАЗОВ"]
+            headers = ["КЛИЕНТ", "МЕНЕДЖЕР", "ОТГРУЖЕНО", "ДОЛГ ПО ОТГРУЗКЕ", "% ДОЛГА", "ЗАКАЗОВ"]
             
             # Рисуем заголовки таблицы
             for col_idx, header in enumerate(headers, start=2):
@@ -487,8 +494,8 @@ class ClientAnalysisSheet(BaseSheet):
                 cell_manager = self.ws.cell(row=row, column=3, value=self._format_manager_name(c['manager']))
                 cell_manager.font = Font(name="Roboto", size=9, color=COLORS["text_dark"])
                 
-                # СУММА ЗАКАЗОВ (число)
-                cell_amount = self.ws.cell(row=row, column=4, value=c['total_amount'])
+                # ОТГРУЖЕНО
+                cell_amount = self.ws.cell(row=row, column=4, value=c['shipped_amount'])
                 cell_amount.font = Font(name="Roboto", size=9, color=COLORS["text_dark"])
                 cell_amount.number_format = '#,##0 ₽'
                 cell_amount.alignment = Alignment(horizontal="right")

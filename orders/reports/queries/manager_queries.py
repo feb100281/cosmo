@@ -16,6 +16,20 @@ class ManagerQueries:
         """Базовый queryset с исключением отмененных заказов"""
         return MV_Orders.objects.exclude(change_status='Отменен')
 
+    def _debt_by_manager(self, start_date):
+        """Долг по отгрузке и неоплаченное по неотгруженным, по заказам с start_date."""
+        rows = (self._base_queryset().filter(date_from__gte=start_date)
+                .values('manager', 'amount_active', 'cash_pmts', 'total_shiped_amount'))
+        out = {}
+        for r in rows:
+            amount = float(r['amount_active'] or 0)
+            paid = float(r['cash_pmts'] or 0)
+            shipped = float(r['total_shiped_amount'] or 0)
+            acc = out.setdefault(r['manager'], {'ship_debt': 0.0, 'open_unpaid': 0.0})
+            acc['ship_debt'] += max(0.0, shipped - paid)
+            acc['open_unpaid'] += max(0.0, amount - max(shipped, paid))
+        return out
+
     def get_all_managers_summary(self):
         """
         Получение сводки по ВСЕМ менеджерам (MTD и YTD)
@@ -37,6 +51,8 @@ class ManagerQueries:
         )
 
         result = []
+        mtd_debt = self._debt_by_manager(first_day_of_month)
+        ytd_debt = self._debt_by_manager(first_day_of_year)
 
         for manager_item in managers_list:
             manager_name = manager_item['manager']
@@ -83,12 +99,16 @@ class ManagerQueries:
                     'mtd_paid': mtd_stats['paid_amount'],
                     'mtd_shipped': mtd_stats['shipped_amount'],
                     'mtd_delivery': mtd_stats['delivery_amount'],
+                    'mtd_ship_debt': mtd_debt.get(manager_name, {}).get('ship_debt', 0.0),
+                    'mtd_open_unpaid': mtd_debt.get(manager_name, {}).get('open_unpaid', 0.0),
                     # YTD показатели
                     'ytd_orders': ytd_stats['orders_count'],
                     'ytd_amount': ytd_stats['total_amount'],
                     'ytd_paid': ytd_stats['paid_amount'],
                     'ytd_shipped': ytd_stats['shipped_amount'],
                     'ytd_delivery': ytd_stats['delivery_amount'],
+                    'ytd_ship_debt': ytd_debt.get(manager_name, {}).get('ship_debt', 0.0),
+                    'ytd_open_unpaid': ytd_debt.get(manager_name, {}).get('open_unpaid', 0.0),
                 })
 
         # Сортируем по сумме MTD (от большего к меньшему)
