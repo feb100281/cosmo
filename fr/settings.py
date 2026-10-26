@@ -117,7 +117,15 @@ JAZZMIN_SETTINGS = {
          {"name": "Upload Form", "url": "/orders/upload-all-orders/"},
          {"name": "Остатки и приходы","url": "/orders/upload-stocks/",},
          {"model": "corporate.StockReceipt"},
+         {"name": "Отчёт к совещанию", "url": "/admin/meeting-brief/"},
     ],
+    "custom_links": {
+        "sales": [{
+            "name": "Отчёт к совещанию",
+            "url": "/admin/meeting-brief/",
+            "icon": "fa-solid fa-people-group",
+        }],
+    },
     
 
 
@@ -152,6 +160,7 @@ JAZZMIN_SETTINGS = {
         "sales.MV_Daily_Sales": "fa-solid fa-calendar-day",
         "sales.MVSalesOrder": "fa-solid fa-truck-fast",
         "sales.StoreSalesPlan": "fa-solid fa-bullseye",
+        "orders.DebtExclusion": "fa-solid fa-ban",
         
         ### --- СПРАВОЧНИКИ --- 
         "corporate": "fa-solid fa-book",

@@ -497,3 +497,13 @@ class OrderAdmin(admin.ModelAdmin):
     
     class Media:
         css = {"all": ("css/admin_overrides.css",)}
+
+from .models import DebtExclusion  # noqa: E402
+
+
+@admin.register(DebtExclusion)
+class DebtExclusionAdmin(admin.ModelAdmin):
+    list_display = ("value", "kind", "reason", "is_active", "comment", "created_at")
+    list_filter = ("kind", "reason", "is_active")
+    search_fields = ("value", "comment")
+    list_editable = ("is_active",)

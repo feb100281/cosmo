@@ -161,3 +161,33 @@ class MV_OrdersItems(models.Model):
 
 
 
+
+
+class DebtExclusion(models.Model):
+    """Клиенты и заказы, которые не считаются долгом (бартер, свои, спорные и т.п.)."""
+
+    KIND_CLIENT = "client"
+    KIND_ORDER = "order"
+    KIND_CHOICES = [(KIND_CLIENT, "Клиент"), (KIND_ORDER, "Заказ (GUID или номер)")]
+    REASON_CHOICES = [
+        ("barter", "Бартер"),
+        ("internal", "Свой / внутренний клиент"),
+        ("dispute", "Спорный, решается отдельно"),
+        ("other", "Другое"),
+    ]
+
+    kind = models.CharField("Что исключаем", max_length=10, choices=KIND_CHOICES, default=KIND_ORDER)
+    value = models.CharField("Клиент, GUID или номер заказа", max_length=500,
+                             help_text="Клиент — как в 1С, регистр не важен; заказ — GUID или номер (КСУТ-000715)")
+    reason = models.CharField("Причина", max_length=20, choices=REASON_CHOICES, default="other")
+    comment = models.TextField("Комментарий", blank=True, default="")
+    is_active = models.BooleanField("Действует", default=True)
+    created_at = models.DateTimeField("Добавлено", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Исключение из долгов"
+        verbose_name_plural = "Исключения из долгов"
+        ordering = ["kind", "value"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()}: {self.value}"

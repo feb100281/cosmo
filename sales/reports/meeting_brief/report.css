@@ -1,0 +1,257 @@
+/* Отчёт к совещанию: просмотр в браузере и PDF (WeasyPrint) */
+
+@page {
+  size: A4 landscape;
+  margin: 9mm 11mm 11mm 11mm;
+  background: #f7f8f3;
+  @bottom-left { content: "COSMORELAX · Отчёт к совещанию"; font: 7pt 'Helvetica Neue', Arial, sans-serif; color: #8c9188; }
+  @bottom-right { content: "Стр. " counter(page) " из " counter(pages); font: 7pt 'Helvetica Neue', Arial, sans-serif; color: #8c9188; }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: #f7f8f3;
+  color: #1c2321;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 8.8pt;
+  line-height: 1.38;
+}
+b { font-weight: 600; }
+
+.page { page-break-after: always; }
+.page:last-of-type { page-break-after: auto; }
+
+/* ---------- обложка ---------- */
+.mast {
+  background: #1e3d32;
+  color: #f7f8f3;
+  margin: -9mm -11mm 0 -11mm;
+  padding: 6mm 13mm 5mm 13mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.brand { font-family: Georgia, 'Times New Roman', serif; font-size: 22pt; font-weight: 700; letter-spacing: .5pt; }
+.brand-sub { font-family: Georgia, serif; font-style: italic; font-size: 11pt; color: #e3b48f; margin-top: 1mm; }
+.mast-r { text-align: right; }
+.period { font-family: Georgia, serif; font-size: 17pt; font-weight: 700; }
+.period-sub { font-size: 8pt; color: #cfd8d1; margin-top: 1mm; }
+
+.headline {
+  font-family: Georgia, serif;
+  font-size: 12pt;
+  margin: 4mm 0 3mm;
+  padding-left: 3mm;
+  border-left: 2.4pt solid #c1663a;
+}
+
+/* ---------- KPI ---------- */
+table.kpis { width: 100%; border-collapse: separate; border-spacing: 2.2mm 0; margin: 0 -2.2mm 4mm; table-layout: fixed; }
+td.kpi {
+  background: #fff;
+  border: .6pt solid #d7ddd3;
+  border-top: 2.4pt solid #1e6b4f;
+  border-radius: 1.5mm;
+  padding: 2.4mm 3mm 2.6mm;
+  vertical-align: top;
+}
+td.kpi.bad { border-top-color: #b8492f; }
+td.kpi.watch { border-top-color: #d9a441; }
+td.kpi.good { border-top-color: #1e6b4f; background: #f3f8f4; }
+.kpi-t { font-size: 7pt; text-transform: uppercase; letter-spacing: .5pt; color: #5b6b63; }
+.kpi-v { font-family: Georgia, serif; font-size: 17pt; font-weight: 700; margin-top: 1mm; white-space: nowrap; }
+table.kpis.small .kpi-v { font-size: 13.5pt; }
+.kpi-s { font-size: 7.6pt; color: #5b6b63; margin-top: .5mm; }
+.kpi-d { margin-top: 1.4mm; }
+.kpi-d .d { display: block; margin-top: .4mm; }
+
+.d { font-size: 7.6pt; font-weight: 600; white-space: nowrap; }
+.d.up { color: #1e6b4f; }
+.d.down { color: #b8492f; }
+.d.flat { color: #8c9188; font-weight: 400; }
+
+/* ---------- три колонки ---------- */
+table.three { width: 100%; border-collapse: separate; border-spacing: 2.2mm 0; margin: 0 -2.2mm; table-layout: fixed; }
+table.three td.col { vertical-align: top; padding: 3mm 3.4mm; border-radius: 1.5mm; background: #fff; border: .6pt solid #d7ddd3; }
+table.three td.col.good { background: #eef5f0; border-color: #cfe2d6; }
+table.three td.col.bad { background: #f8ece6; border-color: #ecd2c6; }
+table.three td.col.ask { background: #fff; border: 1pt solid #1e3d32; }
+table.three h3 { margin: 0 0 2mm; font-family: Georgia, serif; font-size: 11.5pt; }
+.col.good h3 { color: #1e6b4f; }
+.col.bad h3 { color: #b8492f; }
+.col.ask h3 { color: #1e3d32; }
+
+.notes { margin: 0; padding: 0 0 0 4.2mm; }
+.notes li { margin: 0 0 2.2mm; }
+.notes li b { display: block; font-size: 8.8pt; }
+.notes li span { display: block; color: #5b6b63; font-size: 7.8pt; margin-top: .3mm; }
+.notes.good li::marker { color: #1e6b4f; }
+.notes.bad li::marker { color: #b8492f; }
+.notes.ask li::marker { color: #1e3d32; font-weight: 700; }
+.empty-note { color: #8c9188; font-style: italic; margin: 0; }
+.foot-note { font-size: 7.2pt; color: #8c9188; margin: 3mm 0 0; }
+
+/* ---------- страницы ---------- */
+.page-h {
+  display: flex;
+  align-items: baseline;
+  border-bottom: 1.2pt solid #1e3d32;
+  padding-bottom: 1.6mm;
+  margin-bottom: 3mm;
+}
+.page-n {
+  display: inline-block;
+  background: #1e3d32; color: #f7f8f3;
+  font-weight: 700; font-size: 9pt;
+  width: 6mm; height: 6mm; line-height: 6mm; text-align: center;
+  border-radius: 50%;
+  margin-right: 2.4mm;
+}
+.page-title { font-family: Georgia, serif; font-size: 15pt; font-weight: 700; flex: 1; }
+.page-p { color: #5b6b63; font-size: 8.4pt; }
+
+.sec { margin: 3.2mm 0 1.4mm; display: flex; align-items: baseline; }
+.sec h2 { margin: 0; font-size: 9.6pt; text-transform: uppercase; letter-spacing: .5pt; color: #1e3d32; }
+.sec-note { margin-left: 2.4mm; color: #8c9188; font-size: 7.4pt; }
+
+.chart svg { width: 100%; height: auto; display: block; }
+.tags { margin-top: 1mm; }
+.tag { display: inline-block; font-size: 7.4pt; padding: .6mm 2mm; border-radius: 3mm; margin-right: 1.6mm; }
+.tag.good { background: #e2efe6; color: #1e6b4f; }
+.tag.bad { background: #f6e6e0; color: #b8492f; }
+.tag.ghost { color: #8c9188; }
+
+/* ---------- таблицы ---------- */
+table.t { width: 100%; border-collapse: collapse; background: #fff; }
+table.t th {
+  background: #1e3d32; color: #f7f8f3;
+  font-weight: 600; font-size: 7.3pt; text-transform: uppercase; letter-spacing: .3pt;
+  padding: 1.5mm 2mm; text-align: left;
+}
+table.t td { padding: 1.3mm 2mm; border-bottom: .5pt solid #e4e8e1; vertical-align: middle; }
+table.t tbody tr:nth-child(even) td { background: #fafbf8; }
+table.t tfoot td { background: #eef1ea; font-weight: 600; border-top: .8pt solid #1e3d32; border-bottom: none; }
+table.t .num { text-align: right; white-space: nowrap; }
+table.t th.num { text-align: right; }
+table.t td.name { font-weight: 500; }
+table.t td.name small { display: block; color: #8c9188; font-size: 6.8pt; font-weight: 400; }
+table.t.compact td { padding: 1mm 1.8mm; font-size: 8pt; }
+table.t td.empty { color: #8c9188; font-style: italic; text-align: center; }
+table.t td.muted { color: #8c9188; }
+table.t td.warn { color: #b8492f; font-weight: 600; }
+table.t td.neg { color: #b8492f; }
+table.t td.pos { color: #1e6b4f; }
+table.t tr.rest td { color: #5b6b63; font-style: italic; }
+table.t td.advice { font-size: 7.6pt; color: #3d4a44; }
+table.t.stale td.name { width: 34%; }
+th.w-exec { width: 15%; }
+th.w-share { width: 18%; }
+
+td.exec b { display: inline-block; min-width: 9mm; }
+td.exec .bar { display: inline-block; width: 18mm; margin-left: 1.6mm; vertical-align: middle; }
+td.exec.good b { color: #1e6b4f; }
+td.exec.watch b { color: #a87a1d; }
+td.exec.bad b { color: #b8492f; }
+
+.bar { height: 2.2mm; background: #e9ece5; border-radius: 1.1mm; overflow: hidden; }
+.bar span { display: block; height: 100%; background: #9fc3b0; border-radius: 1.1mm; }
+.bar.good span { background: #1e6b4f; }
+.bar.watch span { background: #d9a441; }
+.bar.bad span { background: #c1663a; }
+.bar.neutral span { background: #6f8f7a; }
+td.share .bar { display: inline-block; width: 62%; vertical-align: middle; }
+td.share em { font-style: normal; font-size: 7.6pt; color: #5b6b63; margin-left: 1.4mm; }
+
+.badge { display: inline-block; margin-left: 1.6mm; font-size: 6.6pt; font-weight: 600; text-transform: uppercase;
+  background: #1e6b4f; color: #fff; padding: .3mm 1.4mm; border-radius: 2mm; vertical-align: 1pt; }
+.badge.alt { background: #c1663a; }
+
+/* ---------- блоки заказов ---------- */
+table.mini { width: 100%; border-collapse: separate; border-spacing: 2mm 0; margin: 0 -2mm 2.4mm; table-layout: fixed; }
+table.mini td { background: #fff; border: .6pt solid #d7ddd3; border-radius: 1.5mm; padding: 2mm 2.6mm; vertical-align: top; }
+.mini-t { font-size: 7pt; text-transform: uppercase; letter-spacing: .4pt; color: #5b6b63; }
+.mini-v { font-family: Georgia, serif; font-size: 14pt; font-weight: 700; margin: .6mm 0; }
+.mini-s { font-size: 7.4pt; color: #5b6b63; }
+.mini-s .d { display: block; }
+
+.stack { height: 4mm; border-radius: 2mm; overflow: hidden; background: #e9ece5; white-space: nowrap; font-size: 0; }
+.stack .seg { display: inline-block; height: 100%; }
+.s-full { background: #1e6b4f; }
+.s-part { background: #d9a441; }
+.s-none { background: #c1663a; }
+.s-ext { background: #b9c2bb; }
+table.legend { width: 100%; margin-top: 1.4mm; font-size: 7.8pt; color: #3d4a44; }
+table.legend td { padding: 0 2mm 0 0; vertical-align: top; }
+.dot { display: inline-block; width: 2.4mm; height: 2.4mm; border-radius: 50%; margin-right: 1.2mm; vertical-align: -.2mm; }
+
+table.cols { width: 100%; border-collapse: separate; border-spacing: 4mm 0; margin: 0 -4mm; table-layout: fixed; }
+table.cols > tbody > tr > td, table.cols > tr > td { vertical-align: top; padding: 0; }
+table.cols td.w35 { width: 35%; }
+table.cols td.w40 { width: 40%; }
+table.cols td.w58 { width: 58%; }
+table.t.compact td.name small { display: inline; margin-left: 1.4mm; }
+
+/* ---------- текущий месяц ---------- */
+.month { background: #fff; border: .6pt solid #d7ddd3; border-radius: 1.5mm; padding: 2.4mm 3.4mm 2.6mm; }
+.month-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.6mm; }
+.month-h b { font-family: Georgia, serif; font-size: 11pt; }
+.month-h span { color: #5b6b63; font-size: 7.8pt; }
+.month-bar { position: relative; height: 4.2mm; background: #e9ece5; border-radius: 2.1mm; }
+.month-bar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2.1mm; background: #9fc3b0; }
+.month-bar .fill.good { background: #1e6b4f; }
+.month-bar .fill.bad { background: #c1663a; }
+.month-bar .mark { position: absolute; top: -1mm; bottom: -1mm; width: .8mm; margin-left: -.4mm; background: #1c2321; }
+.month-legend { display: flex; justify-content: space-between; font-size: 7.2pt; color: #5b6b63; margin: 1mm 0 1.6mm; }
+.month-legend span:first-child { font-weight: 600; color: #1c2321; }
+table.month-n { width: 100%; border-collapse: collapse; table-layout: fixed; }
+table.month-n td { padding: 0 2mm 0 0; vertical-align: top; border-left: .6pt solid #e4e8e1; padding-left: 2.4mm; }
+table.month-n td:first-child { border-left: 0; padding-left: 0; }
+table.month-n i { display: block; font-style: normal; font-size: 6.9pt; text-transform: uppercase; letter-spacing: .3pt; color: #5b6b63; }
+table.month-n b { display: block; font-family: Georgia, serif; font-size: 12pt; margin-top: .4mm; }
+table.month-n em { display: block; font-style: normal; font-size: 7pt; color: #5b6b63; }
+table.month-n td.good b { color: #1e6b4f; }
+table.month-n td.bad b { color: #b8492f; }
+
+.how { margin-top: 2mm; padding: 1.6mm 3mm; page-break-inside: avoid; border-left: 2pt solid #c1663a; background: #f2ede3;
+       font-size: 7.2pt; color: #3d4a44; line-height: 1.4; }
+.how u { text-decoration: none; font-weight: 600; color: #1c2321; }
+
+.generated { font-size: 7pt; color: #8c9188; text-align: right; margin-top: 3mm; }
+
+/* ---------- просмотр в браузере ---------- */
+@media screen {
+  body { background: #e6e9e2; padding: 0 0 12mm; }
+  .doc { max-width: 297mm; margin: 0 auto; }
+  .page {
+    background: #f7f8f3;
+    padding: 9mm 11mm 11mm;
+    margin: 6mm auto 0;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, .12);
+    border-radius: 1mm;
+    min-height: 210mm;
+    overflow: hidden;
+  }
+  .mast { margin-top: -9mm; border-radius: 1mm 1mm 0 0; }
+  .toolbar {
+    position: sticky; top: 0; z-index: 5;
+    background: #1e3d32; color: #f7f8f3;
+    padding: 3mm 6mm;
+    display: flex; gap: 3mm; align-items: center; flex-wrap: wrap;
+    font-size: 10pt;
+  }
+  .toolbar a, .toolbar button {
+    color: #1e3d32; background: #f7f8f3; border: 0; border-radius: 1.5mm;
+    padding: 1.6mm 3.6mm; font: 600 9.5pt 'Helvetica Neue', Arial, sans-serif; text-decoration: none; cursor: pointer;
+  }
+  .toolbar a.primary { background: #c1663a; color: #fff; }
+  .toolbar .sp { flex: 1; }
+}
+@media screen and (max-width: 900px) {
+  .doc { max-width: 100%; }
+  .page { padding: 5mm 4mm; overflow-x: auto; }
+}
+@media print { .toolbar { display: none; } }
+table.t.plan td.name { white-space: nowrap; }
+table.t.plan td { padding-top: 1mm; padding-bottom: 1mm; }
+.hint { margin: -2mm 0 0; font-size: 7.4pt; color: #5b6b63; }

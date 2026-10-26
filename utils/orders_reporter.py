@@ -158,9 +158,10 @@ def mv_orders_summary(conn: DuckDBPyConnection):
         LEFT JOIN (
             SELECT
                 order_guid,
-                SUM(amount) AS cash_pmts,
-                COALESCE(SUM(amount) filter (where amount>0),0) as cash_recieved,
-                COALESCE(SUM(amount) filter (where amount<0),0) as cash_returned,
+                -- Деньги клиента: без дизайнерского вознаграждения (это наша выплата, не возврат клиенту)
+                COALESCE(SUM(amount) filter (where coalesce(oper_type, '') not ilike '%дизайнер%'),0) AS cash_pmts,
+                COALESCE(SUM(amount) filter (where amount>0 and coalesce(oper_type, '') not ilike '%дизайнер%'),0) as cash_recieved,
+                COALESCE(SUM(amount) filter (where amount<0 and coalesce(oper_type, '') not ilike '%дизайнер%'),0) as cash_returned,
                 LIST(concat(date,': ',amount,' руб')) as payment_dates
             FROM orders_cf
             GROUP BY order_guid

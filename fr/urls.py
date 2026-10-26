@@ -15,6 +15,7 @@ urlpatterns = [
     path('go-to-admin/', views.redirect_to_admin, name='go_to_admin'),
     path('admin/alerts-counts/', admin.site.admin_view(admin_alert_counts), name='admin_alert_counts'),
     path('admin/assouline/', include('corporate.reports.assouline.urls')),
+    path('admin/meeting-brief/', include('sales.reports.meeting_brief.urls')),
     path('admin/', admin.site.urls),
     path('apps/', include('django_plotly_dash.urls')),
     path('orders/', include('orders.urls')),

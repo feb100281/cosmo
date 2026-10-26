@@ -1,0 +1,99 @@
+{% extends "admin/base_site.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .mb-card { background: #fff; border: 1px solid #d7ddd3; border-top: 3px solid #1e3d32; border-radius: 8px;
+             padding: 22px 26px; max-width: 760px; }
+  .mb-card p.lead { color: #5b6b63; margin: 0 0 18px; font-size: 14px; }
+  .mb-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .mb-presets button { border: 1px solid #1e3d32; background: #fff; color: #1e3d32; border-radius: 16px;
+                       padding: 5px 14px; font-size: 13px; cursor: pointer; }
+  .mb-presets button.on, .mb-presets button:hover { background: #1e3d32; color: #fff; }
+  .mb-dates { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .mb-dates label { display: block; font-size: 12px; color: #5b6b63; margin-bottom: 4px; }
+  .mb-dates input { border: 1px solid #c9d1c5; border-radius: 6px; padding: 6px 10px; font-size: 14px; }
+  .mb-actions { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .mb-actions button { border: 0; border-radius: 6px; padding: 9px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .mb-open { background: #1e3d32; color: #fff; }
+  .mb-pdf { background: #c1663a; color: #fff; }
+  .mb-xls, .mb-zip { background: #fff; color: #1e3d32; border: 1px solid #1e3d32 !important; }
+  .mb-note { margin-top: 18px; font-size: 12.5px; color: #5b6b63; line-height: 1.55; }
+  .mb-note ul { margin: 6px 0 0 18px; padding: 0; }
+  .mb-error { background: #f6e6e0; color: #b8492f; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; }
+  .mb-wait { display: none; margin-top: 12px; color: #5b6b63; font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-card">
+  <p class="lead">Короткая справка для еженедельного совещания: что получилось, что требует внимания и какие вопросы обсудить.</p>
+  {% if error %}<div class="mb-error">{{ error }}</div>{% endif %}
+
+  <form id="mb-form" method="get" action="{{ report_url }}" target="_blank">
+    <div class="mb-presets">
+      {% for p in presets %}
+        <button type="button" data-start="{{ p.start }}" data-end="{{ p.end }}">{{ p.name }}</button>
+      {% endfor %}
+    </div>
+    <div class="mb-dates">
+      <div><label for="mb-start">С</label><input type="date" id="mb-start" name="start" value="{{ start }}" required></div>
+      <div><label for="mb-end">По</label><input type="date" id="mb-end" name="end" value="{{ end }}" required></div>
+    </div>
+    <input type="hidden" name="format" id="mb-format" value="">
+    <div class="mb-actions">
+      <button type="submit" class="mb-open" data-format="">Открыть отчёт</button>
+      <button type="submit" class="mb-pdf" data-format="pdf">Скачать PDF</button>
+      <button type="submit" class="mb-xls" data-format="xlsx">Excel по менеджерам</button>
+      <button type="submit" class="mb-zip" data-format="zip">PDF + Excel архивом</button>
+    </div>
+    <div class="mb-wait" id="mb-wait">Отчёт формируется, это займёт до минуты…</div>
+  </form>
+
+  <div class="mb-note">
+    Сравнение — с предыдущим периодом той же длины (месяц — с прошлым месяцем) и с тем же периодом прошлого года.
+    <ul>
+      <li>Деньги — поступления от клиентов по кассе и банку, план — месячный план подразделений пропорционально дням.</li>
+      <li>Заказы — по дате создания; оплата и отгрузка по ним — на сегодня.</li>
+      <li>Контроль заказов и остатки — состояние на сегодня.</li>
+      <li>Бартер, свои клиенты и другие заказы, которые не считаются долгом, добавляются в разделе
+          <a href="/admin/orders/debtexclusion/">Заказы → Исключения из долгов</a>
+          (клиент или GUID / номер заказа + причина).</li>
+      <li>Excel по менеджерам — лист на каждого менеджера: какие заказы закрыть в 1С, по каким получить оплату,
+          взять предоплату, отгрузить или снять резерв, согласовать или отменить.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var form = document.getElementById("mb-form");
+    var start = document.getElementById("mb-start");
+    var end = document.getElementById("mb-end");
+    var fmt = document.getElementById("mb-format");
+    var wait = document.getElementById("mb-wait");
+    var buttons = document.querySelectorAll(".mb-presets button");
+    function mark() {
+      buttons.forEach(function (b) {
+        b.classList.toggle("on", b.dataset.start === start.value && b.dataset.end === end.value);
+      });
+    }
+    buttons.forEach(function (b) {
+      b.addEventListener("click", function () { start.value = b.dataset.start; end.value = b.dataset.end; mark(); });
+    });
+    start.addEventListener("change", mark);
+    end.addEventListener("change", mark);
+    form.querySelectorAll("button[type=submit]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        fmt.value = b.dataset.format;
+        fmt.disabled = !b.dataset.format;
+        form.target = b.dataset.format ? "_self" : "_blank";
+        wait.style.display = b.dataset.format ? "block" : "none";
+      });
+    });
+    mark();
+  })();
+</script>
+{% endblock %}
