@@ -193,7 +193,7 @@ def money_page(m: dict, p: Periods) -> str:
     if worst:
         marks.append(f'<span class="tag bad">слабый день: {e(F.day_short(worst["date"]))} — {e(F.money_short(worst["cash_in"]))}</span>')
     marks.append('<span class="tag ghost">серые столбцы — тот же день прошлого периода</span>')
-    chart = cash_by_day(cash, height_in=1.45)
+    chart = cash_by_day(cash, height_in=1.25)
 
     def ahead_cell(r):
         if not r["month_plan"]:
@@ -203,7 +203,9 @@ def money_page(m: dict, p: Periods) -> str:
                 f'{e(F.money_short(abs(d)))}</td>')
 
     rows = []
-    for r in plan["rows"]:
+    with_plan = [r for r in plan["rows"] if r["month_plan"] > 0]
+    no_plan = [r for r in plan["rows"] if r["month_plan"] <= 0]
+    for r in with_plan:
         rows.append(
             f'<tr><td class="name">{e(r["store"])}</td>'
             f'<td class="num">{e(F.money_short(r["month_plan"])) if r["month_plan"] else "—"}</td>'
@@ -213,6 +215,13 @@ def money_page(m: dict, p: Periods) -> str:
             f'{exec_cell(r["month_forecast_exec"] if r["month_plan"] else None)}'
             f'<td class="num">{e(F.money_short(r["fact"]))}</td>'
             f'<td class="num">{delta(r["chg_prev"])}</td></tr>')
+    if no_plan:
+        rows.append(
+            f'<tr class="rest"><td class="name">Без плана: {e(", ".join(r["store"] for r in no_plan[:3]))}'
+            f'{" и др." if len(no_plan) > 3 else ""}</td><td class="num">—</td>'
+            f'<td class="num">{e(F.money_short(sum(r["month_fact"] for r in no_plan)))}</td>'
+            f'<td></td><td></td><td></td>'
+            f'<td class="num">{e(F.money_short(sum(r["fact"] for r in no_plan)))}</td><td></td></tr>')
     t = plan["total"]
     tot = {"month_plan": t["month_plan"], "month_fact": t["month_fact"], "month_expected": t["month_expected"]}
     foot = (f'<tr><td class="name">Итого</td><td class="num">{e(F.money_short(t["month_plan"]))}</td>'
@@ -231,7 +240,7 @@ def money_page(m: dict, p: Periods) -> str:
                                         f"в среднем {F.money_short(cash['avg_day'])} в день")
         + f'<div class="chart">{chart}</div><div class="tags">{"".join(marks)}</div>'
         + section("План / факт по подразделениям", "месяц — главное; справа деньги за выбранный период")
-        + table(head, rows, "plan", foot)
+        + table(head, rows, "plan compact", foot)
         + how_block(plan, p)
     )
     return page(2, "Деньги и план", body, p)
@@ -248,7 +257,7 @@ def orders_page(m: dict, p: Periods) -> str:
         f'<td><i class="dot {c}"></i><b>{e(t)}</b><br>{e(F.orders_word(o[k]["count"]))} · '
         f'{e(F.money_short(o[k]["amount"]))}</td>'
         for k, c, t in (("full", "s-full", "Оплачены полностью"), ("partial", "s-part", "Частично"),
-                        ("none", "s-none", "Без предоплаты"), ("ext", "s-ext", "Маркетплейсы (оплата не по заказу)"))
+                        ("none", "s-none", "Без предоплаты"), ("ext", "s-ext", "Комиссионер (оплата по отчёту)"))
         if k != "ext" or o["ext"]["count"])
     d = o["delivery"]
     side = (
@@ -271,7 +280,10 @@ def orders_page(m: dict, p: Periods) -> str:
     best = o["best"]["name"] if o["best"] else None
     best_cash = o["best_cash"]["name"] if o["best_cash"] else None
     rows = []
-    for r in o["managers"]:
+    top_n = C.MANAGER_ROWS
+    shown = o["managers"][:top_n]
+    rest = o["managers"][top_n:]
+    for r in shown:
         badges = ""
         if r["name"] == best:
             badges += '<span class="badge">лучший по заказам</span>'
@@ -287,20 +299,28 @@ def orders_page(m: dict, p: Periods) -> str:
             f'<td class="num {"warn" if r["no_pay_count"] else ""}">{e(np_)}</td>'
             f'<td class="num">{e(F.pct(r["delivery_share"], 1))}</td>'
             f'<td class="num"><b>{e(F.money(r["cash"], False))}</b></td></tr>')
+    if rest:
+        rc, ra = sum(r["count"] for r in rest), sum(r["amount"] for r in rest)
+        rows.append(
+            f'<tr class="rest"><td class="name">Остальные менеджеры ({len(rest)})</td>'
+            f'<td class="num">{rc}</td><td class="num">{e(F.money(ra, False))}</td>'
+            f'<td class="num">{e(F.money(ra / rc, False)) if rc else "—"}</td><td></td>'
+            f'<td class="num">{e(F.orders_word(sum(r["no_pay_count"] for r in rest)))}</td><td></td>'
+            f'<td class="num">{e(F.money(sum(r["cash"] for r in rest), False))}</td></tr>')
     head = [("Менеджер", ""), ("Заказов", "num"), ("Сумма, ₽", "num"), ("Ср. чек, ₽", "num"),
             ("Оплачено", "num"), ("Без предоплаты", "num"), ("Доставка", "num"), ("Собрано денег, ₽", "num")]
 
     np_rows = [
         f'<tr><td class="name">{e(r["number"])}</td><td>{e(F.day(r["date"]))}</td><td>{e(r["client"])}</td>'
         f'<td>{e(r["manager"])}</td><td>{e(r["status"])}</td><td class="num"><b>{e(F.money(r["amount"], False))}</b></td></tr>'
-        for r in o["no_pay_list"]]
+        for r in o["no_pay_list"][:5]]
     np_head = [("Заказ", ""), ("Создан", ""), ("Клиент", ""), ("Менеджер", ""), ("Статус", ""), ("Сумма, ₽", "num")]
 
     body = (
         section("Заказы, созданные за период", "по дате создания; оплата и отгрузка — на дату отчёта")
         + side
         + section("Менеджеры", "«Собрано денег» — оплаты за период по заказам менеджера, в т.ч. по старым заказам")
-        + table(head, rows, "mgr")
+        + table(head, rows, "mgr compact")
         + section("Новые заказы без предоплаты", f"крупнейшие, всего {F.orders_word(o['none']['count'])} "
                                                   f"на {F.money_short(o['none']['amount'])}")
         + table(np_head, np_rows, "compact")

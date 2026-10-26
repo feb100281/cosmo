@@ -198,7 +198,7 @@ def norm_client(v) -> str:
 
 def load_exclusions() -> dict:
     """Клиенты и заказы, которые не считаются долгом (справочник в админке)."""
-    out = {"clients": {norm_client(k): v for k, v in C.DEBT_EXCLUDED_CLIENTS.items()}, "orders": {}, "ok": True}
+    out = {"clients": {}, "orders": {}, "commission": set(), "ok": True}
     try:
         from orders.models import DebtExclusion
 
@@ -206,6 +206,8 @@ def load_exclusions() -> dict:
             label = x.get_reason_display() + (f": {x.comment}" if x.comment else "")
             if x.kind == DebtExclusion.KIND_CLIENT:
                 out["clients"][norm_client(x.value)] = label
+                if x.reason == "commission":
+                    out["commission"].add(norm_client(x.value))
             else:
                 out["orders"][x.value.strip().casefold()] = label
     except Exception:

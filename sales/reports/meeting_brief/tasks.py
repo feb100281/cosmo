@@ -16,7 +16,7 @@ TOL = C.MONEY_TOL
 ACTIONS = [
     ("close", "Закрыть заказ в 1С", "отгружен и оплачен полностью, а статус не «Закрыт»"),
     ("collect", "Получить оплату", "отгружено больше, чем оплачено"),
-    ("prepay", "Взять предоплату", "создан за выбранный период, ни одной оплаты (кроме маркетплейсов)"),
+    ("prepay", "Взять предоплату", "создан за выбранный период, ни одной оплаты (кроме комиссионеров)"),
     ("reserve", "Отгрузить или снять резерв", f"в резерве дольше {C.RESERVE_STUCK_DAYS} дн., ничего не отгружено"),
     ("approval", "Согласовать или отменить", f"на согласовании дольше {C.APPROVAL_STUCK_DAYS} дн."),
 ]
@@ -65,7 +65,8 @@ def build_tasks(orders: pd.DataFrame, managers: dict, p: Periods, exclusions: di
                    & since(C.RESERVE_STUCK_DAYS),
         "approval": open_ & (o["status"] == C.ST_APPROVAL) & since(C.APPROVAL_STUCK_DAYS),
     }
-    ext = o["client"].map(lambda c: any(k in _txt(c).lower() for k in C.EXTERNAL_PAY_CLIENTS))
+    commission = (exclusions or {}).get("commission", set())
+    ext = o["client"].map(lambda c: " ".join(_txt(c).split()).casefold() in commission)
     rules["prepay"] = rules["prepay"] & ~ext
     if only_excluded:
         rules = {"collect": rules["collect"] & is_ex}

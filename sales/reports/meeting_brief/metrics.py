@@ -189,7 +189,8 @@ def orders_section(src: dict, p: Periods) -> dict:
     created["pay_state"] = "partial"
     created.loc[created["cash_pmts"] >= created["amount_active"] - TOL, "pay_state"] = "full"
     created.loc[created["cash_pmts"] <= TOL, "pay_state"] = "none"
-    ext = created["client"].map(lambda c: any(k in _txt(c, "").lower() for k in C.EXTERNAL_PAY_CLIENTS))
+    commission = (src.get("exclusions") or {}).get("commission", set())
+    ext = created["client"].map(lambda c: " ".join(_txt(c, "").split()).casefold() in commission)
     created.loc[ext & (created["pay_state"] == "none"), "pay_state"] = "ext"
     created["manager_name"] = created["manager"].map(lambda m: _manager(src, m))
 

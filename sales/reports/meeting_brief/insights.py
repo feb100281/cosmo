@@ -149,4 +149,4 @@ def build_insights(m: dict, p: Periods) -> dict:
                 if t["month_plan"] > 0 else "")
     headline = (f"Поступило {F.money_short(cash['cur']['cash_in'])} ({F.more_less(cash['chg_prev'])} {pl})"
                 f"{plan_txt}; создано {F.orders_word(oc['count'])} на {F.money_short(oc['amount'])}.")
-    return {"good": top(good, 4), "bad": top(bad, 5), "ask": top(ask, 6), "headline": headline}
+    return {"good": top(good, 4), "bad": top(bad, 4), "ask": top(ask, 5), "headline": headline}

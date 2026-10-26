@@ -173,6 +173,7 @@ class DebtExclusion(models.Model):
         ("barter", "Бартер"),
         ("internal", "Свой / внутренний клиент"),
         ("dispute", "Спорный, решается отдельно"),
+        ("commission", "Комиссионер, оплата по отчёту"),
         ("other", "Другое"),
     ]
 

@@ -255,3 +255,18 @@ table.month-n td.bad b { color: #b8492f; }
 table.t.plan td.name { white-space: nowrap; }
 table.t.plan td { padding-top: 1mm; padding-bottom: 1mm; }
 .hint { margin: -2mm 0 0; font-size: 7.4pt; color: #5b6b63; }
+
+/* ---------- разрывы страниц ---------- */
+table.t thead { display: table-header-group; }
+table.t tr, .notes li { page-break-inside: avoid; }
+.sec { page-break-after: avoid; }
+table.kpis, table.three, table.mini, .month, .stack, table.legend, .how, .chart { page-break-inside: avoid; }
+
+/* обложка компактнее: всё на одной странице */
+.cover .headline { font-size: 11pt; margin: 3mm 0 2.4mm; }
+.cover .kpi-v { font-size: 15pt; }
+.cover td.kpi { padding: 2mm 2.6mm 2.2mm; }
+table.three td.col { padding: 2.4mm 3mm; }
+.notes li { margin-bottom: 1.6mm; }
+.notes li b { font-size: 8.4pt; }
+.notes li span { font-size: 7.5pt; }
