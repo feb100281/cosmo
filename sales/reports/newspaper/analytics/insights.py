@@ -139,10 +139,10 @@ def _store_insights(store_sections: list) -> list:
         insights.append({
             "level": "neutral",
             "text": (
-                f"«{section['store_name']}» имеет непропорционально большой "
-                f"остаток: {section['stock']['qty_share_pct_fmt']} остатков "
-                f"компании при {section['cash_share_pct']:.0f}% кэша сети "
-                f"({fmt_pp(section['imbalance_pp'])})."
+                f"В «{section['store_name']}» лежит {section['stock']['qty_share_pct_fmt']} "
+                f"всех остатков компании, а денег магазин приносит {section['cash_share_pct']:.0f}% "
+                f"от сети — товара там заметно больше, чем продаж "
+                f"(разница {fmt_pp(section['imbalance_pp'])})."
             ),
         })
 

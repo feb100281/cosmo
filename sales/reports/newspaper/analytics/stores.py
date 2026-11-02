@@ -45,7 +45,11 @@ def build_store_sections(cash_data: dict, stocks_data: dict) -> list:
         cash_share_pct = _to_float(row["fact"]) / float(total_fact) * 100.0
 
         imbalance_pp = stock_qty_share_pct - cash_share_pct
-        is_overstocked = imbalance_pp > STOCK_STORE_IMBALANCE_PP
+        # Только магазины с планом и продажами: центральный склад не продаёт, сравнивать его с кэшем нельзя
+        is_overstocked = (
+            bool(row.get("has_plan")) and cash_share_pct > 0
+            and imbalance_pp > STOCK_STORE_IMBALANCE_PP
+        )
 
         sections.append({
             "store_name": store_name,
