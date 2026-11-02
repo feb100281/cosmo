@@ -1808,6 +1808,18 @@ def get_file_data(file: str) -> pd.DataFrame:
             )
         ).mappings().one()
 
+    # ------------------------------------------------------------------
+    # 12. Срез в историю остатков (одна дата — один срез, без задвоения)
+    # ------------------------------------------------------------------
+
+    try:
+        from utils.stocks_history import save_snapshot
+
+        snap_date = pd.to_datetime(df["init_date"]).max().date() if "init_date" in df.columns else date.today()
+        LAST_ATTR_LOG.append(save_snapshot(df, snap_date))
+    except Exception as exc:
+        LAST_ATTR_LOG.append(f"История остатков не сохранена: {exc}")
+
     print(
         "\nStocks written:",
         f"rows={check['rows_count']}",

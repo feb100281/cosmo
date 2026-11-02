@@ -98,7 +98,9 @@ def cover(m: dict, ins: dict, p: Periods) -> str:
             f"{F.orders_word(m['control']['debt']['count'])} · на сегодня",
             '<span class="d flat">отгружено, но не оплачено</span>', tone="bad" if m["control"]["debt"]["amount"] else ""),
         kpi("Новые заказы", F.money_short(orders["cur"]["amount"]),
-            f"{F.orders_word(orders['cur']['count'])}, ср. чек {F.money_short(orders['cur']['avg'])}",
+            f"{F.orders_word(orders['cur']['count'])}, ср. чек {F.money_short(orders['cur']['avg'])}"
+            + (f"; комиссионер {orders['commission']['count']} на {F.money_short(orders['commission']['amount'])}"
+               if orders["commission"]["count"] else ""),
             delta(orders["chg_prev_amount"], label=pl) + delta(orders["chg_ly_amount"], label=ly)),
         kpi(f"План месяца · {p.month_label.split()[0].lower()}",
             F.pct(t["month_exec"]) if t["month_plan"] else "—",

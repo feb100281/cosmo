@@ -43,12 +43,18 @@ REGISTERED_COLUMS = [
 
 def read_excel(file):
     fdf = pd.read_excel(file, skiprows=1, dtype=str)
-    cols = []
-    for col in fdf.columns:
-        if col.startswith("Unnamed"):
-            continue
-        else:
-            cols.append(col)
+    # Заголовки могут прийти числами (пустые/служебные колонки) — сравниваем как строки
+    fdf.columns = [str(c).strip() for c in fdf.columns]
+    cols = [c for c in fdf.columns if not c.startswith("Unnamed")]
+
+    missing = [c for c in ("GUID_ЗК", "Номер Заказа", "ДатаИВремяСоздания", "Кол.", "Дата и время изменения")
+               if c not in cols]
+    if missing:
+        raise ValueError(
+            "В файле заказов не найдены колонки: " + ", ".join(missing)
+            + ". Проверьте, что выгружен правильный отчёт и заголовки во 2-й строке. "
+            + "Найдены: " + ", ".join(cols[:15])
+        )
 
     df = fdf[cols].copy()
     df["ДатаИВремяСоздания"] = pd.to_datetime(df["ДатаИВремяСоздания"], dayfirst=True)

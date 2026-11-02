@@ -148,5 +148,8 @@ def build_insights(m: dict, p: Periods) -> dict:
     plan_txt = (f", план на {month} {F.pct(t['month_exec'])} (прогноз {F.pct(t['month_forecast_exec'])})"
                 if t["month_plan"] > 0 else "")
     headline = (f"Поступило {F.money_short(cash['cur']['cash_in'])} ({F.more_less(cash['chg_prev'])} {pl})"
-                f"{plan_txt}; создано {F.orders_word(oc['count'])} на {F.money_short(oc['amount'])}.")
+                f"{plan_txt}; создано {F.orders_word(oc['count'])} на {F.money_short(oc['amount'])}"
+                + (f" (в т.ч. комиссионер — {orders['commission']['count']} на "
+                   f"{F.money_short(orders['commission']['amount'])})" if orders["commission"]["count"] else "")
+                + ".")
     return {"good": top(good, 4), "bad": top(bad, 4), "ask": top(ask, 5), "headline": headline}

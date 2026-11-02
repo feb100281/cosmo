@@ -191,6 +191,8 @@ def orders_section(src: dict, p: Periods) -> dict:
     created.loc[created["cash_pmts"] <= TOL, "pay_state"] = "none"
     commission = (src.get("exclusions") or {}).get("commission", set())
     ext = created["client"].map(lambda c: " ".join(_txt(c, "").split()).casefold() in commission)
+    ext = ext.astype(bool) if len(created) else pd.Series(False, index=created.index, dtype=bool)
+    comm = created[ext]
     created.loc[ext & (created["pay_state"] == "none"), "pay_state"] = "ext"
     created["manager_name"] = created["manager"].map(lambda m: _manager(src, m))
 
@@ -247,6 +249,7 @@ def orders_section(src: dict, p: Periods) -> dict:
         "chg_prev_amount": pct_change(st["amount"], float(prev["amount_active"].sum())),
         "chg_ly_amount": pct_change(st["amount"], float(ly["amount_active"].sum())),
         "full": bucket("full"), "partial": bucket("partial"), "none": bucket("none"), "ext": bucket("ext"),
+        "commission": {"count": int(len(comm)), "amount": float(comm["amount_active"].sum())},
         "paid_share": share(st["paid"], st["amount"]),
         "shipped_share": share(st["shipped"], st["amount"]),
         "delivery": {
