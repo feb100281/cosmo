@@ -31,3 +31,15 @@ class SalesReport(models.Model): # type: ignore
 
     def __str__(self):
         return "Панель продаж"
+
+
+class MeetingBrief(models.Model):  # type: ignore
+    """Только право доступа к отчёту к совещанию, таблицы нет."""
+    class Meta:
+        managed = False
+        verbose_name = "Отчёт к совещанию"
+        verbose_name_plural = "Отчёт к совещанию"
+        default_permissions = ('view',)
+
+    def __str__(self):
+        return "Отчёт к совещанию"
