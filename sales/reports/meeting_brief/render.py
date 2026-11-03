@@ -330,6 +330,47 @@ def orders_page(m: dict, p: Periods) -> str:
     return page(3, "Заказы и менеджеры", body, p)
 
 
+def stores_page(m: dict, p: Periods) -> str:
+    o = m["orders"]
+    rows, tot = [], {"count": 0, "amount": 0.0, "paid": 0.0, "full": 0, "partial": 0, "none": 0, "ext": 0,
+                     "shipped": 0.0}
+    has_ext = any(r["ext"] for r in o["stores"])
+    for r in o["stores"]:
+        for k in tot:
+            tot[k] += r[k]
+        ext = f'<td class="num">{e(r["ext"] or "—")}</td>' if has_ext else ""
+        rows.append(
+            f'<tr><td class="name">{e(r["store"])}</td><td class="num"><b>{e(r["count"])}</b></td>'
+            f'<td class="num"><b>{e(F.money(r["amount"], False))}</b></td>'
+            f'<td class="num">{e(F.money(r["avg"], False))}</td>'
+            f'<td class="num">{e(F.money(r["paid"], False))}</td><td class="num">{e(F.pct(r["paid_share"]))}</td>'
+            f'<td class="num">{e(r["full"] or "—")}</td><td class="num">{e(r["partial"] or "—")}</td>'
+            f'<td class="num {"warn" if r["none"] else ""}">{e(r["none"] or "—")}</td>{ext}'
+            f'<td class="num">{e(F.money(r["shipped"], False))}</td></tr>')
+    head = [("Подразделение", ""), ("Заказов", "num"), ("Сумма, ₽", "num"), ("Ср. чек, ₽", "num"),
+            ("Оплачено, ₽", "num"), ("Оплачено, %", "num"), ("Полностью", "num"), ("Частично", "num"),
+            ("Без оплаты", "num")] + ([("Комиссионер", "num")] if has_ext else []) + [("Отгружено, ₽", "num")]
+    foot = ""
+    if rows:
+        share = tot["paid"] / tot["amount"] * 100 if tot["amount"] else None
+        ext = f'<td class="num">{e(tot["ext"] or "—")}</td>' if has_ext else ""
+        foot = (f'<tr><td class="name">Итого</td><td class="num">{e(tot["count"])}</td>'
+                f'<td class="num">{e(F.money(tot["amount"], False))}</td>'
+                f'<td class="num">{e(F.money(tot["amount"] / tot["count"], False)) if tot["count"] else "—"}</td>'
+                f'<td class="num">{e(F.money(tot["paid"], False))}</td><td class="num">{e(F.pct(share))}</td>'
+                f'<td class="num">{e(tot["full"])}</td><td class="num">{e(tot["partial"])}</td>'
+                f'<td class="num">{e(tot["none"])}</td>{ext}'
+                f'<td class="num">{e(F.money(tot["shipped"], False))}</td></tr>')
+    body = (
+        section("Заказы, созданные за период, по подразделениям",
+                "по дате создания, без отменённых; оплата и отгрузка — на дату отчёта")
+        + table(head, rows, "compact", foot)
+        + '<p class="empty-note">«Оплачено» — сумма оплат клиента по заказу, не больше суммы заказа. '
+          'Полный список заказов — в Excel «Заказы по подразделениям».</p>'
+    )
+    return page(4, "Заказы по подразделениям", body, p)
+
+
 def _chg_cell(v, good_when_up=True):
     return f'<td class="num">{delta(v, good_when_up)}</td>'
 
@@ -379,7 +420,7 @@ def sales_page(m: dict, p: Periods) -> str:
         + f'<td>{section("Просели сильнее всего", "в рублях " + p.prev_label)}{table(mv_head, movers(s["drops"], -1), "compact")}</td>'
         + '</tr></table>'
     )
-    return page(4, "Продажи по категориям и брендам", body, p)
+    return page(5, "Продажи по категориям и брендам", body, p)
 
 
 def control_page(m: dict, p: Periods) -> str:
@@ -440,13 +481,13 @@ def control_page(m: dict, p: Periods) -> str:
           f'{section("Долго на согласовании", "крупнейшие")}{table(st_head, stuck(c["approval"], 3), "compact")}</td>'
         + '</tr></table>'
     )
-    return page(5, "Контроль заказов", body, p)
+    return page(6, "Контроль заказов", body, p)
 
 
 def stock_page(m: dict, p: Periods) -> str:
     s = m["stock"]
     if not s.get("has_data"):
-        return page(6, "Остатки", '<p class="empty-note">Остатки не загружены</p>', p)
+        return page(7, "Остатки", '<p class="empty-note">Остатки не загружены</p>', p)
     st, df = s["stale"], s["deficit"]
     val = f"из них {st['never']} ни разу не продавались"
     cards = (
@@ -484,12 +525,12 @@ def stock_page(m: dict, p: Periods) -> str:
           f'{table([("Категория", ""), ("SKU", "num"), ("Шт.", "num"), ("Продано", "num"), ("Запас, нед.", "num"), ("Залежалось", "num")], cat_rows, "compact")}</td>'
         + '</tr></table>'
     )
-    return page(6, "Остатки", body, p)
+    return page(7, "Остатки", body, p)
 
 
 def render_html(m: dict, ins: dict, p: Periods, standalone: bool = True, toolbar: str = "") -> str:
     css = CSS_PATH.read_text(encoding="utf-8")
-    pages = "".join([cover(m, ins, p), money_page(m, p), orders_page(m, p), sales_page(m, p),
+    pages = "".join([cover(m, ins, p), money_page(m, p), orders_page(m, p), stores_page(m, p), sales_page(m, p),
                      control_page(m, p), stock_page(m, p)])
     gen = f'<div class="generated">Сформировано {datetime.now():%d.%m.%Y %H:%M}</div>'
     return (f'<!doctype html><html lang="ru"><head><meta charset="utf-8">'

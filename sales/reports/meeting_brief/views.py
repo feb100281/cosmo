@@ -14,6 +14,7 @@ from django.urls import reverse
 from . import config as C
 from .insights import build_insights
 from .metrics import build_metrics
+from .orders_xlsx import build_orders_excel
 from .periods import Periods, last_full_week, presets
 from .render import render_html
 from .sources import load_all, load_exclusions, load_managers, load_orders
@@ -82,6 +83,10 @@ def report_view(request):
     if fmt == "xlsx":
         return _attachment(build_tasks_bytes(p), C.TASKS_FILENAME.format(stamp=stamp), xlsx_type)
 
+    if fmt == "orders":
+        src = {"orders": load_orders(), "managers": load_managers(), "exclusions": load_exclusions()}
+        return _attachment(build_orders_excel(src, p), C.ORDERS_FILENAME.format(stamp=stamp), xlsx_type)
+
     if fmt in ("pdf", "zip"):
         from weasyprint import HTML
 
@@ -98,6 +103,7 @@ def report_view(request):
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
             z.writestr(pdf_name, pdf)
             z.writestr(C.TASKS_FILENAME.format(stamp=stamp), build_tasks_bytes(p, src))
+            z.writestr(C.ORDERS_FILENAME.format(stamp=stamp), build_orders_excel(src, p))
         return _attachment(buf.getvalue(), C.ZIP_FILENAME.format(stamp=stamp), "application/zip")
 
     toolbar = (
@@ -106,6 +112,7 @@ def report_view(request):
         f'<span class="sp"></span><span>{escape(p.label)}</span>'
         f'<a class="primary" href="?{qs}&format=pdf">Скачать PDF</a>'
         f'<a href="?{qs}&format=xlsx">Excel по менеджерам</a>'
+        f'<a href="?{qs}&format=orders">Заказы по подразделениям</a>'
         '<button onclick="window.print()">Печать</button>'
         '</div>'
     )

@@ -5,6 +5,7 @@ REPORT_TITLE = "Отчёт к совещанию"
 BRAND = "COSMORELAX"
 PDF_FILENAME = "Совещание_{start}_{end}.pdf"
 TASKS_FILENAME = "Задачи_менеджеров_{stamp}.xlsx"
+ORDERS_FILENAME = "Заказы_по_подразделениям_{stamp}.xlsx"
 ZIP_FILENAME = "Совещание_{stamp}.zip"
 
 # Типы операций кассы

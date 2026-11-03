@@ -175,10 +175,50 @@ def _orders_stats(df: pd.DataFrame) -> dict:
     }
 
 
+PAY_STATE_TITLE = {"full": "Оплачен полностью", "partial": "Оплачен частично",
+                   "none": "Без оплаты", "ext": "Комиссионер (оплата по отчёту)"}
+
+
+def created_orders(src: dict, d1: date, d2: date) -> pd.DataFrame:
+    """Заказы, созданные в [d1, d2] (без отменённых и нулевых), со статусом оплаты на сегодня."""
+    orders = src["orders"]
+    created = _in_range(orders, d1, d2, "date_from")
+    created = created[~created["cancelled"] & (created["amount_active"] > 0)].copy()
+    created["pay_state"] = "partial"
+    created.loc[created["cash_pmts"] >= created["amount_active"] - TOL, "pay_state"] = "full"
+    created.loc[created["cash_pmts"] <= TOL, "pay_state"] = "none"
+    commission = (src.get("exclusions") or {}).get("commission", set())
+    ext = created["client"].map(lambda c: " ".join(_txt(c, "").split()).casefold() in commission)
+    ext = ext.astype(bool) if len(created) else pd.Series(False, index=created.index, dtype=bool)
+    created["is_commission"] = ext
+    created.loc[ext & (created["pay_state"] == "none"), "pay_state"] = "ext"
+    created["manager_name"] = created["manager"].map(lambda m: _manager(src, m))
+    created["store_name"] = created["store"].map(lambda v: _txt(v, "Без подразделения"))
+    created["paid_clip"] = created[["cash_pmts", "amount_active"]].min(axis=1).clip(lower=0)
+    return created
+
+
+def orders_by_store(created: pd.DataFrame) -> list[dict]:
+    rows = []
+    for name, g in created.groupby("store_name"):
+        amount = float(g["amount_active"].sum())
+        paid = float(g["paid_clip"].sum())
+        cnt = lambda st: int((g["pay_state"] == st).sum())
+        rows.append({
+            "store": name, "count": int(len(g)), "amount": amount, "avg": amount / len(g),
+            "paid": paid, "paid_share": share(paid, amount),
+            "full": cnt("full"), "partial": cnt("partial"), "none": cnt("none"), "ext": cnt("ext"),
+            "none_amount": float(g.loc[g["pay_state"] == "none", "amount_active"].sum()),
+            "shipped": float(g["total_shiped_amount"].sum()),
+        })
+    rows.sort(key=lambda r: -r["amount"])
+    return rows
+
+
 def orders_section(src: dict, p: Periods) -> dict:
     orders = src["orders"]
     created_all = _in_range(orders, p.start, p.end, "date_from")
-    created = created_all[~created_all["cancelled"] & (created_all["amount_active"] > 0)].copy()
+    created = created_orders(src, p.start, p.end)
     cancelled = created_all[created_all["cancelled"]]
 
     prev = _in_range(orders, p.prev_start, p.prev_end, "date_from")
@@ -186,15 +226,7 @@ def orders_section(src: dict, p: Periods) -> dict:
     ly = _in_range(orders, p.ly_start, p.ly_end, "date_from")
     ly = ly[~ly["cancelled"] & (ly["amount_active"] > 0)]
 
-    created["pay_state"] = "partial"
-    created.loc[created["cash_pmts"] >= created["amount_active"] - TOL, "pay_state"] = "full"
-    created.loc[created["cash_pmts"] <= TOL, "pay_state"] = "none"
-    commission = (src.get("exclusions") or {}).get("commission", set())
-    ext = created["client"].map(lambda c: " ".join(_txt(c, "").split()).casefold() in commission)
-    ext = ext.astype(bool) if len(created) else pd.Series(False, index=created.index, dtype=bool)
-    comm = created[ext]
-    created.loc[ext & (created["pay_state"] == "none"), "pay_state"] = "ext"
-    created["manager_name"] = created["manager"].map(lambda m: _manager(src, m))
+    comm = created[created["is_commission"]]
 
     def bucket(state):
         part = created[created["pay_state"] == state]
@@ -263,6 +295,7 @@ def orders_section(src: dict, p: Periods) -> dict:
                       "amount": float(cancelled["order_amount"].sum())},
         "managers": managers, "best": best, "best_cash": best_cash,
         "no_pay_list": no_pay_list,
+        "stores": orders_by_store(created),
     }
 
 
