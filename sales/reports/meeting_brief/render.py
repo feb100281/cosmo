@@ -186,6 +186,25 @@ def how_block(plan: dict, p: Periods) -> str:
     )
 
 
+def sources_block(s: dict, p: Periods) -> str:
+    tot = s["total"] or 1
+    cells = [
+        ("Без заказа", s["no_order"], "розничные чеки и платежи без заказа"),
+        ("По заказам периода", s["new"],
+         f"заказы, созданные {p.label}. В таблице выше {F.money_short(s['new_in_table'])}: "
+         "за вычетом возвратов и без отменённых заказов"),
+        ("По более ранним заказам", s["old"], f"заказы, созданные до {p.start:%d.%m.%Y}: доплаты, оплата при отгрузке"),
+    ]
+    if s["unknown"] > 0:
+        cells.append(("Заказ не найден", s["unknown"], "GUID есть в кассе, но нет в выгрузке заказов"))
+    td = "".join(
+        f'<td><div class="mini-t">{e(t)}</div><div class="mini-v">{e(F.money_short(v))}</div>'
+        f'<div class="mini-s">{e(F.pct(v / tot * 100))} · {e(sub)}</div></td>' for t, v, sub in cells)
+    return (section(f"Распределение поступлений за {p.label}",
+                    f"всего {F.money_short(s['total'])} от клиентов по кассе и банку")
+            + f'<table class="mini"><tr>{td}</tr></table>')
+
+
 def money_page(m: dict, p: Periods) -> str:
     cash, plan = m["cash"], m["plan"]
     best, worst = cash["best_day"], cash["worst_day"]
@@ -254,13 +273,15 @@ def orders_page(m: dict, p: Periods) -> str:
     total = cur["amount"] or 1
     seg = "".join(
         f'<span class="seg {c}" style="width:{max(o[k]["amount"] / total * 100, 0):.1f}%"></span>'
-        for k, c in (("full", "s-full"), ("partial", "s-part"), ("none", "s-none"), ("ext", "s-ext")))
+        for k, c in (("full", "s-full"), ("partial", "s-part"), ("none", "s-none"), ("ext", "s-ext"),
+                     ("void", "s-void")))
     legend = "".join(
         f'<td><i class="dot {c}"></i><b>{e(t)}</b><br>{e(F.orders_word(o[k]["count"]))} · '
         f'{e(F.money_short(o[k]["amount"]))}</td>'
         for k, c, t in (("full", "s-full", "Оплачены полностью"), ("partial", "s-part", "Частично"),
-                        ("none", "s-none", "Без предоплаты"), ("ext", "s-ext", "Комиссионер (оплата по отчёту)"))
-        if k != "ext" or o["ext"]["count"])
+                        ("none", "s-none", "Без предоплаты"), ("ext", "s-ext", "Исключения: комиссионер, бартер и др."),
+                        ("void", "s-void", "Закрыты без оплаты и отгрузки"))
+        if k not in ("ext", "void") or o[k]["count"])
     d = o["delivery"]
     side = (
         f'<table class="mini"><tr>'
@@ -319,7 +340,7 @@ def orders_page(m: dict, p: Periods) -> str:
     np_head = [("Заказ", ""), ("Создан", ""), ("Клиент", ""), ("Менеджер", ""), ("Статус", ""), ("Сумма, ₽", "num")]
 
     body = (
-        section("Заказы, созданные за период", "по дате создания; оплата и отгрузка — на дату отчёта")
+        section(f"Заказы, созданные {p.label}", f"без отменённых; оплата и отгрузка — на {p.end:%d.%m.%Y}")
         + side
         + section("Менеджеры", "«Собрано денег» — оплаты за период по заказам менеджера, в т.ч. по старым заказам")
         + table(head, rows, "mgr compact")
@@ -332,13 +353,15 @@ def orders_page(m: dict, p: Periods) -> str:
 
 def stores_page(m: dict, p: Periods) -> str:
     o = m["orders"]
-    rows, tot = [], {"count": 0, "amount": 0.0, "paid": 0.0, "full": 0, "partial": 0, "none": 0, "ext": 0,
+    rows, tot = [], {"count": 0, "amount": 0.0, "paid": 0.0, "full": 0, "partial": 0, "none": 0, "ext": 0, "void": 0,
                      "shipped": 0.0}
     has_ext = any(r["ext"] for r in o["stores"])
+    has_void = any(r["void"] for r in o["stores"])
     for r in o["stores"]:
         for k in tot:
             tot[k] += r[k]
         ext = f'<td class="num">{e(r["ext"] or "—")}</td>' if has_ext else ""
+        ext += f'<td class="num">{e(r["void"] or "—")}</td>' if has_void else ""
         rows.append(
             f'<tr><td class="name">{e(r["store"])}</td><td class="num"><b>{e(r["count"])}</b></td>'
             f'<td class="num"><b>{e(F.money(r["amount"], False))}</b></td>'
@@ -347,13 +370,15 @@ def stores_page(m: dict, p: Periods) -> str:
             f'<td class="num">{e(r["full"] or "—")}</td><td class="num">{e(r["partial"] or "—")}</td>'
             f'<td class="num {"warn" if r["none"] else ""}">{e(r["none"] or "—")}</td>{ext}'
             f'<td class="num">{e(F.money(r["shipped"], False))}</td></tr>')
-    head = [("Подразделение", ""), ("Заказов", "num"), ("Сумма, ₽", "num"), ("Ср. чек, ₽", "num"),
-            ("Оплачено, ₽", "num"), ("Оплачено, %", "num"), ("Полностью", "num"), ("Частично", "num"),
-            ("Без оплаты", "num")] + ([("Комиссионер", "num")] if has_ext else []) + [("Отгружено, ₽", "num")]
+    head = ([("Подразделение", ""), ("Заказов", "num"), ("Сумма, ₽", "num"), ("Ср. чек, ₽", "num"),
+             ("Оплачено, ₽", "num"), ("Оплачено, %", "num"), ("Полностью", "num"), ("Частично", "num"),
+             ("Без оплаты", "num")] + ([("Исключения", "num")] if has_ext else [])
+            + ([("Закрыт без исполнения", "num")] if has_void else []) + [("Отгружено, ₽", "num")])
     foot = ""
     if rows:
         share = tot["paid"] / tot["amount"] * 100 if tot["amount"] else None
         ext = f'<td class="num">{e(tot["ext"] or "—")}</td>' if has_ext else ""
+        ext += f'<td class="num">{e(tot["void"] or "—")}</td>' if has_void else ""
         foot = (f'<tr><td class="name">Итого</td><td class="num">{e(tot["count"])}</td>'
                 f'<td class="num">{e(F.money(tot["amount"], False))}</td>'
                 f'<td class="num">{e(F.money(tot["amount"] / tot["count"], False)) if tot["count"] else "—"}</td>'
@@ -362,11 +387,12 @@ def stores_page(m: dict, p: Periods) -> str:
                 f'<td class="num">{e(tot["none"])}</td>{ext}'
                 f'<td class="num">{e(F.money(tot["shipped"], False))}</td></tr>')
     body = (
-        section("Заказы, созданные за период, по подразделениям",
-                "по дате создания, без отменённых; оплата и отгрузка — на дату отчёта")
+        section(f"Заказы, созданные {p.label}, по подразделениям",
+                f"без отменённых; оплата и отгрузка — на {p.end:%d.%m.%Y}")
         + table(head, rows, "compact", foot)
-        + '<p class="empty-note">«Оплачено» — сумма оплат клиента по заказу, не больше суммы заказа. '
-          'Полный список заказов — в Excel «Заказы по подразделениям».</p>'
+        + f'<p class="empty-note">Оплачено и отгружено — по {p.end:%d.%m.%Y} включительно. '
+          f'Список заказов — в Excel «Заказы по подразделениям».</p>'
+        + sources_block(m["cash"]["sources"], p)
     )
     return page(4, "Заказы по подразделениям", body, p)
 

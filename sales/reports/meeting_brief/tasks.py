@@ -16,7 +16,10 @@ TOL = C.MONEY_TOL
 ACTIONS = [
     ("close", "Закрыть заказ в 1С", "отгружен и оплачен полностью, а статус не «Закрыт»"),
     ("collect", "Получить оплату", "отгружено больше, чем оплачено"),
-    ("prepay", "Взять предоплату", "создан за выбранный период, ни одной оплаты (кроме комиссионеров)"),
+    ("void", "Проверить закрытый заказ",
+     "создан за выбранный период, статус «Закрыт», но ни оплаты, ни отгрузки — отменить или указать, "
+     "куда ушла продажа"),
+    ("prepay", "Взять предоплату", "создан за выбранный период, ни одной оплаты (кроме исключений)"),
     ("reserve", "Отгрузить или снять резерв", f"в резерве дольше {C.RESERVE_STUCK_DAYS} дн., ничего не отгружено"),
     ("approval", "Согласовать или отменить", f"на согласовании дольше {C.APPROVAL_STUCK_DAYS} дн."),
 ]
@@ -61,13 +64,16 @@ def build_tasks(orders: pd.DataFrame, managers: dict, p: Periods, exclusions: di
             lambda d: d is not None and d == d and d >= ref - timedelta(days=365)),
         "prepay": has_date & dates.map(lambda d: d is not None and d == d and p.start <= d <= p.end)
                   & (o["cash_pmts"] <= TOL),
+        "void": has_date & dates.map(lambda d: d is not None and d == d and p.start <= d <= p.end)
+                & (o["status"] == C.ST_CLOSED) & (o["cash_pmts"].abs() <= TOL)
+                & (o["total_shiped_amount"].abs() <= TOL) & ~is_ex,
         "reserve": open_ & (o["status"] == C.ST_RESERVE) & (o["total_shiped_amount"] <= TOL)
                    & since(C.RESERVE_STUCK_DAYS),
         "approval": open_ & (o["status"] == C.ST_APPROVAL) & since(C.APPROVAL_STUCK_DAYS),
     }
     commission = (exclusions or {}).get("commission", set())
     ext = o["client"].map(lambda c: " ".join(_txt(c).split()).casefold() in commission)
-    rules["prepay"] = rules["prepay"] & ~ext
+    rules["prepay"] = rules["prepay"] & ~ext & ~is_ex
     if only_excluded:
         rules = {"collect": rules["collect"] & is_ex}
     else:

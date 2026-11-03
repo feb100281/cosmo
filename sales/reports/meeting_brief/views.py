@@ -17,7 +17,7 @@ from .metrics import build_metrics
 from .orders_xlsx import build_orders_excel
 from .periods import Periods, last_full_week, presets
 from .render import render_html
-from .sources import load_all, load_exclusions, load_managers, load_orders
+from .sources import load_all, load_exclusions, load_managers, load_orders, load_paid, load_shipped
 from .tasks import build_tasks, build_tasks_excel
 
 MAX_DAYS = 366
@@ -84,7 +84,8 @@ def report_view(request):
         return _attachment(build_tasks_bytes(p), C.TASKS_FILENAME.format(stamp=stamp), xlsx_type)
 
     if fmt == "orders":
-        src = {"orders": load_orders(), "managers": load_managers(), "exclusions": load_exclusions()}
+        src = {"orders": load_orders(), "managers": load_managers(), "exclusions": load_exclusions(),
+               "paid_end": load_paid(p.end), "shipped_end": load_shipped(p.end)}
         return _attachment(build_orders_excel(src, p), C.ORDERS_FILENAME.format(stamp=stamp), xlsx_type)
 
     if fmt in ("pdf", "zip"):

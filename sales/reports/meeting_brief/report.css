@@ -181,6 +181,7 @@ table.mini td { background: #fff; border: .6pt solid #d7ddd3; border-radius: 1.5
 .s-part { background: #d9a441; }
 .s-none { background: #c1663a; }
 .s-ext { background: #b9c2bb; }
+.s-void { background: #e2dccf; }
 table.legend { width: 100%; margin-top: 1.4mm; font-size: 7.8pt; color: #3d4a44; }
 table.legend td { padding: 0 2mm 0 0; vertical-align: top; }
 .dot { display: inline-block; width: 2.4mm; height: 2.4mm; border-radius: 50%; margin-right: 1.2mm; vertical-align: -.2mm; }

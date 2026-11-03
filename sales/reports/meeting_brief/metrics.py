@@ -57,12 +57,32 @@ def cash_section(src: dict, p: Periods) -> dict:
     avg_day = t_cur["cash_in"] / p.days if p.days else 0
 
     return {
-        "cur": t_cur, "prev": t_prev, "ly": t_ly,
+        "cur": t_cur, "prev": t_prev, "ly": t_ly, "sources": cash_sources(src, p, cur),
         "chg_prev": pct_change(t_cur["cash_in"], t_prev["cash_in"]),
         "chg_ly": pct_change(t_cur["cash_in"], t_ly["cash_in"]),
         "daily": daily, "daily_prev": daily_prev,
         "best_day": best, "worst_day": worst, "avg_day": avg_day,
     }
+
+
+def cash_sources(src: dict, p: Periods, cur: pd.DataFrame) -> dict:
+    """Откуда поступления за период: без заказа, по заказам периода, по более ранним заказам."""
+    orders = src["orders"]
+    created = dict(zip(orders["order_id"].astype(str), orders["date_from"]))
+    guid = cur["order_guid"].map(lambda v: _txt(v, "")) if not cur.empty else pd.Series(dtype=str)
+    d = guid.map(lambda g: created.get(g) if g else None)
+
+    def total(mask):
+        return float(cur.loc[mask, "cash_in"].sum()) if not cur.empty else 0.0
+
+    no_order = guid.eq("")
+    new = d.map(lambda x: x is not None and x == x and p.start <= x <= p.end)
+    old = d.map(lambda x: x is not None and x == x and x < p.start)
+    unknown = ~no_order & ~new & ~old
+    out = {"no_order": total(no_order), "new": total(new), "old": total(old), "unknown": total(unknown)}
+    out["total"] = sum(out.values())
+    out["new_in_table"] = float(created_orders(src, p.start, p.end)["paid_clip"].sum())
+    return out
 
 
 def plan_section(src: dict, p: Periods) -> dict:
@@ -176,14 +196,22 @@ def _orders_stats(df: pd.DataFrame) -> dict:
 
 
 PAY_STATE_TITLE = {"full": "Оплачен полностью", "partial": "Оплачен частично",
-                   "none": "Без оплаты", "ext": "Комиссионер (оплата по отчёту)"}
+                   "none": "Без оплаты", "ext": "Исключение (не долг)",
+                   "void": "Закрыт без исполнения"}
 
 
 def created_orders(src: dict, d1: date, d2: date) -> pd.DataFrame:
-    """Заказы, созданные в [d1, d2] (без отменённых и нулевых), со статусом оплаты на сегодня."""
+    """Заказы, созданные в [d1, d2] (без отменённых и нулевых).
+    Оплата и отгрузка — на конец периода (src["paid_end"], src["shipped_end"])."""
     orders = src["orders"]
     created = _in_range(orders, d1, d2, "date_from")
-    created = created[~created["cancelled"] & (created["amount_active"] > 0)].copy()
+    created = created[~created["cancelled"] & (created["amount_active"] > TOL)].copy()
+    created["paid_now"] = created["cash_pmts"]
+    created["shipped_now"] = created["total_shiped_amount"]
+    guid = created["order_id"].astype(str)
+    for col, key in (("cash_pmts", "paid_end"), ("total_shiped_amount", "shipped_end")):
+        if src.get(key) is not None:
+            created[col] = guid.map(src[key]).fillna(0.0).astype(float)
     created["pay_state"] = "partial"
     created.loc[created["cash_pmts"] >= created["amount_active"] - TOL, "pay_state"] = "full"
     created.loc[created["cash_pmts"] <= TOL, "pay_state"] = "none"
@@ -191,7 +219,14 @@ def created_orders(src: dict, d1: date, d2: date) -> pd.DataFrame:
     ext = created["client"].map(lambda c: " ".join(_txt(c, "").split()).casefold() in commission)
     ext = ext.astype(bool) if len(created) else pd.Series(False, index=created.index, dtype=bool)
     created["is_commission"] = ext
-    created.loc[ext & (created["pay_state"] == "none"), "pay_state"] = "ext"
+    # Исключения из админки (комиссионер, бартер и т.п.) — не долг и не «без оплаты»
+    created["excluded"] = exclusion_reason(created, src.get("exclusions"))
+    created["is_excluded"] = (created["excluded"] != "") | ext
+    created.loc[created["is_excluded"] & (created["pay_state"] == "none"), "pay_state"] = "ext"
+    # Закрыт, но ни оплаты, ни отгрузки на сегодня — фактически не исполнен
+    void = (~created["is_excluded"] & (created["status"] == C.ST_CLOSED)
+            & (created["paid_now"].abs() <= TOL) & (created["shipped_now"].abs() <= TOL))
+    created.loc[void, "pay_state"] = "void"
     created["manager_name"] = created["manager"].map(lambda m: _manager(src, m))
     created["store_name"] = created["store"].map(lambda v: _txt(v, "Без подразделения"))
     created["paid_clip"] = created[["cash_pmts", "amount_active"]].min(axis=1).clip(lower=0)
@@ -207,9 +242,11 @@ def orders_by_store(created: pd.DataFrame) -> list[dict]:
         rows.append({
             "store": name, "count": int(len(g)), "amount": amount, "avg": amount / len(g),
             "paid": paid, "paid_share": share(paid, amount),
-            "full": cnt("full"), "partial": cnt("partial"), "none": cnt("none"), "ext": cnt("ext"),
+            "full": cnt("full"), "partial": cnt("partial"), "none": cnt("none"), "ext": cnt("ext"), "void": cnt("void"),
             "none_amount": float(g.loc[g["pay_state"] == "none", "amount_active"].sum()),
             "shipped": float(g["total_shiped_amount"].sum()),
+            "shipped_unpaid": float((g["total_shiped_amount"] - g["cash_pmts"]).clip(lower=0)
+                                    .where(~g["is_excluded"], 0.0).sum()),
         })
     rows.sort(key=lambda r: -r["amount"])
     return rows
@@ -222,9 +259,9 @@ def orders_section(src: dict, p: Periods) -> dict:
     cancelled = created_all[created_all["cancelled"]]
 
     prev = _in_range(orders, p.prev_start, p.prev_end, "date_from")
-    prev = prev[~prev["cancelled"] & (prev["amount_active"] > 0)]
+    prev = prev[~prev["cancelled"] & (prev["amount_active"] > TOL)]
     ly = _in_range(orders, p.ly_start, p.ly_end, "date_from")
-    ly = ly[~ly["cancelled"] & (ly["amount_active"] > 0)]
+    ly = ly[~ly["cancelled"] & (ly["amount_active"] > TOL)]
 
     comm = created[created["is_commission"]]
 
@@ -281,6 +318,7 @@ def orders_section(src: dict, p: Periods) -> dict:
         "chg_prev_amount": pct_change(st["amount"], float(prev["amount_active"].sum())),
         "chg_ly_amount": pct_change(st["amount"], float(ly["amount_active"].sum())),
         "full": bucket("full"), "partial": bucket("partial"), "none": bucket("none"), "ext": bucket("ext"),
+        "void": bucket("void"),
         "commission": {"count": int(len(comm)), "amount": float(comm["amount_active"].sum())},
         "paid_share": share(st["paid"], st["amount"]),
         "shipped_share": share(st["shipped"], st["amount"]),

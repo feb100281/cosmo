@@ -117,20 +117,38 @@ def load_orders() -> pd.DataFrame:
         df[c] = pd.to_datetime(df[c], errors="coerce").dt.date
     df["cancelled"] = (df["status"].eq(C.ST_CANCELLED) | df["change_status"].eq(C.ST_CANCELLED))
 
-    # Оплаты клиента считаем по кассе: без дизайнерского вознаграждения (это наша выплата)
-    pay = _df(
-        """
+    df["cash_pmts"] = df["order_id"].astype(str).map(load_paid()).fillna(0.0).astype(float)
+    return df
+
+
+def load_paid(d2: date | None = None) -> dict:
+    """Оплаты клиента по GUID заказа (без дизайнерского вознаграждения), по дату d2 включительно."""
+    sql = """
         SELECT order_guid, SUM(amount) AS paid
         FROM orders_orderscf
         WHERE order_guid IS NOT NULL AND order_guid <> ''
           AND COALESCE(oper_type, '') NOT LIKE %s
+    """
+    params = [C.CF_DESIGNER_LIKE]
+    if d2 is not None:
+        sql += " AND date <= %s"
+        params.append(d2)
+    pay = _df(sql + " GROUP BY order_guid", params)
+    return dict(zip(pay["order_guid"].astype(str), pd.to_numeric(pay["paid"], errors="coerce").fillna(0.0)))
+
+
+def load_shipped(d2: date) -> dict:
+    """Реализация по GUID заказа (отгрузки минус возвраты) по дату d2 включительно."""
+    df = _df(
+        """
+        SELECT order_guid, SUM(dt - cr) AS shipped
+        FROM sales_salesdata
+        WHERE order_guid IS NOT NULL AND order_guid <> '' AND date <= %s
         GROUP BY order_guid
         """,
-        [C.CF_DESIGNER_LIKE],
+        [d2],
     )
-    paid = dict(zip(pay["order_guid"].astype(str), pd.to_numeric(pay["paid"], errors="coerce").fillna(0.0)))
-    df["cash_pmts"] = df["order_id"].astype(str).map(paid).fillna(0.0).astype(float)
-    return df
+    return dict(zip(df["order_guid"].astype(str), pd.to_numeric(df["shipped"], errors="coerce").fillna(0.0)))
 
 
 def load_managers() -> dict:
@@ -226,6 +244,8 @@ def load_all(p: Periods) -> dict:
         "sales_ly": load_item_sales(p.ly_start, p.ly_end),
         "items": load_items(),
         "orders": load_orders(),
+        "paid_end": load_paid(p.end),
+        "shipped_end": load_shipped(p.end),
         "managers": load_managers(),
         "stocks": load_stocks(),
         "history": load_sales_history(p.end),
