@@ -729,3 +729,5 @@ html, body {
 .month-dev-row .badge {
   font-size: 6.8pt;
 }
+
+.cash-store-table .forecast-pct { font-size: 0.82em; color: #8a8a8a; white-space: nowrap; }

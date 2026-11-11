@@ -97,6 +97,7 @@
       <div class="highlight-label">Прогноз на конец месяца</div>
       <div class="highlight-value">{{ payload.cash.forecast_fmt }}</div>
       <div class="highlight-sub">
+        {% if payload.cash.forecast_pct_fmt %}<b>{{ payload.cash.forecast_pct_fmt }} плана</b> · {% endif %}
         {% if payload.cash.totals.projected_diff < 0 %}ниже плана на {{ payload.cash.totals.projected_diff_fmt }} ₽
         {% else %}выше плана на {{ payload.cash.totals.projected_diff_fmt }} ₽{% endif %}
       </div>
@@ -151,7 +152,7 @@
         </td>
         <td class="num">{{ row.remaining_fmt_short }}</td>
         <td class="num">{{ row.required_daily_fmt_short }}</td>
-        <td class="num">{{ row.projected_month_fact_fmt_short }}</td>
+        <td class="num">{{ row.projected_month_fact_fmt_short }}{% if row.forecast_pct_fmt %}<div class="forecast-pct">{{ row.forecast_pct_fmt }} плана</div>{% endif %}</td>
         <td>
           {% if row.status_tier != "bad" %}<span class="badge badge-positive">В темпе</span>
           {% else %}<span class="badge badge-negative">Риск</span>{% endif %}
@@ -165,7 +166,7 @@
     </tbody>
   </table>
   <div class="table-caption table-caption-left">
-    Выполнение считается по поступлениям без учёта возвратов. Прогноз — по текущему средненедельному поступлению до конца месяца.
+    Выполнение считается по поступлениям без учёта возвратов. Прогноз — по текущему средненедельному поступлению до конца месяца; под прогнозом — сколько это процентов плана.
   </div>
 
   <div class="cash-share-row-full">

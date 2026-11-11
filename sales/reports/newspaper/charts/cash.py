@@ -59,6 +59,8 @@ def build_cash_pace_chart(cash_data: dict) -> str:
     # Значения факта/прогноза — отдельной строкой под графиком, чтобы никогда
     # не пересекаться с линией плана или барами.
     summary = f"Факт {fmt_money_short(fact)}   ·   Прогноз на конец месяца {fmt_money_short(forecast)}"
+    if plan > 0:
+        summary += f" ({forecast / plan * 100:.0f}% плана)"
     ax.text(
         0, -0.62, summary,
         ha="left", va="top", fontsize=8.6, color=COLOR_INK_SOFT,

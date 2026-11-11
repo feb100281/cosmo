@@ -42,6 +42,7 @@ from ..config import (
 )
 from ..render.helpers import (
     fmt_money,
+    safe_div,
     fmt_money_mln_or_rub,
     fmt_money_short,
     fmt_pct,
@@ -176,6 +177,8 @@ def build_report_payload(report_date) -> dict:
         row["remaining_fmt_short"] = nbsp(fmt_money_short(row["remaining"]))
         row["required_daily_fmt_short"] = nbsp(fmt_money_short(row["required_daily"]))
         row["projected_month_fact_fmt_short"] = nbsp(fmt_money_short(row["projected_month_fact"]))
+        row["forecast_pct_fmt"] = (fmt_pct(safe_div(row["projected_month_fact"], row["plan"]) * 100)
+                                   if row.get("has_plan") else "")
         row["plan_fmt"] = nbsp(row.get("plan_fmt"))
         row["fact_fmt"] = nbsp(row.get("fact_fmt"))
 
@@ -285,6 +288,8 @@ def build_report_payload(report_date) -> dict:
             "plan_fmt": fmt_money_short(totals["plan"]),
             "fact_fmt": fmt_money_short(totals["fact"]),
             "forecast_fmt": fmt_money_short(totals["projected_month_fact"]),
+            "forecast_pct_fmt": (fmt_pct(safe_div(totals["projected_month_fact"], totals["plan"]) * 100)
+                                 if totals["plan"] > 0 else ""),
             "exec_pct_fmt": fmt_pct(totals["exec_pct"]),
             "lead": cash_lead,
             "calendar": cash_data["cash_calendar"],
