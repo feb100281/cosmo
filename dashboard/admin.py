@@ -40,11 +40,4 @@ class SalesReportAdmin(admin.ModelAdmin):
 # admin.site.register(CatDash, CatDashAdmin)
 
 
-from django.urls import reverse
-from .models import MeetingBrief
 
-
-@admin.register(MeetingBrief)
-class MeetingBriefAdmin(admin.ModelAdmin):
-    def changelist_view(self, request, extra_context=None):
-        return HttpResponseRedirect(reverse("meeting_brief"))

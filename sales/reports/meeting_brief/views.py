@@ -7,7 +7,6 @@ from html import escape
 from urllib.parse import urlencode
 
 from django.contrib import admin
-from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -22,15 +21,6 @@ from .sources import load_all, load_exclusions, load_managers, load_orders, load
 from .tasks import build_tasks, build_tasks_excel
 
 MAX_DAYS = 366
-PERM = "dashboard.view_meetingbrief"
-
-
-def _require_perm(view):
-    def wrapped(request, *args, **kwargs):
-        if not request.user.has_perm(PERM):
-            raise PermissionDenied
-        return view(request, *args, **kwargs)
-    return wrapped
 
 
 def _parse(request) -> tuple[Periods | None, str]:
@@ -66,7 +56,6 @@ def _attachment(data: bytes, name: str, content_type: str) -> HttpResponse:
     return resp
 
 
-@_require_perm
 def form_view(request):
     default = last_full_week()
     context = {
@@ -81,7 +70,6 @@ def form_view(request):
     return render(request, "admin/meeting_brief/form.html", context)
 
 
-@_require_perm
 def report_view(request):
     p, error = _parse(request)
     if p is None:

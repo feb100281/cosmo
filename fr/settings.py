@@ -117,15 +117,13 @@ JAZZMIN_SETTINGS = {
          {"name": "Upload Form", "url": "/orders/upload-all-orders/"},
          {"name": "Остатки и приходы","url": "/orders/upload-stocks/",},
          {"model": "corporate.StockReceipt"},
-         {"name": "Отчёт к совещанию", "url": "/admin/meeting-brief/",
-          "permissions": ["dashboard.view_meetingbrief"]},
+         {"name": "Отчёт к совещанию", "url": "/admin/meeting-brief/"},
     ],
     "custom_links": {
         "sales": [{
             "name": "Отчёт к совещанию",
             "url": "/admin/meeting-brief/",
             "icon": "fa-solid fa-people-group",
-            "permissions": ["dashboard.view_meetingbrief"],
         }],
     },
     
@@ -155,7 +153,6 @@ JAZZMIN_SETTINGS = {
         ### --- ДЭШБОАРД --- 
         "dashboard": "fa-solid fa-gauge-high",
         "dashboard.SalesReport": "fa-solid fa-chart-line",
-        "dashboard.MeetingBrief": "fa-solid fa-people-group",
         
          
         ### --- ПРОДАЖИ --- 
