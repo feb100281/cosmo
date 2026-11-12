@@ -157,36 +157,65 @@ def _build_detail_sheet(wb: Workbook, df: pd.DataFrame, meta: dict) -> None:
         ws.auto_filter.ref = f"A{HEADER_ROW}:{get_column_letter(len(DETAIL_COLUMNS))}{last}"
 
 
-def _build_grouped_sheet(wb: Workbook, df: pd.DataFrame, meta: dict, *, group_col: str,
-                         sheet_title: str, title: str) -> None:
-    columns = [c for c in DETAIL_COLUMNS if c[1] != group_col]
+# Оформление уровней группировки: (заливка, цвет текста, размер шрифта)
+_LEVEL_STYLE = [(SURFACE_4, NAVY_3, 10.5), (SURFACE_3, NAVY_3, 10), ("FAFBFA", "1F1F1F", 10)]
+_INDENT = 2
+
+
+def _group_row(ws, r: int, columns, label: str, sums: dict, depth: int) -> None:
     n = len(columns)
+    bg, color, size = _LEVEL_STYLE[min(depth, len(_LEVEL_STYLE) - 1)]
+    for j, (_t, key, _w, fmt) in enumerate(columns, start=1):
+        v = label if j == 1 else sums.get(key)
+        c = ws.cell(row=r, column=j, value=v)
+        c.font = font(size, True, color)
+        c.fill = fill(bg)
+        c.border = Border(top=side(NAVY, "thin") if depth == 0 else side(),
+                          bottom=side(), right=side() if j < n else None)
+        if j == 1:
+            c.alignment = Alignment(horizontal="left", vertical="center", indent=depth * _INDENT)
+        elif fmt and fmt != "@" and key in sums:
+            c.number_format = fmt
+            c.alignment = Alignment(horizontal="right", vertical="center")
+    ws.row_dimensions[r].height = 20 if depth == 0 else 18
+
+
+def _build_grouped_sheet(wb: Workbook, df: pd.DataFrame, meta: dict, *, group_cols: list[str],
+                         sheet_title: str, title: str) -> None:
+    """Многоуровневая группировка; все уровни свёрнуты, раскрываются «+» слева."""
+    columns = [c for c in DETAIL_COLUMNS if c[1] not in group_cols]
+    n = len(columns)
+    depth_items = len(group_cols)
     ws = wb.create_sheet(sheet_title)
     _sheet_top(ws, n, title, meta)
     _header(ws, columns)
     ws.sheet_properties.outlinePr.summaryBelow = False
+    ws.sheet_format.outlineLevelRow = depth_items
 
-    order = df.groupby(group_col, dropna=False)["net_amount"].sum().sort_values(ascending=False)
-    r = HEADER_ROW + 1
-    for group_value in order.index.tolist():
-        g = df[df[group_col] == group_value].sort_values("net_amount", ascending=False)
-        sums = _sums(g)
-        for j, (_t, key, _w, fmt) in enumerate(columns, start=1):
-            v = f"{group_value}  ·  {len(g)} поз." if j == 1 else sums.get(key)
-            c = ws.cell(row=r, column=j, value=v)
-            c.font = font(10, True, NAVY_3)
-            c.fill = fill(SURFACE_4)
-            c.border = Border(top=side(NAVY, "thin"), bottom=side(), right=side() if j < n else None)
-            if fmt and fmt != "@" and key in sums:
-                c.number_format = fmt
-                c.alignment = Alignment(horizontal="right", vertical="center")
-        ws.row_dimensions[r].height = 20
-        r += 1
-        for i, (_, rec) in enumerate(g.iterrows()):
-            _data_row(ws, r, columns, rec.to_dict(), zebra=i % 2 == 1)
-            ws.row_dimensions[r].outlineLevel = 1
+    def write(part: pd.DataFrame, depth: int, r: int) -> int:
+        col = group_cols[depth]
+        order = part.groupby(col, dropna=False)["net_amount"].sum().sort_values(ascending=False)
+        for value in order.index.tolist():
+            g = part[part[col] == value]
+            _group_row(ws, r, columns, f"{value}  ·  {len(g)} поз.", _sums(g), depth)
+            dim = ws.row_dimensions[r]
+            if depth:
+                dim.outlineLevel, dim.hidden = depth, True
+            dim.collapsed = True
             r += 1
+            if depth + 1 < depth_items:
+                r = write(g, depth + 1, r)
+            else:
+                for i, (_, rec) in enumerate(g.sort_values("net_amount", ascending=False).iterrows()):
+                    _data_row(ws, r, columns, rec.to_dict(), zebra=i % 2 == 1)
+                    ws.cell(row=r, column=1).alignment = Alignment(
+                        horizontal="left", vertical="center", indent=depth_items * _INDENT)
+                    ws.row_dimensions[r].outlineLevel = depth_items
+                    ws.row_dimensions[r].hidden = True
+                    r += 1
+        return r
 
+    r = write(df, 0, HEADER_ROW + 1)
     _total_row(ws, r, columns, f"ОБЩИЙ ИТОГ ({len(df)} поз.)", _sums(df), level="grand")
     ws.freeze_panes = ws.cell(row=HEADER_ROW + 1, column=2)
 
@@ -208,10 +237,10 @@ def build_workbook(df: pd.DataFrame, *, report_type: str, start: date, end: date
         cards = []
     else:
         _build_detail_sheet(wb, df, meta)
-        _build_grouped_sheet(wb, df, meta, group_col="cat_name", sheet_title="По категориям",
-                             title="Продажи по категориям")
-        _build_grouped_sheet(wb, df, meta, group_col="manufacturer_name", sheet_title="По производителям",
-                             title="Продажи по производителям")
+        _build_grouped_sheet(wb, df, meta, group_cols=["cat_name", "subcat_name"],
+                             sheet_title="По категориям", title="Продажи по категориям")
+        _build_grouped_sheet(wb, df, meta, group_cols=["manufacturer_name", "cat_name", "subcat_name"],
+                             sheet_title="По производителям", title="Продажи по производителям")
         t = _sums(df)
         ret_share = t["returns_amount"] / t["sales_amount"] if t["sales_amount"] else 0.0
         cards = [
@@ -229,8 +258,8 @@ def build_workbook(df: pd.DataFrame, *, report_type: str, start: date, end: date
         cards=cards,
         sheets=[
             ("Детализация", "Все позиции и штрихкоды по убыванию выручки"),
-            ("По категориям", "Позиции внутри категорий с подытогами; группы сворачиваются «−»"),
-            ("По производителям", "То же в разрезе производителей"),
+            ("По категориям", "Категория → подкатегория → позиции; раскрываются «+» слева"),
+            ("По производителям", "Производитель → категория → подкатегория → позиции"),
         ],
     )
     finalize(wb, ["Оглавление", "Детализация", "По категориям", "По производителям"])
