@@ -113,9 +113,13 @@ def presets(today: date | None = None) -> list[tuple[str, date, date]]:
     month1 = today.replace(day=1)
     prev_month_end = month1 - timedelta(days=1)
     yesterday = today - timedelta(days=1)
+    quarter1 = today.replace(month=(today.month - 1) // 3 * 3 + 1, day=1)
+    year1 = today.replace(month=1, day=1)
     return [
         ("Прошлая неделя", monday - timedelta(days=7), monday - timedelta(days=1)),
         ("Эта неделя", monday, max(monday, yesterday)),
         ("Прошлый месяц", prev_month_end.replace(day=1), prev_month_end),
         ("Этот месяц", month1, max(month1, yesterday)),
+        ("С начала квартала", quarter1, max(quarter1, yesterday)),
+        ("С начала года", year1, max(year1, yesterday)),
     ]

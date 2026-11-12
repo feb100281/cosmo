@@ -33,7 +33,7 @@ REPORTS = [
 def _presets() -> list[dict]:
     today = date.today()
     yesterday = today - timedelta(days=1)
-    items = [("Вчера", yesterday, yesterday), ("Сегодня", today, today)] + presets(today)
+    items = [("Вчера", yesterday, yesterday)] + presets(today)
     return [{"name": n, "start": a.isoformat(), "end": b.isoformat()} for n, a, b in items]
 
 
