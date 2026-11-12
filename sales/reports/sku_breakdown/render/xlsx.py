@@ -57,7 +57,7 @@ DETAIL_COLUMNS = TEXT_COLUMNS + METRIC_COLUMNS
 RETURN_KEYS = {"returns_amount", "returns_qty"}
 KEY_HEADER = "net_amount"
 
-_REPORT_TYPE_LABEL = {"daily": "день", "weekly": "неделя", "monthly": "месяц"}
+_REPORT_TYPE_LABEL = {"daily": "день", "weekly": "неделя", "monthly": "месяц", "period": "период"}
 HEADER_ROW = 5
 
 

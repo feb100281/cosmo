@@ -1,0 +1,81 @@
+{% extends "admin/base_site.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .mb-card { background: #fff; border: 1px solid #d7ddd3; border-top: 3px solid #1e3d32; border-radius: 8px;
+             padding: 22px 26px; max-width: 760px; }
+  .mb-card p.lead { color: #5b6b63; margin: 0 0 18px; font-size: 14px; }
+  .mb-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .mb-presets button { border: 1px solid #1e3d32; background: #fff; color: #1e3d32; border-radius: 16px;
+                       padding: 5px 14px; font-size: 13px; cursor: pointer; }
+  .mb-presets button.on, .mb-presets button:hover { background: #1e3d32; color: #fff; }
+  .mb-dates { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .mb-dates label { display: block; font-size: 12px; color: #5b6b63; margin-bottom: 4px; }
+  .mb-dates input { border: 1px solid #c9d1c5; border-radius: 6px; padding: 6px 10px; font-size: 14px; }
+  .mb-actions { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .mb-actions button { border: 0; border-radius: 6px; padding: 9px 18px; font-size: 14px; font-weight: 600;
+                       cursor: pointer; background: #1e3d32; color: #fff; }
+  .mb-actions a { font-size: 13px; }
+  .mb-note { margin-top: 18px; font-size: 12.5px; color: #5b6b63; line-height: 1.55; }
+  .mb-error { background: #f6e6e0; color: #b8492f; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; }
+  .mb-wait { display: none; margin-top: 12px; color: #5b6b63; font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-card">
+  <p class="lead">Excel с продажами и возвратами по номенклатуре и штрихкодам за выбранный период.
+    Для одного дня поставьте одинаковые даты «С» и «По» или нажмите «Вчера».</p>
+  {% if error %}<div class="mb-error">{{ error }}</div>{% endif %}
+
+  <form id="mb-form" method="get">
+    <div class="mb-presets">
+      {% for p in presets %}
+        <button type="button" data-start="{{ p.start }}" data-end="{{ p.end }}">{{ p.name }}</button>
+      {% endfor %}
+    </div>
+    <div class="mb-dates">
+      <div><label for="mb-start">С</label><input type="date" id="mb-start" name="start" value="{{ start }}" required></div>
+      <div><label for="mb-end">По</label><input type="date" id="mb-end" name="end" value="{{ end }}" required></div>
+    </div>
+    <input type="hidden" name="download" value="1">
+    <div class="mb-actions">
+      <button type="submit">Скачать Excel</button>
+      <a href="{{ hub_url }}">← Все отчёты</a>
+    </div>
+    <div class="mb-wait" id="mb-wait">Файл формируется…</div>
+  </form>
+
+  <div class="mb-note">
+    В файле: оглавление с итогами, детализация по всем позициям, продажи по категориям и по производителям.
+    Суммы — по данным продаж, возвраты показаны отдельно.
+  </div>
+</div>
+
+<script>
+  (function () {
+    var start = document.getElementById("mb-start");
+    var end = document.getElementById("mb-end");
+    var buttons = document.querySelectorAll(".mb-presets button");
+    function mark() {
+      buttons.forEach(function (b) {
+        b.classList.toggle("on", b.dataset.start === start.value && b.dataset.end === end.value);
+      });
+    }
+    buttons.forEach(function (b) {
+      b.addEventListener("click", function () { start.value = b.dataset.start; end.value = b.dataset.end; mark(); });
+    });
+    start.addEventListener("change", function () { if (!end.value || end.value < start.value) end.value = start.value; mark(); });
+    end.addEventListener("change", mark);
+    document.getElementById("mb-form").addEventListener("submit", function () {
+      var w = document.getElementById("mb-wait");
+      w.style.display = "block";
+      setTimeout(function () { w.style.display = "none"; }, 8000);
+    });
+    mark();
+  })();
+</script>
+{% endblock %}

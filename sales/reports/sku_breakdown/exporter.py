@@ -51,3 +51,19 @@ def build_sku_breakdown_xlsx_response(report_date: date, request=None) -> HttpRe
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response["Pragma"] = "no-cache"
     return response
+
+
+def build_sku_breakdown_period_response(start: date, end: date) -> HttpResponse:
+    """Тот же отчёт за произвольный период [start, end]; один день — start == end."""
+    report_type = "daily" if start == end else "period"
+    wb = build_workbook(get_sku_barcode_breakdown(start, end), report_type=report_type, start=start, end=end)
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    name = f"SKU_{start:%Y%m%d}.xlsx" if start == end else f"SKU_{start:%Y%m%d}_{end:%Y%m%d}.xlsx"
+
+    response = HttpResponse(buffer.getvalue(), content_type=XLSX_CONTENT_TYPE)
+    response["Content-Disposition"] = f'attachment; filename="{name}"'
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
+    return response

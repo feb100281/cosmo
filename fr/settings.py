@@ -117,14 +117,14 @@ JAZZMIN_SETTINGS = {
          {"name": "Upload Form", "url": "/orders/upload-all-orders/"},
          {"name": "Остатки и приходы","url": "/orders/upload-stocks/",},
          {"model": "corporate.StockReceipt"},
-         {"name": "Отчёт к совещанию", "url": "/admin/meeting-brief/"},
+         {"name": "Отчёты", "url": "/admin/reports/"},
     ],
     "custom_links": {
-        "sales": [{
-            "name": "Отчёт к совещанию",
-            "url": "/admin/meeting-brief/",
-            "icon": "fa-solid fa-people-group",
-        }],
+        "sales": [
+            {"name": "Отчёты", "url": "/admin/reports/", "icon": "fa-solid fa-folder-open"},
+            {"name": "Отчёт к совещанию", "url": "/admin/meeting-brief/", "icon": "fa-solid fa-people-group"},
+            {"name": "Продажи по SKU", "url": "/admin/reports/sku/", "icon": "fa-solid fa-barcode"},
+        ],
     },
     
 
