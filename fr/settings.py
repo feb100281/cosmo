@@ -170,6 +170,7 @@ JAZZMIN_SETTINGS = {
 
         "corporate.ItemMaterial": "fa-solid fa-layer-group",
         "corporate.ItemManufacturer": "fa-solid fa-industry",
+        "corporate.SiteCategory": "fa-solid fa-sitemap",
         "corporate.ItemBrend": "fa-solid fa-copyright",
 
         "corporate.ItemProperty": "fa-solid fa-sliders",

@@ -1,0 +1,18 @@
+{% extends "admin/base_site.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+<div style="background:#fff;border:1px solid #d7ddd3;border-top:3px solid #1e3d32;border-radius:2px;padding:22px 26px;max-width:760px">
+  <p style="color:#5b6b63;margin:0 0 16px;font-size:14px">
+    Файл JSON со списком разделов каталога сайта (поля id, name, code, xml_id, parent_id, active, sort, depth_level, path).
+    Разделы обновляются по id сайта; сопоставление с нашими категориями сохраняется. Наши категории не меняются.
+  </p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary" style="border-radius:2px">Загрузить</button>
+    <a href="{% url 'admin:corporate_sitecategory_changelist' %}" style="margin-left:12px">Отмена</a>
+  </form>
+</div>
+{% endblock %}

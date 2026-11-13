@@ -304,3 +304,31 @@ class StockReceipt(models.Model):
 
     def __str__(self):
         return f"{self.receipt_number} от {self.receipt_date:%d.%m.%Y} — {self.fullname}"
+
+
+class SiteCategory(models.Model):
+    """Раздел каталога сайта (Битрикс). Загружается из JSON, наше дерево категорий не меняет."""
+    site_id = models.IntegerField(unique=True, verbose_name="id на сайте")
+    name = models.CharField(max_length=255, verbose_name="Раздел")
+    code = models.CharField(max_length=255, blank=True, default="", verbose_name="Код")
+    xml_id = models.CharField(max_length=100, blank=True, default="", verbose_name="xml_id (1С)")
+    parent = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name="children", verbose_name="Родитель")
+    depth = models.PositiveSmallIntegerField(default=1, verbose_name="Уровень")
+    sort = models.IntegerField(default=500, verbose_name="Сортировка")
+    active = models.BooleanField(default=True, verbose_name="Активен")
+    path = models.CharField(max_length=500, blank=True, default="", verbose_name="Путь")
+    in_last_upload = models.BooleanField(default=True, verbose_name="Есть в последней загрузке")
+    our_cat = models.ForeignKey(CatTree, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name="site_categories", verbose_name="Наша категория")
+    our_subcat = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="site_categories", verbose_name="Наша подкатегория")
+    loaded_at = models.DateTimeField(auto_now=True, verbose_name="Загружено")
+
+    class Meta:
+        verbose_name = "Раздел каталога сайта"
+        verbose_name_plural = "Каталог сайта (Битрикс)"
+        ordering = ["path"]
+
+    def __str__(self):
+        return self.path or self.name

@@ -1778,3 +1778,89 @@ class StockReceiptAdmin(admin.ModelAdmin):
         )
         resp["Content-Disposition"] = f'attachment; filename="receipts_{datetime.now():%Y%m%d_%H%M}.xlsx"'
         return resp
+
+
+# ---------------------------------------------------------------- каталог сайта (Битрикс)
+
+from .models import SiteCategory  # noqa: E402
+
+
+class SiteCatalogUploadForm(forms.Form):
+    file = forms.FileField(label="JSON с разделами каталога сайта")
+
+
+@admin.register(SiteCategory)
+class SiteCategoryAdmin(admin.ModelAdmin):
+    change_list_template = "admin/corporate/sitecategory/change_list.html"
+    list_display = ("tree_name", "depth", "active", "children_count", "xml_id", "our_cat", "our_subcat",
+                    "in_last_upload")
+    list_filter = ("active", "depth", "in_last_upload", ("our_cat", admin.EmptyFieldListFilter))
+    search_fields = ("name", "path", "code", "xml_id")
+    list_editable = ("our_cat", "our_subcat")
+    list_per_page = 500
+    autocomplete_fields = ()
+    readonly_fields = ("site_id", "name", "code", "xml_id", "parent", "depth", "sort", "active", "path",
+                       "in_last_upload", "loaded_at")
+    fields = readonly_fields[:9] + ("our_cat", "our_subcat", "in_last_upload", "loaded_at")
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(n_children=Count("children"))
+
+    @admin.display(description="Раздел", ordering="path")
+    def tree_name(self, obj):
+        pad = (max(obj.depth, 1) - 1) * 22
+        weight = "600" if obj.depth <= 1 else "400"
+        return format_html('<span style="padding-left:{}px;font-weight:{}">{}</span>', pad, weight, obj.name)
+
+    @admin.display(description="Подразделов", ordering="n_children")
+    def children_count(self, obj):
+        return obj.n_children or "—"
+
+    def has_add_permission(self, request):
+        return False
+
+    def get_urls(self):
+        urls = super().get_urls()
+        extra = [
+            path("upload/", self.admin_site.admin_view(self.upload_view), name="corporate_sitecategory_upload"),
+            path("excel/", self.admin_site.admin_view(self.excel_view), name="corporate_sitecategory_excel"),
+        ]
+        return extra + urls
+
+    def upload_view(self, request):
+        from corporate.site_catalog import find_issues, parse, save_to_db
+
+        form = SiteCatalogUploadForm(request.POST or None, request.FILES or None)
+        if request.method == "POST" and form.is_valid():
+            try:
+                rows = parse(form.cleaned_data["file"].read())
+                stats = save_to_db(rows)
+            except Exception as exc:
+                messages.error(request, f"Файл не загружен: {exc}")
+            else:
+                n_issues = len(find_issues(rows))
+                messages.success(
+                    request,
+                    f"Загружено разделов: {len(rows)} (новых {stats['created']}, обновлено {stats['updated']}"
+                    + (f", пропали из файла {stats['gone']}" if stats["gone"] else "")
+                    + f"). Разделов с замечаниями: {n_issues} — подробности в Excel.",
+                )
+                return redirect("admin:corporate_sitecategory_changelist")
+        context = {**self.admin_site.each_context(request), "title": "Загрузка каталога сайта",
+                   "form": form, "opts": self.model._meta}
+        return render(request, "admin/corporate/sitecategory/upload.html", context)
+
+    def excel_view(self, request):
+        from corporate.site_catalog import build_excel, rows_from_db
+
+        rows, mapping = rows_from_db()
+        if not rows:
+            messages.warning(request, "Каталог сайта ещё не загружен")
+            return redirect("admin:corporate_sitecategory_changelist")
+        last = SiteCategory.objects.order_by("-loaded_at").values_list("loaded_at", flat=True).first()
+        resp = HttpResponse(
+            build_excel(rows, mapping, timezone.localtime(last) if last else None),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        resp["Content-Disposition"] = f'attachment; filename="site_catalog_{datetime.now():%Y%m%d}.xlsx"'
+        return resp
