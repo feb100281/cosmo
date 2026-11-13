@@ -1194,8 +1194,23 @@ class CatTreeAdmin(DraggableMPTTAdmin):
                 self.admin_site.admin_view(self.print_tree_view),
                 name="corporate_cattree_print_tree",
             ),
+            path(
+                "excel/",
+                self.admin_site.admin_view(self.excel_view),
+                name="corporate_cattree_excel",
+            ),
         ]
         return custom + urls
+
+    def excel_view(self, request):
+        from corporate.cattree_xlsx import build_cattree_excel
+
+        resp = HttpResponse(
+            build_cattree_excel(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        resp["Content-Disposition"] = f'attachment; filename="categories_{datetime.now():%Y%m%d}.xlsx"'
+        return resp
 
     # ---------- action ----------
     @admin.action(description="🖨️ Печать каталога")

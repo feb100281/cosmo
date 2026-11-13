@@ -109,6 +109,7 @@
         {% if has_add_permission %}
           <a href="{{ add_url }}" class="cat-btn cat-btn-primary">➕ Добавить категорию</a>
         {% endif %}
+        <a href="{% url 'admin:corporate_cattree_excel' %}" class="cat-btn">📊 Скачать дерево в Excel</a>
       </div>
 
       <div class="cat-divider"></div>
