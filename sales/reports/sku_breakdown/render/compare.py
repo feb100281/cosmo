@@ -7,9 +7,11 @@ from openpyxl.styles import Alignment, Border
 from openpyxl.utils import get_column_letter
 
 from sales.reports.xl_brand import (
-    EXPENSE, FMT_MONEY, FMT_QTY, MUTED, NAVY, NAVY_3, SURFACE_3, SURFACE_4, TEXT_2, TOTAL_ROW, ZEBRA_ROW,
-    fill, font, page_setup, side, toc_button,
+    EXPENSE, FMT_MONEY, FMT_QTY, MUTED, NAVY, NAVY_3, SURFACE_3, TEXT_2, TOTAL_ROW, ZEBRA_ROW,
+    font, page_setup, toc_button,
 )
+
+from .periodfmt import rng
 
 POSITIVE = "2E7D5B"
 FMT_PCT = '+0%;−0%;0%'
@@ -17,18 +19,21 @@ FMT_PP = '+0.0" п.п.";−0.0" п.п.";"0 п.п."'
 FMT_SHARE = '0.0%'
 NBSP = " "
 
-# (заголовок, ключ, ширина, формат)
-METRICS = [
-    ("Продажи, ₽", "cur", 15, FMT_MONEY),
-    ("Прошлый период, ₽", "prev", 15, FMT_MONEY),
-    ("Изменение, ₽", "diff", 14, FMT_MONEY),
-    ("Изменение, %", "chg", 11, FMT_PCT),
-    ("Доля, %", "share", 9, FMT_SHARE),
-    ("Доля раньше, %", "share_prev", 10, FMT_SHARE),
-    ("Изм. доли", "share_pp", 11, FMT_PP),
-    ("Шт.", "qty", 9, FMT_QTY),
-    ("Шт. раньше", "qty_prev", 10, FMT_QTY),
-]
+def _metrics(cur: str, prev: str) -> list[tuple[str, str, int, str]]:
+    """(заголовок, ключ, ширина, формат); в заголовках — реальные даты периодов."""
+    return [
+        (f"Итого {cur}, ₽", "cur", 16, FMT_MONEY),
+        (f"Итого {prev}, ₽", "prev", 16, FMT_MONEY),
+        ("Изменение, ₽", "diff", 14, FMT_MONEY),
+        ("Изменение, %", "chg", 11, FMT_PCT),
+        (f"Доля {cur}", "share", 11, FMT_SHARE),
+        (f"Доля {prev}", "share_prev", 11, FMT_SHARE),
+        ("Изменение доли", "share_pp", 11, FMT_PP),
+        (f"Шт. {cur}", "qty", 11, FMT_QTY),
+        (f"Шт. {prev}", "qty_prev", 11, FMT_QTY),
+    ]
+
+
 SIGNED = {"diff", "chg", "share_pp"}
 
 
@@ -84,8 +89,8 @@ def _summary(t: pd.DataFrame, name_col: str, what: str) -> list[str]:
     return lines
 
 
-def _block(ws, r: int, title: str, t: pd.DataFrame, labels: list[tuple[str, str, int]],
-           summary: list[str], n_cols: int) -> int:
+def _block(ws, S, r: int, title: str, t: pd.DataFrame, labels: list[tuple[str, str, int]],
+           summary: list[str], metrics, n_cols: int) -> int:
     ws.cell(row=r, column=1, value=title.upper()).font = font(12, True, NAVY)
     ws.row_dimensions[r].height = 22
     r += 1
@@ -98,79 +103,68 @@ def _block(ws, r: int, title: str, t: pd.DataFrame, labels: list[tuple[str, str,
         r += 1
     r += 1
 
-    cols = labels + [(h, k, w) for h, k, w, _f in METRICS]
+    cols = labels + [(h, k, w) for h, k, w, _f in metrics]
     for j, (h, k, _w) in enumerate(cols, start=1):
-        c = ws.cell(row=r, column=j, value=h)
-        c.font = font(10, True, "FFFFFF")
-        c.fill = fill(NAVY_3 if k == "diff" else NAVY)
-        c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        c.border = Border(left=side(), right=side(), top=side(), bottom=side())
-    ws.row_dimensions[r].height = 38
+        S.put(ws, r, j, h, (10, True, "FFFFFF", NAVY_3 if k == "diff" else NAVY, "head", "center", 0, None))
+    ws.row_dimensions[r].height = 42
     r += 1
 
-    fmts = {k: f for _h, k, _w, f in METRICS}
-    for i, (_, row) in enumerate(t.iterrows()):
-        for j, (_h, k, _w) in enumerate(cols, start=1):
-            v = row.get(k)
-            if isinstance(v, float) and pd.isna(v):
+    fmts = {k: f for _h, k, _w, f in metrics}
+    keys = [k for _h, k, _w in cols]
+    n = len(cols)
+    for i, row in enumerate(t.reindex(columns=keys).to_numpy(dtype=object)):
+        for j, k in enumerate(keys, start=1):
+            v = row[j - 1]
+            if v is not None and isinstance(v, float) and v != v:
                 v = None
-            c = ws.cell(row=r, column=j, value=v)
             color = "1F1F1F"
             if k in SIGNED and v:
                 color = POSITIVE if v > 0 else EXPENSE
-            c.font = font(10, k == "cur", color)
-            c.border = Border(bottom=side(), right=side() if j < len(cols) else None)
-            if k in fmts:
-                c.number_format = fmts[k]
-                c.alignment = Alignment(horizontal="right", vertical="center")
-            if k == "diff":
-                c.fill = fill(SURFACE_3)
-            elif i % 2:
-                c.fill = fill(ZEBRA_ROW)
+            bg = SURFACE_3 if k == "diff" else (ZEBRA_ROW if i % 2 else None)
+            S.put(ws, r, j, v, (10, k == "cur", color, bg, "right" if j < n else "bottom",
+                                "right" if k in fmts else "left", 0, fmts.get(k)))
         r += 1
 
     tot = {"cur": t["cur"].sum(), "prev": t["prev"].sum(), "qty": t["qty"].sum(), "qty_prev": t["qty_prev"].sum()}
     tot["diff"] = tot["cur"] - tot["prev"]
     tot["chg"] = tot["diff"] / tot["prev"] if tot["prev"] else None
     tot["share"], tot["share_prev"] = 1.0, 1.0
-    for j, (_h, k, _w) in enumerate(cols, start=1):
+    for j, k in enumerate(keys, start=1):
         v = "Итого" if j == 1 else tot.get(k)
-        c = ws.cell(row=r, column=j, value=v)
-        c.font = font(10, True, NAVY_3)
-        c.fill = fill(TOTAL_ROW)
-        c.border = Border(top=side(NAVY, "medium"), bottom=side(NAVY, "double"))
-        if k in fmts and v is not None:
-            c.number_format = fmts[k]
-            c.alignment = Alignment(horizontal="right", vertical="center")
+        numeric = k in fmts and v is not None
+        S.put(ws, r, j, v, (10, True, NAVY_3, TOTAL_ROW, "grand", "right" if numeric else "left", 0,
+                            fmts[k] if numeric else None))
     return r + 3
 
 
-def build_compare_sheet(wb, cur: pd.DataFrame, prev: pd.DataFrame, period_text: str, prev_text: str,
+def build_compare_sheet(wb, S, cur: pd.DataFrame, prev: pd.DataFrame, start, end, prev_start, prev_end,
                         sheet: str = "Динамика") -> None:
+    cur_l, prev_l = rng(start, end), rng(prev_start, prev_end)
+    metrics = _metrics(cur_l, prev_l)
     ws = wb.create_sheet(sheet)
     page_setup(ws)
-    n_cols = 2 + len(METRICS)
+    n_cols = 2 + len(metrics)
     toc_button(ws, 1, n_cols)
     ws.cell(row=2, column=1, value="ДИНАМИКА: КАТЕГОРИИ, ПОДКАТЕГОРИИ, ПРОИЗВОДИТЕЛИ").font = font(14, True)
     ws.row_dimensions[2].height = 24
-    ws.cell(row=3, column=1, value=f"{period_text} против {prev_text} · продажи за вычетом возвратов · "
-                                   "доля — от продаж сети за период").font = font(9, color=MUTED)
+    ws.cell(row=3, column=1, value=f"{cur_l} против {prev_l} · «Итого» — продажи за вычетом возвратов · "
+                                   "доля — от итога сети за период").font = font(9, color=MUTED)
 
-    widths = [30, 26] + [w for _h, _k, w, _f in METRICS]
+    widths = [30, 26] + [w for _h, _k, w, _f in metrics]
     for j, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(j)].width = w
 
     r = 5
     t = compare_table(cur, prev, ["cat_name"])
-    r = _block(ws, r, "Категории", t, [("Категория", "cat_name", 30), ("", "_", 26)],
-               _summary(t, "cat_name", "категории"), n_cols)
+    r = _block(ws, S, r, "Категории", t, [("Категория", "cat_name", 30), ("", "_", 26)],
+               _summary(t, "cat_name", "категории"), metrics, n_cols)
 
     t = compare_table(cur, prev, ["cat_name", "subcat_name"])
-    r = _block(ws, r, "Подкатегории", t, [("Подкатегория", "subcat_name", 30), ("Категория", "cat_name", 26)],
-               _summary(t, "subcat_name", "подкатегории"), n_cols)
+    r = _block(ws, S, r, "Подкатегории", t, [("Подкатегория", "subcat_name", 30), ("Категория", "cat_name", 26)],
+               _summary(t, "subcat_name", "подкатегории"), metrics, n_cols)
 
     t = compare_table(cur, prev, ["manufacturer_name"])
-    _block(ws, r, "Производители (бренды)", t, [("Производитель", "manufacturer_name", 30), ("", "_", 26)],
-           _summary(t, "manufacturer_name", "производители"), n_cols)
+    _block(ws, S, r, "Производители (бренды)", t, [("Производитель", "manufacturer_name", 30), ("", "_", 26)],
+           _summary(t, "manufacturer_name", "производители"), metrics, n_cols)
 
     ws.freeze_panes = "B5"

@@ -29,95 +29,78 @@ NO_STORE = "Без подразделения"
 _METRIC_COLS = ("sales_amount", "sales_qty", "returns_amount", "returns_qty")
 
 
-def get_sku_barcode_breakdown(start: date, end: date, by_store: bool = False) -> pd.DataFrame:
-    """
-    Возвращает DataFrame — одна строка на уникальную комбинацию
-    (номенклатура, штрихкод, категория/подкатегория, производитель) за
-    период [start, end] включительно, со столбцами:
-
-        cat_name, subcat_name, manufacturer_name, article, fullname, barcode,
-        sales_amount, sales_qty, returns_amount, returns_qty,
-        net_amount, net_qty
-
-    Строки, по которым за период не было ни продаж, ни возвратов,
-    отбрасываются.
-    """
-    store_col = "COALESCE(st.name, %(no_store)s) AS store_name," if by_store else ""
-    store_join = "LEFT JOIN corporate_stores st ON st.id = s.store_id" if by_store else ""
-    store_group = ", store_name" if by_store else ""
-    q = f"""
-        SELECT
-            {store_col}
-            i.id AS item_id,
-            COALESCE(i.article, %(no_article)s) AS article,
-            COALESCE(i.fullname, %(no_name)s) AS fullname,
-            b.id AS barcode_id,
-            COALESCE(b.barcode, %(no_barcode)s) AS barcode,
-            i.cat_id AS cat_id,
-            COALESCE(cat.name, %(no_category)s) AS cat_name,
-            i.subcat_id AS subcat_id,
-            COALESCE(sc.name, %(no_subcategory)s) AS subcat_name,
-            i.manufacturer_id AS manufacturer_id,
-            COALESCE(m.report_name, m.name, %(no_manufacturer)s) AS manufacturer_name,
-            SUM(s.dt) AS sales_amount,
-            SUM(s.quant_dt) AS sales_qty,
-            SUM(s.cr) AS returns_amount,
-            SUM(s.quant_cr) AS returns_qty
-        FROM sales_salesdata s
-        JOIN corporate_items i ON i.id = s.item_id
-        LEFT JOIN corporate_barcode b ON b.id = s.barcode_id
-        LEFT JOIN corporate_cattree cat ON cat.id = i.cat_id
-        LEFT JOIN corporate_subcategory sc ON sc.id = i.subcat_id
-        LEFT JOIN corporate_itemmanufacturer m ON m.id = i.manufacturer_id
-        {store_join}
-        WHERE s.`date` BETWEEN %(start)s AND %(end)s
-        GROUP BY
-            i.id, article, fullname,
-            b.id, barcode,
-            i.cat_id, cat_name,
-            i.subcat_id, subcat_name,
-            i.manufacturer_id, manufacturer_name{store_group}
-        ORDER BY cat_name, subcat_name, fullname, barcode
-    """
-
-    params = {
-        "start": start,
-        "end": end,
-        "no_article": NO_ARTICLE,
-        "no_name": NO_NAME,
-        "no_barcode": NO_BARCODE,
-        "no_category": NO_CATEGORY,
-        "no_subcategory": NO_SUBCATEGORY,
-        "no_manufacturer": NO_MANUFACTURER,
-        "no_store": NO_STORE,
-    }
-
+def _fetch(q: str, params) -> pd.DataFrame:
     with connection.cursor() as cur:
         cur.execute(q, params)
-        rows = cur.fetchall()
         cols = [c[0] for c in cur.description]
+        return pd.DataFrame(cur.fetchall(), columns=cols)
 
-    df = pd.DataFrame(rows, columns=cols)
+
+def _names(table: str, ids, name_sql: str = "name") -> dict:
+    ids = sorted({int(i) for i in ids if i is not None and i == i})
+    if not ids:
+        return {}
+    marks = ", ".join(["%s"] * len(ids))
+    df = _fetch(f"SELECT id, {name_sql} AS name FROM {table} WHERE id IN ({marks})", ids)
+    return dict(zip(df["id"], df["name"]))
+
+
+def get_sku_barcode_breakdown(start: date, end: date, by_store: bool = False) -> pd.DataFrame:
+    """
+    Продажи за [start, end] на уровне «номенклатура + штрихкод» (by_store=True — ещё и подразделение).
+    Сначала агрегируем по id (быстро), затем подставляем названия из справочников.
+    Колонки: [store_name], item_id, article, fullname, barcode, cat_name, subcat_name, manufacturer_name,
+    sales_amount, sales_qty, returns_amount, returns_qty, net_amount, net_qty.
+    """
+    store = ", s.store_id" if by_store else ""
+    df = _fetch(
+        f"""
+        SELECT s.item_id, s.barcode_id{store},
+               SUM(s.dt) AS sales_amount, SUM(s.quant_dt) AS sales_qty,
+               SUM(s.cr) AS returns_amount, SUM(s.quant_cr) AS returns_qty
+        FROM sales_salesdata s
+        WHERE s.`date` BETWEEN %s AND %s AND s.item_id IS NOT NULL
+        GROUP BY s.item_id, s.barcode_id{store}
+        """,
+        [start, end],
+    )
+    if df.empty:
+        return df
+    for col in _METRIC_COLS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+    df = df[(df[list(_METRIC_COLS)] != 0).any(axis=1)].reset_index(drop=True)
     if df.empty:
         return df
 
-    for col in _METRIC_COLS:
-        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+    ids = sorted({int(i) for i in df["item_id"]})
+    marks = ", ".join(["%s"] * len(ids))
+    items = _fetch(
+        f"SELECT id AS item_id, article, fullname, cat_id, subcat_id, manufacturer_id "
+        f"FROM corporate_items WHERE id IN ({marks})",
+        ids,
+    )
+    df = df.merge(items, on="item_id", how="left")
+    cats = _names("corporate_cattree", df["cat_id"])
+    subcats = _names("corporate_subcategory", df["subcat_id"])
+    manus = _names("corporate_itemmanufacturer", df["manufacturer_id"], "COALESCE(report_name, name)")
+    barcodes = _names("corporate_barcode", df["barcode_id"], "barcode")
+
+    df["article"] = df["article"].fillna(NO_ARTICLE)
+    df["fullname"] = df["fullname"].fillna(NO_NAME)
+    df["barcode"] = df["barcode_id"].map(barcodes).fillna(NO_BARCODE)
+    df["cat_name"] = df["cat_id"].map(cats).fillna(NO_CATEGORY)
+    df["subcat_name"] = df["subcat_id"].map(subcats).fillna(NO_SUBCATEGORY)
+    df["manufacturer_name"] = df["manufacturer_id"].map(manus).fillna(NO_MANUFACTURER)
+    if by_store:
+        stores = _names("corporate_stores", df["store_id"])
+        df["store_name"] = df["store_id"].map(stores).fillna(NO_STORE)
 
     df["net_amount"] = df["sales_amount"] - df["returns_amount"]
     df["net_qty"] = df["sales_qty"] - df["returns_qty"]
-
-    # убираем строки, по которым за период вообще ничего не произошло
-    # (SUM по LEFT JOIN может дать формально нулевую комбинацию)
-    mask = (
-        (df["sales_amount"] != 0)
-        | (df["sales_qty"] != 0)
-        | (df["returns_amount"] != 0)
-        | (df["returns_qty"] != 0)
-    )
-    df = df[mask].reset_index(drop=True)
-
-    return df
+    keep = (["store_name"] if by_store else []) + [
+        "item_id", "article", "fullname", "barcode", "cat_name", "subcat_name", "manufacturer_name",
+        *_METRIC_COLS, "net_amount", "net_qty"]
+    return df[keep]
 
 
 def without_store(df: pd.DataFrame) -> pd.DataFrame:

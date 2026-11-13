@@ -1,8 +1,10 @@
 # sales/reports/sku_breakdown/render/story.py
-"""Лист «Выводы»: что и как продаёт каждое подразделение, сравнение с прошлым периодом."""
+"""Лист «Выводы»: что и как продаёт каждое подразделение, сравнение с периодом для сравнения."""
 from __future__ import annotations
 
 import pandas as pd
+
+from .periodfmt import rng
 
 NBSP = " "
 TOP_N = 3
@@ -23,13 +25,15 @@ def _pct(v: float) -> str:
     return f"{v:.0f}%"
 
 
-def _change(cur: float, prev: float) -> str:
+def _change(cur: float, prev: float, prev_l: str) -> str:
+    if not prev_l:
+        return ""
     if prev <= 0:
-        return "в прошлом периоде продаж не было" if cur > 0 else ""
+        return f"за {prev_l} продаж не было" if cur > 0 else ""
     ch = (cur - prev) / prev * 100
     if abs(ch) < 0.5:
-        return "на уровне прошлого периода"
-    return f"{'больше' if ch > 0 else 'меньше'} на {abs(ch):.0f}% к прошлому периоду ({_money(prev)})"
+        return f"на уровне {prev_l} ({_money(prev)})"
+    return f"{'больше' if ch > 0 else 'меньше'} на {abs(ch):.0f}% к {prev_l} ({_money(prev)})"
 
 
 def _qty(v: float) -> str:
@@ -52,8 +56,8 @@ def _top_list(s: pd.Series, total: float, n: int = TOP_N) -> str:
     return ", ".join(f"{k} — {_money(v)} ({_pct(v / total * 100) if total else '—'})" for k, v in s.items())
 
 
-def build_store_story(df: pd.DataFrame, prev: pd.DataFrame | None, period_text: str,
-                      prev_text: str) -> list[tuple[str, str]]:
+def build_store_story(df: pd.DataFrame, prev: pd.DataFrame | None, start, end, prev_start=None,
+                      prev_end=None) -> list[tuple[str, str]]:
     """df / prev — разбивка по подразделениям (колонка store_name). Стили: h1, sub, h2, p, li, note."""
     S: list[tuple[str, str]] = []
     prev = prev if prev is not None else pd.DataFrame(columns=df.columns)
@@ -65,11 +69,14 @@ def build_store_story(df: pd.DataFrame, prev: pd.DataFrame | None, period_text: 
     net_cat_share = net_cat / total if total else net_cat * 0
 
     S.append(("h1", "Подразделения: кто чем торгует"))
-    S.append(("sub", f"{period_text}. Сравнение — с {prev_text}. Суммы — продажи за вычетом возвратов."))
+    cur_l = rng(start, end)
+    prev_l = rng(prev_start, prev_end) if prev_start else ""
+    S.append(("sub", f"Период {cur_l}" + (f", сравнение с {prev_l}" if prev_l else "")
+                     + ". Все суммы — продажи за вычетом возвратов (как «Итого» на других листах)."))
 
     # Сеть
     S.append(("h2", "Сеть в целом"))
-    ch = _change(total, total_prev)
+    ch = _change(total, total_prev, prev_l)
     S.append(("p", f"Продажи сети — {_money(total)}" + (f", {ch}" if ch else "") + "."))
     if len(stores):
         lead = stores.index[0]
@@ -79,9 +86,9 @@ def build_store_story(df: pd.DataFrame, prev: pd.DataFrame | None, period_text: 
             delta = (stores - stores_prev.reindex(stores.index).fillna(0)).sort_values()
             up, down = delta[delta > 0], delta[delta < 0]
             if len(up):
-                S.append(("li", f"Сильнее всех выросло «{up.index[-1]}»: +{_money(up.iloc[-1])} к прошлому периоду"))
+                S.append(("li", f"Сильнее всех выросло «{up.index[-1]}»: +{_money(up.iloc[-1])} к {prev_l}"))
             if len(down):
-                S.append(("li", f"Сильнее всех снизилось «{down.index[0]}»: −{_money(-down.iloc[0])} к прошлому периоду"))
+                S.append(("li", f"Сильнее всех снизилось «{down.index[0]}»: −{_money(-down.iloc[0])} к {prev_l}"))
     S.append(("li", "Главные категории сети: " + _top_list(net_cat, total)))
     S.append(("li", "Главные производители сети: " + _top_list(_by(df, "manufacturer_name"), total)))
 
@@ -93,7 +100,7 @@ def build_store_story(df: pd.DataFrame, prev: pd.DataFrame | None, period_text: 
         share = f"{_pct(amount / total * 100)} сети" if total else ""
         S.append(("h2", f"{store} — {_money(amount)}" + (f" ({share})" if share else "")))
 
-        ch = _change(amount, amount_prev)
+        ch = _change(amount, amount_prev, prev_l)
         sales, ret = float(g["sales_amount"].sum()), float(g["returns_amount"].sum())
         S.append(("p", (ch[0].upper() + ch[1:] + ". " if ch else "")
                        + f"Продано {_qty(g['net_qty'].sum())} шт., {_items(g['item_id'].nunique())}"
@@ -129,7 +136,7 @@ def build_store_story(df: pd.DataFrame, prev: pd.DataFrame | None, period_text: 
             if (dc < 0).any():
                 parts.append(f"падает «{dc.index[0]}» (−{_money(-dc.iloc[0])})")
             if parts:
-                S.append(("li", "К прошлому периоду: " + "; ".join(parts)))
+                S.append(("li", f"К {prev_l}: " + "; ".join(parts)))
 
     S.append(("note", "Подробности — на листах «Подразделения → категории» и «Подразделения → производители». "
                       "Продажи без привязки к магазину — в группе «Без подразделения»."))

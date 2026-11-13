@@ -31,15 +31,30 @@ FILENAME_PREFIX = {
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
-def _workbook(start: date, end: date, report_type: str):
-    """Книга с листами по подразделениям и сравнением с прошлым периодом той же длины."""
-    from sales.reports.meeting_brief.periods import Periods
+def compare_range(start: date, end: date) -> tuple[date, date]:
+    """Период для сравнения: день/неделя/до месяца — предыдущий такой же отрезок,
+    целый месяц — прошлый месяц, длиннее месяца (квартал, с начала года) — те же даты год назад."""
+    from datetime import timedelta
 
-    p = Periods(start, end)
+    from dateutil.relativedelta import relativedelta
+
+    days = (end - start).days + 1
+    full_month = start.day == 1 and (end + timedelta(days=1)).day == 1 and start.month == end.month
+    if full_month:
+        p_end = start - timedelta(days=1)
+        return p_end.replace(day=1), p_end
+    if days <= 31:
+        return start - timedelta(days=days), start - timedelta(days=1)
+    return start - relativedelta(years=1), end - relativedelta(years=1)
+
+
+def _workbook(start: date, end: date, report_type: str):
+    """Книга с листами по подразделениям и сравнением с периодом из compare_range."""
+    p_start, p_end = compare_range(start, end)
     df_store = get_sku_barcode_breakdown(start, end, by_store=True)
-    df_prev = get_sku_barcode_breakdown(p.prev_start, p.prev_end, by_store=True)
+    df_prev = get_sku_barcode_breakdown(p_start, p_end, by_store=True)
     return build_workbook(without_store(df_store), report_type=report_type, start=start, end=end,
-                          df_store=df_store, df_store_prev=df_prev, prev_text=p.prev_range_label)
+                          df_store=df_store, df_store_prev=df_prev, prev_start=p_start, prev_end=p_end)
 
 
 def build_sku_breakdown_xlsx_response(report_date: date, request=None) -> HttpResponse:
