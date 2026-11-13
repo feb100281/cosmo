@@ -274,8 +274,10 @@ def build_workbook(df: pd.DataFrame, *, report_type: str, start: date, end: date
         if has_prev:
             from .compare import build_compare_sheet
 
-            build_compare_sheet(wb, S, df, df_store_prev, start, end, prev_start, prev_end)
-            toc_sheets.append(("Динамика", "Категории, подкатегории и производители против прошлого периода"))
+            build_compare_sheet(wb, S, df, df_store_prev, start, end, prev_start, prev_end,
+                                cur_store=df_store if has_store else None)
+            toc_sheets.append(("Динамика", "Подразделения, категории, подкатегории и производители "
+                                           "против периода сравнения"))
 
         _build_detail_sheet(wb, S, df, meta)
         _build_grouped_sheet(wb, S, df, meta, group_cols=["cat_name", "subcat_name"],

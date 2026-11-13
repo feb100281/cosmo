@@ -32,8 +32,8 @@ def _change(cur: float, prev: float, prev_l: str) -> str:
         return f"за {prev_l} продаж не было" if cur > 0 else ""
     ch = (cur - prev) / prev * 100
     if abs(ch) < 0.5:
-        return f"на уровне {prev_l} ({_money(prev)})"
-    return f"{'больше' if ch > 0 else 'меньше'} на {abs(ch):.0f}% к {prev_l} ({_money(prev)})"
+        return f"на уровне {prev_l} (было {_money(prev)})"
+    return f"{'больше' if ch > 0 else 'меньше'} на {abs(ch):.0f}% к {prev_l} (было {_money(prev)})"
 
 
 def _qty(v: float) -> str:
@@ -56,9 +56,36 @@ def _top_list(s: pd.Series, total: float, n: int = TOP_N) -> str:
     return ", ".join(f"{k} — {_money(v)} ({_pct(v / total * 100) if total else '—'})" for k, v in s.items())
 
 
+DIMS = [("manufacturer_name", "бренд", "бренда"), ("cat_name", "категория", "категории"),
+        ("subcat_name", "подкатегория", "подкатегории")]  # доли подразделений по брендам и категориям
+MAIN_SHARE = 0.5      # подразделение даёт не меньше половины продаж бренда/категории в сети
+MIN_NET_SHARE = 0.005  # и сам бренд/категория — не меньше 0,5% продаж сети
+
+
+def _store_shares(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    """Доля каждого подразделения в продажах бренда/категории по сети."""
+    t = df.groupby([col, "store_name"])["net_amount"].sum()
+    tot = t.groupby(level=0).sum()
+    out = t.reset_index().rename(columns={"net_amount": "amount"})
+    out["total"] = out[col].map(tot)
+    out["share"] = (out["amount"] / out["total"]).where(out["total"] > 0, 0.0)
+    return out
+
+
+def _where_sold(df: pd.DataFrame, col: str, total: float, n: int = 5) -> str:
+    """Топ брендов/категорий сети и где их продают больше всего."""
+    sh = _store_shares(df, col)
+    top = sh.groupby(col)["amount"].sum().sort_values(ascending=False)
+    parts = []
+    for k, v in top[top > 0].head(n).items():
+        best = sh[sh[col] == k].sort_values("amount", ascending=False).iloc[0]
+        parts.append(f"{k} — {_money(v)}, больше всего в «{best['store_name']}» ({_pct(best['share'] * 100)})")
+    return "; ".join(parts)
+
+
 def build_store_story(df: pd.DataFrame, prev: pd.DataFrame | None, start, end, prev_start=None,
                       prev_end=None) -> list[tuple[str, str]]:
-    """df / prev — разбивка по подразделениям (колонка store_name). Стили: h1, sub, h2, p, li, note."""
+    """df / prev — разбивка по подразделениям (колонка store_name). Стили: h1, sub, h2, h3, store, p, li, note."""
     S: list[tuple[str, str]] = []
     prev = prev if prev is not None else pd.DataFrame(columns=df.columns)
     total = float(df["net_amount"].sum())
@@ -91,6 +118,13 @@ def build_store_story(df: pd.DataFrame, prev: pd.DataFrame | None, start, end, p
                 S.append(("li", f"Сильнее всех снизилось «{down.index[0]}»: −{_money(-down.iloc[0])} к {prev_l}"))
     S.append(("li", "Главные категории сети: " + _top_list(net_cat, total)))
     S.append(("li", "Главные производители сети: " + _top_list(_by(df, "manufacturer_name"), total)))
+    multi = len(stores) > 1
+    shares = {col: _store_shares(df, col) for col, _a, _b in DIMS} if multi else {}
+    if multi:
+        S.append(("h3", "Где что продают"))
+        S.append(("li", "Бренды: " + _where_sold(df, "manufacturer_name", total)))
+        S.append(("li", "Категории: " + _where_sold(df, "cat_name", total)))
+        S.append(("li", "Подкатегории: " + _where_sold(df, "subcat_name", total)))
 
     # По каждому подразделению
     for store, amount in stores.items():
@@ -98,7 +132,7 @@ def build_store_story(df: pd.DataFrame, prev: pd.DataFrame | None, start, end, p
         gp = prev[prev["store_name"] == store] if len(prev) else prev
         amount_prev = float(gp["net_amount"].sum()) if len(gp) else 0.0
         share = f"{_pct(amount / total * 100)} сети" if total else ""
-        S.append(("h2", f"{store} — {_money(amount)}" + (f" ({share})" if share else "")))
+        S.append(("store", f"{store} — {_money(amount)}" + (f" ({share})" if share else "")))
 
         ch = _change(amount, amount_prev, prev_l)
         sales, ret = float(g["sales_amount"].sum()), float(g["returns_amount"].sum())
@@ -125,6 +159,20 @@ def build_store_story(df: pd.DataFrame, prev: pd.DataFrame | None, start, end, p
                 S.append(("li", f"Особенность: «{k}» — {_pct(cats[k] / amount * 100)} продаж подразделения "
                                 f"против {_pct(net_cat_share[k] * 100)} по сети"))
 
+        # Для чего подразделение — основная площадка в сети
+        if multi:
+            main = []
+            for col, label in (("manufacturer_name", "бренды"), ("cat_name", "категории"),
+                               ("subcat_name", "подкатегории")):
+                sh = shares[col]
+                m = sh[(sh["store_name"] == store) & (sh["share"] >= MAIN_SHARE)
+                       & (sh["total"] >= total * MIN_NET_SHARE)].sort_values("total", ascending=False).head(TOP_N)
+                if len(m):
+                    main.append(f"{label} — " + ", ".join(f"{r[col]} {_pct(r['share'] * 100)}"
+                                                           for _, r in m.iterrows()))
+            if main:
+                S.append(("li", "Больше половины продаж сети приходится сюда: " + "; ".join(main)))
+
         if len(gp):
             dc = (cats - _by(gp, "cat_name").reindex(cats.index).fillna(0))
             lost = _by(gp, "cat_name")
@@ -146,7 +194,7 @@ def build_store_story(df: pd.DataFrame, prev: pd.DataFrame | None, start, end, p
 def write_story(wb, story: list[tuple[str, str]], sheet: str = "Выводы") -> None:
     from openpyxl.styles import Alignment
 
-    from sales.reports.xl_brand import MUTED, NAVY, TEXT, TEXT_2, font, page_setup, toc_button
+    from sales.reports.xl_brand import MUTED, NAVY, NAVY_3, SURFACE_4, TEXT, TEXT_2, fill, font, page_setup, toc_button
 
     ws = wb.create_sheet(sheet)
     page_setup(ws, landscape=False)
@@ -158,13 +206,15 @@ def write_story(wb, story: list[tuple[str, str]], sheet: str = "Выводы") -
         "h1": (font(16, True, NAVY), 26, 0),
         "sub": (font(10, color=MUTED, italic=True), 16, 0),
         "h2": (font(12, True, NAVY), 22, 0),
+        "h3": (font(11, True, NAVY), 20, 0),
+        "store": (font(12, True, NAVY_3), 24, 1),
         "p": (font(10.5, color=TEXT), 16, 0),
         "li": (font(10.5, color=TEXT_2), 16, 1),
         "note": (font(9.5, color=MUTED, italic=True), 15, 0),
     }
     r = 2
     for kind, text in story:
-        if kind in ("h1", "h2", "note"):
+        if kind in ("h1", "h2", "store", "note"):
             r += 1
         f, line_h, indent = styles[kind]
         value = f"•  {text}" if kind == "li" else text
@@ -172,4 +222,8 @@ def write_story(wb, story: list[tuple[str, str]], sheet: str = "Выводы") -
         c.font = f
         c.alignment = Alignment(wrap_text=True, vertical="top", indent=indent)
         ws.row_dimensions[r].height = line_h * max(1, -(-len(value) // 95)) + 2
+        if kind == "store":
+            ws.cell(row=r, column=1).fill = fill(SURFACE_4)
+            c.fill = fill(SURFACE_4)
+            c.alignment = Alignment(vertical="center", indent=indent)
         r += 1

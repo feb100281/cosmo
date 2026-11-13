@@ -138,14 +138,14 @@ def _block(ws, S, r: int, title: str, t: pd.DataFrame, labels: list[tuple[str, s
 
 
 def build_compare_sheet(wb, S, cur: pd.DataFrame, prev: pd.DataFrame, start, end, prev_start, prev_end,
-                        sheet: str = "Динамика") -> None:
+                        sheet: str = "Динамика", cur_store: pd.DataFrame | None = None) -> None:
     cur_l, prev_l = rng(start, end), rng(prev_start, prev_end)
     metrics = _metrics(cur_l, prev_l)
     ws = wb.create_sheet(sheet)
     page_setup(ws)
     n_cols = 2 + len(metrics)
     toc_button(ws, 1, n_cols)
-    ws.cell(row=2, column=1, value="ДИНАМИКА: КАТЕГОРИИ, ПОДКАТЕГОРИИ, ПРОИЗВОДИТЕЛИ").font = font(14, True)
+    ws.cell(row=2, column=1, value="ДИНАМИКА: ПОДРАЗДЕЛЕНИЯ, КАТЕГОРИИ, ПОДКАТЕГОРИИ, ПРОИЗВОДИТЕЛИ").font = font(14, True)
     ws.row_dimensions[2].height = 24
     ws.cell(row=3, column=1, value=f"{cur_l} против {prev_l} · «Итого» — продажи за вычетом возвратов · "
                                    "доля — от итога сети за период").font = font(9, color=MUTED)
@@ -155,6 +155,11 @@ def build_compare_sheet(wb, S, cur: pd.DataFrame, prev: pd.DataFrame, start, end
         ws.column_dimensions[get_column_letter(j)].width = w
 
     r = 5
+    if cur_store is not None and "store_name" in cur_store.columns and "store_name" in prev.columns:
+        t = compare_table(cur_store, prev, ["store_name"])
+        r = _block(ws, S, r, "Подразделения", t, [("Подразделение", "store_name", 30), ("", "_", 26)],
+                   _summary(t, "store_name", "подразделения"), metrics, n_cols)
+
     t = compare_table(cur, prev, ["cat_name"])
     r = _block(ws, S, r, "Категории", t, [("Категория", "cat_name", 30), ("", "_", 26)],
                _summary(t, "cat_name", "категории"), metrics, n_cols)
