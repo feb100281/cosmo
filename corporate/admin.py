@@ -1859,7 +1859,7 @@ class SiteCategoryAdmin(admin.ModelAdmin):
             return redirect("admin:corporate_sitecategory_changelist")
         last = SiteCategory.objects.order_by("-loaded_at").values_list("loaded_at", flat=True).first()
         resp = HttpResponse(
-            build_excel(rows, mapping, timezone.localtime(last) if last else None),
+            build_excel(rows, mapping, timezone.localtime(last) if last and timezone.is_aware(last) else last),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         resp["Content-Disposition"] = f'attachment; filename="site_catalog_{datetime.now():%Y%m%d}.xlsx"'
