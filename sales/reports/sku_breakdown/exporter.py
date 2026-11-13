@@ -19,7 +19,7 @@ from django.http import HttpResponse
 from sales.reports.sales_report.period import classify_report
 from sales.reports.sales_report.ranges import period_range
 
-from .data import get_sku_barcode_breakdown
+from .data import get_sku_barcode_breakdown, without_store
 from .render.xlsx import build_workbook
 
 FILENAME_PREFIX = {
@@ -31,12 +31,22 @@ FILENAME_PREFIX = {
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
+def _workbook(start: date, end: date, report_type: str):
+    """Книга с листами по подразделениям и сравнением с прошлым периодом той же длины."""
+    from sales.reports.meeting_brief.periods import Periods
+
+    p = Periods(start, end)
+    df_store = get_sku_barcode_breakdown(start, end, by_store=True)
+    df_prev = get_sku_barcode_breakdown(p.prev_start, p.prev_end, by_store=True)
+    return build_workbook(without_store(df_store), report_type=report_type, start=start, end=end,
+                          df_store=df_store, df_store_prev=df_prev, prev_text=p.prev_range_label)
+
+
 def build_sku_breakdown_xlsx_response(report_date: date, request=None) -> HttpResponse:
     report_type = classify_report(report_date)
     start, end = period_range(report_date, report_type)
 
-    df = get_sku_barcode_breakdown(start, end)
-    wb = build_workbook(df, report_type=report_type, start=start, end=end)
+    wb = _workbook(start, end, report_type)
 
     buffer = BytesIO()
     wb.save(buffer)
@@ -56,7 +66,7 @@ def build_sku_breakdown_xlsx_response(report_date: date, request=None) -> HttpRe
 def build_sku_breakdown_period_response(start: date, end: date) -> HttpResponse:
     """Тот же отчёт за произвольный период [start, end]; один день — start == end."""
     report_type = "daily" if start == end else "period"
-    wb = build_workbook(get_sku_barcode_breakdown(start, end), report_type=report_type, start=start, end=end)
+    wb = _workbook(start, end, report_type)
 
     buffer = BytesIO()
     wb.save(buffer)

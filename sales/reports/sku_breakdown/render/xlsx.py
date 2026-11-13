@@ -224,7 +224,9 @@ def _meta(report_type, start, end) -> dict:
     return {"report_type": report_type, "start": start, "end": end, "generated_at": datetime.now()}
 
 
-def build_workbook(df: pd.DataFrame, *, report_type: str, start: date, end: date) -> Workbook:
+def build_workbook(df: pd.DataFrame, *, report_type: str, start: date, end: date,
+                   df_store: pd.DataFrame | None = None, df_store_prev: pd.DataFrame | None = None,
+                   prev_text: str = "") -> Workbook:
     meta = _meta(report_type, start, end)
     wb = Workbook()
     wb.remove(wb.active)
@@ -241,6 +243,19 @@ def build_workbook(df: pd.DataFrame, *, report_type: str, start: date, end: date
                              sheet_title="По категориям", title="Продажи по категориям")
         _build_grouped_sheet(wb, df, meta, group_cols=["manufacturer_name", "cat_name", "subcat_name"],
                              sheet_title="По производителям", title="Продажи по производителям")
+        if df_store is not None and not df_store.empty:
+            from .story import build_store_story, write_story
+
+            write_story(wb, build_store_story(df_store, df_store_prev, _period_text(meta), prev_text))
+        if df_store_prev is not None:
+            from .compare import build_compare_sheet
+
+            build_compare_sheet(wb, df, df_store_prev, _period_text(meta), prev_text)
+            _build_grouped_sheet(wb, df_store, meta, group_cols=["store_name", "cat_name", "subcat_name"],
+                                 sheet_title="Подразделения → категории", title="Продажи по подразделениям")
+            _build_grouped_sheet(wb, df_store, meta, group_cols=["store_name", "manufacturer_name", "cat_name"],
+                                 sheet_title="Подразделения → производители",
+                                 title="Продажи по подразделениям и производителям")
         t = _sums(df)
         ret_share = t["returns_amount"] / t["sales_amount"] if t["sales_amount"] else 0.0
         cards = [
@@ -256,11 +271,17 @@ def build_workbook(df: pd.DataFrame, *, report_type: str, start: date, end: date
         subtitle="Разбивка по номенклатуре и штрихкодам",
         params=_params(meta),
         cards=cards,
-        sheets=[
+        sheets=([("Выводы", "Подразделения: кто чем торгует, сравнение с прошлым периодом")]
+                if "Выводы" in wb.sheetnames else []) + (
+            [("Динамика", "Категории, подкатегории и производители против прошлого периода")]
+            if "Динамика" in wb.sheetnames else []) + [
             ("Детализация", "Все позиции и штрихкоды по убыванию выручки"),
             ("По категориям", "Категория → подкатегория → позиции; раскрываются «+» слева"),
             ("По производителям", "Производитель → категория → подкатегория → позиции"),
-        ],
+        ] + ([("Подразделения → категории", "Подразделение → категория → подкатегория → позиции"),
+              ("Подразделения → производители", "Подразделение → производитель → категория → позиции")]
+             if "Подразделения → категории" in wb.sheetnames else []),
     )
-    finalize(wb, ["Оглавление", "Детализация", "По категориям", "По производителям"])
+    finalize(wb, ["Оглавление", "Выводы", "Динамика", "Детализация", "По категориям", "По производителям", "Подразделения → категории",
+                  "Подразделения → производители"])
     return wb

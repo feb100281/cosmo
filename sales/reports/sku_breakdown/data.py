@@ -24,11 +24,12 @@ NO_MANUFACTURER = "Производитель не указан"
 NO_BARCODE = "Без штрихкода"
 NO_ARTICLE = "Без артикула"
 NO_NAME = "—"
+NO_STORE = "Без подразделения"
 
 _METRIC_COLS = ("sales_amount", "sales_qty", "returns_amount", "returns_qty")
 
 
-def get_sku_barcode_breakdown(start: date, end: date) -> pd.DataFrame:
+def get_sku_barcode_breakdown(start: date, end: date, by_store: bool = False) -> pd.DataFrame:
     """
     Возвращает DataFrame — одна строка на уникальную комбинацию
     (номенклатура, штрихкод, категория/подкатегория, производитель) за
@@ -41,8 +42,12 @@ def get_sku_barcode_breakdown(start: date, end: date) -> pd.DataFrame:
     Строки, по которым за период не было ни продаж, ни возвратов,
     отбрасываются.
     """
-    q = """
+    store_col = "COALESCE(st.name, %(no_store)s) AS store_name," if by_store else ""
+    store_join = "LEFT JOIN corporate_stores st ON st.id = s.store_id" if by_store else ""
+    store_group = ", store_name" if by_store else ""
+    q = f"""
         SELECT
+            {store_col}
             i.id AS item_id,
             COALESCE(i.article, %(no_article)s) AS article,
             COALESCE(i.fullname, %(no_name)s) AS fullname,
@@ -64,13 +69,14 @@ def get_sku_barcode_breakdown(start: date, end: date) -> pd.DataFrame:
         LEFT JOIN corporate_cattree cat ON cat.id = i.cat_id
         LEFT JOIN corporate_subcategory sc ON sc.id = i.subcat_id
         LEFT JOIN corporate_itemmanufacturer m ON m.id = i.manufacturer_id
+        {store_join}
         WHERE s.`date` BETWEEN %(start)s AND %(end)s
         GROUP BY
             i.id, article, fullname,
             b.id, barcode,
             i.cat_id, cat_name,
             i.subcat_id, subcat_name,
-            i.manufacturer_id, manufacturer_name
+            i.manufacturer_id, manufacturer_name{store_group}
         ORDER BY cat_name, subcat_name, fullname, barcode
     """
 
@@ -83,6 +89,7 @@ def get_sku_barcode_breakdown(start: date, end: date) -> pd.DataFrame:
         "no_category": NO_CATEGORY,
         "no_subcategory": NO_SUBCATEGORY,
         "no_manufacturer": NO_MANUFACTURER,
+        "no_store": NO_STORE,
     }
 
     with connection.cursor() as cur:
@@ -111,3 +118,14 @@ def get_sku_barcode_breakdown(start: date, end: date) -> pd.DataFrame:
     df = df[mask].reset_index(drop=True)
 
     return df
+
+
+def without_store(df: pd.DataFrame) -> pd.DataFrame:
+    """Сворачивает разбивку по подразделениям до уровня «номенклатура + штрихкод»."""
+    if df.empty or "store_name" not in df.columns:
+        return df.drop(columns=["store_name"], errors="ignore")
+    keys = [c for c in df.columns if c not in _METRIC_COLS + ("net_amount", "net_qty", "store_name")]
+    out = df.groupby(keys, dropna=False, as_index=False)[list(_METRIC_COLS)].sum()
+    out["net_amount"] = out["sales_amount"] - out["returns_amount"]
+    out["net_qty"] = out["sales_qty"] - out["returns_qty"]
+    return out
